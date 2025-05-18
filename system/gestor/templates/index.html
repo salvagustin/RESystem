@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %} | Dashboard {% endblock title %}
+
+{% block content %}
+<div class="container py-4">
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+    <h2 class="fw-bold text-center text-md-start">Sistema de produccion</h2>
+    <div class="d-flex flex-column flex-sm-row gap-2">
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarCosecha">
+          <i class="bi bi-plus-circle"></i> Venta
+      </button>
+      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPlantacion">
+          <i class="bi bi-plus-circle"></i> Corte
+      </button>
+    </div>
+  </div>
+
+  <!-- Estadísticas -->
+  <h3 class="fw-bold mb-4">Resumen Diario</h3>
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 mb-4">
+    {% for cultivo, calidades in cosechas_hoy_detalle.items %}
+      <div class="col">
+        <div class="card h-100 shadow-sm border-success">
+          <div class="card-header bg-success text-white text-center fw-bold text-uppercase">
+            {{ cultivo }}
+          </div>
+          <div class="card-body p-3">
+            {% for calidad, cantidad in calidades.items %}
+              {% if cantidad > 0 %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="fw-bold text-capitalize">
+                    {% if calidad == 'primera' %}
+                      <span class="text-success">Primera</span>
+                    {% elif calidad == 'segunda' %}
+                      <span class="text-info">Segunda</span>
+                    {% elif calidad == 'tercera' %}
+                      <span class="text-warning">Tercera</span>
+                    {% endif %}
+                  </span>
+                  <span class="fw-bold">{{ cantidad }}</span>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="col">
+      <div class="card h-100 text-white bg-primary text-center shadow-sm">
+        <div class="card-header fw-bold">Ventas</div>
+        <div class="card-body">
+          <p class="mb-1 text-uppercase">Del día</p>
+          <p class="fw-bold fs-4">${{ total_ventas }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card h-100 text-white bg-secondary text-center shadow-sm">
+        <div class="card-header fw-bold">Compras</div>
+        <div class="card-body">
+          <p class="mb-1 text-uppercase">Del día</p>
+          <p class="fw-bold fs-4">$100</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráficos -->
+  <div class="row g-4">
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center">
+          <span>Cosechas por Calidad (semana)</span>
+          <select id="selectCultivo" class="form-select form-select-sm w-auto">
+            {% for cultivo in calidad_por_cultivo.keys %}
+              <option value="{{ cultivo }}">{{ cultivo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="card-body">
+          <canvas id="graficoCalidad"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white fw-bold">Ventas por Día (semana)</div>
+        <div class="card-body">
+          <canvas id="ventasSemanaChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modales -->
+  <div class="modal fade" id="modalSeleccionarPlantacion" tabindex="-1" aria-labelledby="modalSeleccionarPlantacionLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Seleccionar Plantacion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <select id="selectPlantacion" class="form-select">
+            <option value="">Selecciona una plantacion</option>
+            {% for plantacion in plantaciones %}
+              <option value="{{ plantacion.idplantacion }}">{{ plantacion.cultivo.nombre }} - Parcela: {{ plantacion.parcela.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button id="btnIrFormularioCorte" class="btn btn-success">Ir al formulario</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalSeleccionarCosecha" tabindex="-1" aria-labelledby="modalSeleccionarCosechaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Seleccionar Corte</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <select id="selectCosecha" class="form-select">
+            <option value="">Selecciona un corte</option>
+            {% for cosecha in cosechas %}
+              <option value="{{ cosecha.idcosecha }}">{{ cosecha.fecha }} - Parcela: {{ cosecha.plantacion.parcela.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button id="btnIrFormulario" class="btn btn-success">Ir al formulario</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    window.diasSemana = {{ dias_semana|safe }};
+    window.ventasPorDia = {{ ventas_por_dia|safe }};
+    window.calidadPorCultivo = {{ calidad_por_cultivo|safe }};
+  </script>
+  <script>
+    console.log("Días semana:", window.diasSemana);
+    console.log("Ventas por día:", window.ventasPorDia);
+    console.log("Calidad por cultivo:", window.calidadPorCultivo);
+  </script>
+
+  <script src="{% static 'js/dashboard.js' %}"></script>
+
+  <script>
+    document.getElementById("btnIrFormularioCorte").addEventListener("click", function () {
+        const plantacionId = document.getElementById("selectPlantacion").value;
+        if (plantacionId) {
+            window.location.href = `/cosechas/crear/?plantacion_id=${plantacionId}`;
+        } else {
+            alert("Debes seleccionar una plantacion.");
+        }
+    });
+
+    document.getElementById("btnIrFormulario").addEventListener("click", function () {
+        const cosechaId = document.getElementById("selectCosecha").value;
+        if (cosechaId) {
+            window.location.href = `/ventas/crear/?cosecha_id=${cosechaId}`;
+        } else {
+            alert("Debes seleccionar una cosecha.");
+        }
+    });
+  </script>
+</div>
+{% endblock %}

@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %} | Corte {% endblock %}
+
+{% block content %}
+<div class="container py-2">
+    <!-- Título -->
+    <div class="text-center mb-3">
+        <h2 class="fw-bold">Cortes</h2>
+    </div>
+
+    <!-- Acciones y Filtros -->
+    <div class="row gy-3 align-items-center mb-2">
+        <!-- Botones -->
+        <div class="col-12 col-md-4 d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
+            <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPlantacion">
+                <i class="bi bi-plus-circle fs-5 me-2"></i> <span>Nuevo Corte</span>
+            </button>
+
+            <a href="/cosechas/" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
+            </a>
+        </div>
+
+        <!-- Formulario de búsqueda -->
+        <div class="col-12 col-md-8">
+            <form method="get" class="row g-2 justify-content-center">
+                <!-- Filtro -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <select class="form-select form-select-sm" name="filtro">
+                        <option value="parcela" {% if filtro == "parcela" %}selected{% endif %}>Parcela</option>
+                        <option value="cultivo" {% if filtro == "cultivo" %}selected{% endif %}>Cultivo</option>
+                        <option value="tipo" {% if filtro == "tipo" %}selected{% endif %}>Tipo</option>
+                        <option value="estado" {% if filtro == "estado" %}selected{% endif %}>Estado</option>
+                    </select>
+                </div>
+
+                <!-- Buscar -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <input type="text" name="buscar" class="form-control form-control-sm" placeholder="Buscar..." value="{{ buscar }}">
+                </div>
+
+                <!-- Fecha Inicio -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}" title="Desde">
+                </div>
+
+                <!-- Fecha Fin -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}" title="Hasta">
+                </div>
+
+                <!-- Botón Buscar -->
+                <div class="col-12 col-sm-4 col-md-auto">
+                    <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-search fs-5 me-2"></i> <span>Buscar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+
+  
+
+    <!-- Tabla de cosechas -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Numero</th>
+                    <th>Parcela</th>
+                    <th>Fecha</th>
+                    <th>Cultivo</th>
+                    <th>Total</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cosecha in entity %}
+                <tr>
+                    <td>{{ cosecha.idcosecha }}</td>
+                    <td>{{ cosecha.plantacion.parcela.nombre}}</td>
+                    <td>{{ cosecha.fecha }}</td>
+                    <td>{{ cosecha.plantacion.cultivo.nombre }}</td>
+                    <td>{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_cosecha' }}</td>
+                    <td>{{ cosecha.get_tipocosecha_display }}</td>
+                    <td>
+                        {% if cosecha.estado == 1 %}
+                            <span class="badge bg-danger">Finalizado</span>
+                            
+                        {% elif cosecha.estado == 0 %}
+                            <span class="badge bg-success">Activo</span>
+                        {% endif %}
+                    <td>
+                        <div class="d-flex flex-wrap justify-content-center gap-2">
+
+                            <!-- Botón Detalles -->
+                            <button 
+                                type="button" 
+                                class="btn btn-info btn-sm text-white"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalCosecha"
+                                data-id="{{ cosecha.idcosecha }}"
+                                data-parcela="{{ cosecha.plantacion.parcela.nombre }}"
+                                data-cultivo="{{ cosecha.plantacion.cultivo.nombre }}"
+                                data-plantacion="{{ cosecha.plantacion.fecha }}"
+                                data-fecha="{{ cosecha.fecha }}"
+                                data-primera="{{ cosecha.primera }}"
+                                data-segunda="{{ cosecha.segunda }}"
+                                data-tercera="{{ cosecha.tercera }}"
+                                data-estado="{{ cosecha.estado }}"
+                                data-tipocosecha = "{{ cosecha.get_tipocosecha_display }}"
+                                data-disponible-primera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_primera' }}"
+                                data-disponible-segunda="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_segunda' }}"
+                                data-disponible-tercera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_tercera' }}">
+                                <i class="bi bi-eye"></i> Detalles
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">No hay cosechas registradas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "paginacion.html" %}
+</div>
+
+
+<!-- Modal Seleccionar Plantacion -->
+<div class="modal fade" id="modalSeleccionarPlantacion" tabindex="-1" aria-labelledby="modalSeleccionarPlantacionLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+  
+        <div class="modal-header">
+          <h5 class="modal-title">Seleccionar Plantacion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+  
+        <div class="modal-body">
+          <select id="selectPlantacion" class="form-select">
+            <option value="">Selecciona una plantacion</option>
+            {% for plantacion in plantaciones %}
+              <option value="{{ plantacion.idplantacion }}">{{ plantacion.cultivo.nombre }} - Parcela: {{ plantacion.parcela.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+  
+        <div class="modal-footer">
+          <button id="btnIrFormulario" class="btn btn-success">Ir al formulario</button>
+        </div>
+  
+      </div>
+    </div>
+  </div>
+
+
+
+<!-- Modal Detalles de Cosecha -->
+<div class="modal fade" id="modalCosecha" tabindex="-1" aria-labelledby="modalCosechaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg"> <!-- Agrandamos el modal -->
+    <div class="modal-content">
+      
+      <!-- Header -->
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalCosechaLabel">📋 Información del Corte</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="container-fluid">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <p><strong>📌 Número:</strong> <span id="cosechaId"></span></p>
+              <p><strong>🌿 Parcela:</strong> <span id="cosechaParcela"></span></p>
+              <p><strong>🥬 Cultivo:</strong> <span id="cosechaCultivo"></span></p>
+              <p><strong>📅 Fecha Corte:</strong> <span id="cosechaFecha"></span></p>
+              <p><strong>📦 Tipo:</strong> <span id="cosechaTipo"></span></p>
+              <p><strong>🔁 Estado:</strong> 
+                <span id="cosechaEstado" ></span>
+              </p>
+            </div>
+
+            <div class="col-md-6">
+              <p><strong>🪴 Plantación:</strong> <span id="cosechaPlantacion"></span></p>
+              <p><strong>🔹 Primera:</strong> <span id="cosechaPrimera"></span></p>
+              <p><strong>🔸 Segunda:</strong> <span id="cosechaSegunda"></span></p>
+              <p><strong>🔻 Tercera:</strong> <span id="cosechaTercera"></span></p>
+              <p><strong>🧮 Total:</strong> <span id="cosechaTotal"></span></p>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <p><strong>✅ Disponible 1ra:</strong> <span id="disponiblePrimera"></span></p>
+            </div>
+            <div class="col-md-4">
+              <p><strong>✅ Disponible 2da:</strong> <span id="disponibleSegunda"></span></p>
+            </div>
+            <div class="col-md-4">
+              <p><strong>✅ Disponible 3ra:</strong> <span id="disponibleTercera"></span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button id="btnToggleEstadoVenta"  class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi btn-info"></i> Venta</button>
+        <a id="btnEditarCosecha" class="btn btn-outline-primary">
+          <i class="bi bi-pencil-square"></i> Editar
+        </a>
+        <button 
+            class="btn btn-outline-danger"
+            data-bs-toggle="modal"
+            data-bs-target="#modalConfirmarEliminarCosecha"
+            data-bs-dismiss="modal">
+            <i class="bi bi-trash"></i> Eliminar
+        </button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modalConfirmarEliminarCosecha" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title">¿Eliminar Cosecha?</h5>
+              <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+              <p>¿Estás seguro de eliminar esta Cosecha?</p>
+          </div>
+          <div class="modal-footer">
+              <form id="formEliminarCosecha" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-sm">Sí, eliminar</button>
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+              </form>
+          </div>
+      </div>
+  </div>
+</div>
+
+<script>
+    const btnVenta = document.getElementById("btnToggleEstadoVenta");
+    const checkDisponibilidadYActualizarBoton = () => {
+    const disp1ra = parseFloat(document.getElementById("disponiblePrimera").textContent) || 0;
+    const disp2da = parseFloat(document.getElementById("disponibleSegunda").textContent) || 0;
+    const disp3ra = parseFloat(document.getElementById("disponibleTercera").textContent) || 0;
+
+    const hayDisponibilidad = disp1ra > 0 || disp2da > 0 || disp3ra > 0;
+
+      btnVenta.disabled = !hayDisponibilidad;
+    };
+
+    // Llamar esta función cada vez que se abra el modal o se cargue info nueva
+    document.getElementById('modalCosecha').addEventListener('shown.bs.modal', checkDisponibilidadYActualizarBoton);
+
+    // Manejar click en el botón Venta
+    btnVenta.addEventListener("click", function () {
+      const cosechaId = document.getElementById("cosechaId").textContent.trim();
+
+      if (!btnVenta.disabled && cosechaId) {
+        // Redireccionar al formulario de ventas con el ID de cosecha
+        window.location.href = `/ventas/crear/?cosecha_id=${encodeURIComponent(cosechaId)}`;
+  }
+    });
+
+
+    document.getElementById("btnIrFormulario").addEventListener("click", function () {
+        const plantacionId = document.getElementById("selectPlantacion").value;
+        if (plantacionId) {
+            window.location.href = `/cosechas/crear/?plantacion_id=${plantacionId}`;
+        } else {
+            alert("Debes seleccionar una plantacion.");
+        }
+    });
+</script>
+
+{% endblock %}

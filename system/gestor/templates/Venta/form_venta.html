@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %} | Formulario Ventas {% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold">
+            {% if form.instance.pk %} Editar Venta {% else %} Nueva Venta {% endif %}
+        </h2>
+    </div>
+
+    <div class="row gy-4 flex-lg-row-reverse">
+        <!-- Formulario de venta (derecha en escritorio) -->
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white fw-bold">
+                    {% if form.instance.pk %} Editar Venta {% else %} Nueva Venta {% endif %}
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+
+                        <div class="d-flex justify-content-between mt-3">
+                            <a href="{% url 'lista_ventas' %}" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">
+                                {% if form.instance.pk %} Actualizar {% else %} Guardar {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información de la Cosecha (izquierda en escritorio) -->
+        <div class="col-12 col-lg-6">
+            <div class="card shadow bg-light h-100">
+                <div class="card-header bg-success text-white fw-bold">Información de la Cosecha</div>
+                <div class="card-body">
+                    {% if cantidades %}
+                        <ul class="list-group list-group-flush">
+                            {% for categoria, cantidad in cantidades.items %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span class="fw-semibold">{{ categoria }}</span>
+                                <span class="badge bg-success rounded-pill">{{ cantidad }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No hay datos de cosecha disponibles.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

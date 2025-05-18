@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %} | Cultivos {% endblock %}
+
+{% block content %}
+{% load static %}
+<div class="container py-2">
+  <!-- Título -->
+  <div class="text-center mb-3">
+    <h2 class="fw-bold">Cultivos</h2>
+  </div>
+
+  <!-- Acciones y Filtros -->
+  <div class="row gy-3 align-items-center mb-2">
+    <!-- Botones -->
+    <div class="col-12 col-md-4 d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
+      <a href="{% url 'crear_cultivo' %}" class="btn btn-primary w-100 d-flex align-items-center justify-content-center">
+        <i class="bi bi-plus-circle fs-5 me-2"></i> <span>Nuevo cultivo</span>
+      </a>
+
+      <a href="{% url 'lista_cultivos' %}" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
+        <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
+      </a>
+    </div>
+
+    <!-- Formulario de búsqueda -->
+    <div class="col-12 col-md-8">
+      <form method="get" class="row g-2 justify-content-center">
+        <!-- Filtro -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <select class="form-select form-select-sm" name="filtro">
+            <option value="nombre" {% if filtro == "nombre" %}selected{% endif %}>Nombre</option>
+            <option value="variedad" {% if filtro == "variedad" %}selected{% endif %}>Variedad</option>
+          </select>
+        </div>
+
+        <!-- Buscar -->
+        <div class="col-6 col-sm-4 col-md-4 col-lg-3">
+          <input required type="text" name="buscar" class="form-control form-control-sm" placeholder="Buscar..." value="{{ buscar }}">
+        </div>
+
+        <!-- Botón Buscar -->
+        <div class="col-12 col-sm-4 col-md-auto">
+          <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center">
+            <i class="bi bi-search fs-5 me-2"></i> <span>Buscar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+    <!-- Tabla de cultivos -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Numero</th>
+                    <th>Nombre</th>
+                    <th>Variedad</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cultivo in entity %}
+                <tr>
+                    <td>{{ cultivo.idfruto }}</td>
+                    <td>{{ cultivo.nombre }}</td>
+                    <td>{{ cultivo.variedad }}</td>
+                    <td>
+                        <div class="d-flex flex-wrap justify-content-center gap-2">
+
+                            <!-- Botón Detalles -->
+                            <button 
+                                type="button" 
+                                class="btn btn-info btn-sm text-white"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalCultivo"
+                                data-id="{{ cultivo.idfruto }}"
+                                data-nombre="{{ cultivo.nombre }}"
+                                data-variedad="{{ cultivo.variedad }}">
+                                <i class="bi bi-eye"></i> Detalles
+                            </button>
+
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">No hay cultivos registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Detalles de Cultivo -->
+<div class="modal fade" id="modalCultivo" tabindex="-1" aria-labelledby="modalCultivoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <!-- Header -->
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalCultivoLabel">🌱 Información del Cultivo</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="container-fluid">
+          <div class="row g-3">
+            <!-- Columna izquierda -->
+            <div class="col-md-6">
+              <p><strong>🆔 Número:</strong> <span id="cultivoId"></span></p>
+              <p><strong>📛 Nombre:</strong> <span id="cultivoNombre"></span></p>
+            </div>
+
+            <!-- Columna derecha -->
+            <div class="col-md-6">
+              <p><strong>🌿 Variedad:</strong> <span id="cultivoVariedad"></span></p>
+              <!-- Si agregas más campos como tipo, estado, etc., puedes seguir aquí -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <a id="btnEditarCultivo" class="btn btn-outline-primary">
+          <i class="bi bi-pencil-square"></i> Editar
+        </a>
+        <button 
+          class="btn btn-outline-danger"
+          data-bs-toggle="modal"
+          data-bs-target="#modalConfirmarEliminarCultivo"
+          data-bs-dismiss="modal">
+          <i class="bi bi-trash"></i> Eliminar
+        </button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modalConfirmarEliminarCultivo" tabindex="-1" aria-labelledby="modalConfirmarEliminarCultivoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="modalConfirmarEliminarCultivoLabel">¿Eliminar Cultivo?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      
+      <div class="modal-body">
+        <p>¿Estás seguro de eliminar este cultivo?</p>
+      </div>
+      
+      <div class="modal-footer">
+        <form id="formEliminarCultivo" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">Sí, eliminar</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}

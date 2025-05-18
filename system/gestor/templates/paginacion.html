@@ -1,0 +1,40 @@
+{% if paginator.num_pages > 1 %}
+<div class="d-flex justify-content-center mt-4">
+    <ul class="pagination shadow-sm">
+        <!-- Botón Anterior -->
+        {% if entity.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ entity.previous_page_number }}#pagtable">«</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">«</span>
+            </li>
+        {% endif %}
+
+        <!-- Mostrar primeras páginas, puntos suspensivos y rango dinámico -->
+        {% for page in paginator.page_range %}
+            {% if page == 1 or page == paginator.num_pages or page >= entity.number|add:-2 and page <= entity.number|add:2 %}
+                <li class="page-item {% if page == entity.number %}active{% endif %}">
+                    <a class="page-link" href="?page={{ page }}#pagtable">{{ page }}</a>
+                </li>
+            {% elif page == 2 and entity.number > 4 %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% elif page == paginator.num_pages|add:-1 and entity.number < paginator.num_pages|add:-3 %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+
+        <!-- Botón Siguiente -->
+        {% if entity.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ entity.next_page_number }}#pagtable">»</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">»</span>
+            </li>
+        {% endif %}
+    </ul>
+</div>
+{% endif %}

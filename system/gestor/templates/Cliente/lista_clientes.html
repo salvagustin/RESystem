@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %} | Clientes {% endblock %}
+
+{% block content %}
+{% load static %}
+
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold">Clientes</h2>
+    </div>
+
+    <!-- Botón nuevo cliente -->
+    <div class="mb-3">
+        <a class="btn btn-primary" href="{% url 'crear_cliente' %}">
+            <i class="bi bi-plus-circle"></i> Nuevo Cliente
+        </a>
+    </div>
+
+    <!-- Tabla de clientes -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Numero</th>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Tipo Cliente</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cliente in entity %}
+                <tr>
+                    <td>{{ cliente.idcliente }}</td>
+                    <td>{{ cliente.nombre }}</td>
+                    <td>{{ cliente.telefono }}</td>
+                    <td>
+                        {% if cliente.tipocliente == 'C' %}
+                            Comprador
+                        {% else %}
+                            Proveedor
+                        {% endif %}
+                    </td>
+                    
+                    <td>
+                        <div class="d-flex flex-wrap justify-content-center gap-2">
+                            <!-- Botón Detalles -->
+                            <button 
+                                type="button" 
+                                class="btn btn-info btn-sm text-white"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalCliente"
+                                data-id="{{ cliente.idcliente }}"
+                                data-nombre="{{ cliente.nombre }}"
+                                data-telefono="{{ cliente.telefono }}"
+                                data-tipocliente="{{ cliente.get_tipocliente_display }}">
+                                <i class="bi bi-eye"></i> Detalles
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">No hay clientes registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    <!-- Paginación -->
+    {% include "paginacion.html" %}
+    </div>
+</div>
+
+<!-- Modal Detalles Cliente -->
+<div class="modal fade" id="modalCliente" tabindex="-1" aria-labelledby="modalClienteLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalClienteLabel">Información del Cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+                <p><strong>Numero:</strong> <span id="clienteId"></span></p>
+                <p><strong>Nombre:</strong> <span id="clienteNombre"></span></p>
+                <p><strong>Teléfono:</strong> <span id="clienteTelefono"></span></p>
+                <p><strong>Tipo de Cliente:</strong> <span id="clienteTipo"></span></p>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <a id="btnEditarCliente" class="btn btn-primary">Editar</a>
+                <button 
+                    id="btnConfirmarEliminarCliente" 
+                    class="btn btn-danger"
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalConfirmarEliminarCliente"
+                    data-bs-dismiss="modal">
+                    Eliminar
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminación Cliente -->
+<div class="modal fade" id="modalConfirmarEliminarCliente" tabindex="-1" aria-labelledby="modalConfirmarEliminarClienteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalConfirmarEliminarClienteLabel">¿Eliminar Cliente?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                <p>¿Estás seguro de eliminar este cliente?</p>
+            </div>
+
+            <div class="modal-footer">
+                <form id="formEliminarCliente" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Sí, eliminar</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

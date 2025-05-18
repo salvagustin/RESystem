@@ -1,0 +1,85 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Hortalizas{% block title %}{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'crispy-forms/css/crispy.css' %}">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Tu CSS -->
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+
+<!-- BOTÓN para abrir el menú -->
+<button id="menu-btn">☰</button>
+
+<!-- SIDEBAR (menú lateral) -->
+<nav id="sidebar">
+    <div class="sidebar-header">
+        <h3>Hortalizas</h3>
+    </div>
+    <ul>
+        <li><a href="{% url 'inicio' %}">Inicio</a></li>
+        
+    
+        <!-- Submenú Administración -->
+        <li class="dropdown">
+            <a href="#" class="dropdown-toggle" id="adminToggle">Administración <i class="bi bi-caret-down-fill"></i></a>
+            <ul class="dropdown-menu-custom">
+                <li><a href="{% url 'lista_parcelas' %}">Parcelas</a></li>
+                <li><a href="{% url 'lista_cultivos' %}">Cultivos</a></li>
+                <li><a href="{% url 'lista_plantaciones' %}">Plantación</a></li>
+                <li><a href="{% url 'lista_cosechas' %}">Cortes</a></li>
+            </ul>
+        </li>
+    
+        <!-- Otros ítems -->
+        <li><a href="{% url 'lista_clientes' %}">Clientes</a></li>
+        <li><a href="{% url 'lista_ventas' %}">Ventas</a></li>
+        <li><a href="#">Compras</a></li>
+        <li class="dropdown2">
+            <a href="#" class="dropdown-toggle" id="adminToggle2">Mercado Formal <i class="bi bi-caret-down-fill"></i></a>
+            <ul class="dropdown-menu-custom">
+                <li><a href="#">Clientes</a></li>
+                <li><a href="#">Entregas</a></li>
+                <li><a href="#">Ventas</a></li>
+                <li><a href="#">......</a></li>
+            </ul>
+        </li>
+        <li><a href="#">Reportes</a></li>
+        <li><a href="#">Control Calidad</a></li>
+        <li><a href="#">Producción</a></li>
+        <li><a href="#">Cafe</a></li>
+        <li><a href="#">Planillas</a></li>
+    </ul>
+    
+</nav>
+
+<!-- Fondo oscuro cuando el menú está abierto -->
+<div id="overlay"></div>
+
+<!-- CONTENIDO PRINCIPAL -->
+<div id="main-content"> 
+    {% block content %}
+    <h1>Bienvenido al sistema</h1>
+    {% endblock %}
+</div>
+
+<!-- Bootstrap Bundle (JS + Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Tu JS -->
+<script src="{% static 'script.js' %}"></script>
+
+</body>
+</html>

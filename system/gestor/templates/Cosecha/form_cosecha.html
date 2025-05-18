@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %} | Formulario Corte {% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold">
+            {% if form.instance.pk %} Editar Corte {% else %} Nuevo Corte {% endif %}
+        </h2>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Mostrar nombre de la parcela relacionada con la plantación -->
+                        {% if plantacion %}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Parcela: {{ plantacion.parcela.nombre }} {{ plantacion.cultivo.nombre}}</label>
+                                
+                            </div>
+                        {% endif %}
+
+                        {{ form|crispy }}
+
+                        <div class="d-flex justify-content-between mt-3">
+                            <a href="{% url 'lista_cosechas' %}" class="btn btn-secondary">Cancelar</a>
+                            <a href="#" class="btn btn-success" id="btnVender">Vender</a>
+                            <button type="submit" class="btn btn-primary">
+                                {% if form.instance.pk %} Actualizar {% else %} Guardar {% endif %}
+                            </button>
+                        </div>
+                        <input type="hidden" name="ir_a_venta" id="ir_a_venta" value="0">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.getElementById('btnVender').addEventListener('click', function() {
+        document.getElementById('ir_a_venta').value = '1';
+        document.querySelector('form').submit();
+    });
+</script>
+{% endblock %}

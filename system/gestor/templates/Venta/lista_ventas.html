@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %} | Ventas {% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold">Ventas</h2>
+    </div>
+
+  <!-- Botón Nueva Venta abre modal -->
+    <div class="mb-3">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarCosecha">
+            <i class="bi bi-plus-circle"></i> Nueva Venta
+        </button>
+    </div>
+  
+
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Numero</th>
+                    <th>Cliente</th>
+                    <th>Parcela</th>
+                    <th># Corte</th>
+                    <th>Producto</th>
+                    <th>Fecha</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for venta in entity %}
+                <tr>
+                    <td>{{ venta.idventa }}</td>    
+                    <td>{{ venta.cliente.nombre }}</td>
+                    <td>{{ venta.cosecha.plantacion.parcela.nombre }}</td>
+                    <td>{{ venta.cosecha.idcosecha }}</td>
+                    <td>{{ venta.cosecha.plantacion.cultivo.nombre }}</td>
+                    <td>{{ venta.fecha }}</td>
+                    <td>${{ venta.total }}</td>
+                    <td id="estado-{{ venta.idventa }}">
+                        {% if venta.estado %}
+                          <span class="badge bg-success">Pagado</span>
+                        {% else %}
+                          <span class="badge bg-danger">Pendiente</span>
+                        {% endif %}
+                      </td>
+                    <td>
+                        <button 
+                            type="button"
+                            class="btn btn-info btn-sm text-white"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalVenta"
+                            data-id="{{ venta.idventa }}"
+                            data-cliente="{{ venta.cliente.nombre }}"
+                            data-parcela = "{{ venta.cosecha.plantacion.parcela.nombre }}"
+                            data-cosecha = "{{ venta.cosecha.fecha }}"
+                            data-cosecha-id = "{{ venta.cosecha.idcosecha }}"
+                            data-tipo = "{{ venta.cosecha.get_tipocosecha_display }}"
+                            data-producto="{{ venta.cosecha.plantacion.cultivo.nombre }}"
+                            data-fecha="{{ venta.fecha }}"
+                            data-primera="{{ venta.primera }}"
+                            data-segunda="{{ venta.segunda }}"
+                            data-tercera="{{ venta.tercera }}"
+                            data-total="{{ venta.total }}"
+                            data-estado="{{ venta.estado }}">
+                            <i class="bi bi-eye"></i> Detalles
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">No hay ventas registradas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- Modal Seleccionar Cosecha -->
+<div class="modal fade" id="modalSeleccionarCosecha" tabindex="-1" aria-labelledby="modalSeleccionarCosechaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+  
+        <div class="modal-header">
+          <h5 class="modal-title">Seleccionar Corte</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+  
+        <div class="modal-body">
+          <select id="selectCosecha" class="form-select">
+            <option value="">Selecciona un corte</option>
+            {% for cosecha in cosechas %}
+              <option value="{{ cosecha.idcosecha }}">{{ cosecha.idcosecha}}, {{ cosecha.plantacion.parcela.nombre }}, {{ cosecha.fecha }} </option>
+            {% endfor %}
+          </select>
+        </div>
+  
+        <div class="modal-footer">
+          <button id="btnIrFormulario" class="btn btn-success">Ir al formulario</button>
+        </div>
+  
+      </div>
+    </div>
+  </div>
+
+
+<!-- Modal Detalles Venta -->
+<div class="modal fade" id="modalVenta" tabindex="-1" aria-labelledby="modalVentaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalVentaLabel">Detalles de la Venta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <p><strong>Numero:</strong> <span id="ventaId"></span></p>
+                <p><strong>Cliente:</strong> <span id="ventaCliente"></span></p>
+                <p><strong>Parcela:</strong> <span id="ventaParcela"></span></p>
+                <p><strong>Corte:</strong><span id="ventaCosechaId"></span>/<span id="ventaCosecha"></span> </p>
+                <p><strong>Producto:</strong> <span id="ventaProducto"></span></p>
+                <p><strong>Fecha:</strong> <span id="ventaFecha"></span></p>
+                <p><strong>Primera:</strong> <span id="ventaPrimera"></span></p>
+                <p><strong>Segunda:</strong> <span id="ventaSegunda"></span></p>
+                <p><strong>Tercera:</strong> <span id="ventaTercera"></span></p>
+                <p><strong>Tipo:</strong> <span id="ventaTipo"></span></p>
+                <p><strong>Total:</strong> <span id="ventaTotal"></span></p>
+                <p><strong>Estado:</strong> <span id="ventaEstado"></span></p>
+            </div>
+
+            <div class="modal-footer">
+                <button id="btnToggleEstadoVenta" class="btn btn-warning">Cambiar estado</button>
+                <a id="btnEditarVenta" class="btn btn-primary">Editar</a>
+                <button 
+                    class="btn btn-danger"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalConfirmarEliminarVenta"
+                    data-bs-dismiss="modal">
+                    Eliminar
+                </button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modalConfirmarEliminarVenta" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">¿Eliminar Venta?</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de eliminar esta venta?</p>
+            </div>
+            <div class="modal-footer">
+                <form id="formEliminarVenta" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Sí, eliminar</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    let ventaIdActual = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const modalVenta = document.getElementById('modalVenta');
+
+    if (modalVenta) {
+        modalVenta.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            ventaIdActual = button.getAttribute('data-id');
+        });
+
+        document.getElementById('btnToggleEstadoVenta').addEventListener('click', () => {
+            if (!ventaIdActual) return;
+
+            fetch(`/ventas/toggle_estado/${ventaIdActual}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Accept': 'application/json'
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.estado !== undefined) {
+                    // Actualizar estado en el modal
+                    const spanEstado = document.getElementById('ventaEstado');
+                    spanEstado.textContent = data.estado ? 'Pagado' : 'Pendiente';
+                    spanEstado.className = data.estado
+                        ? 'text-success'
+                        : 'text-danger';
+
+                    // Actualizar estado en la tabla
+                    const celdaEstado = document.getElementById(`estado-${ventaIdActual}`);
+                    celdaEstado.innerHTML = data.estado
+                        ? '<span class="badge bg-success">Pagado</span>'
+                        : '<span class="badge bg-danger" >Pendiente</span>';
+                } else {
+                    alert("Error al actualizar estado");
+                }
+            })
+            .catch(() => alert("Error en la solicitud al servidor"));
+        });
+    }
+});
+
+    document.getElementById("btnIrFormulario").addEventListener("click", function () {
+        const cosechaId = document.getElementById("selectCosecha").value;
+        if (cosechaId) {
+            window.location.href = `/ventas/crear/?cosecha_id=${cosechaId}`;
+        } else {
+            alert("Debes seleccionar una cosecha.");
+        }
+    });
+    </script>
+
+{% endblock %}

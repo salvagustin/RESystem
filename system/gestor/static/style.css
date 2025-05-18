@@ -1,0 +1,187 @@
+/* Sidebar */
+#sidebar {
+    height: 100vh;
+    width: 250px;
+    background: #2e7d32;
+    position: fixed;
+    top: 0;
+    left: -250px; /* Menú oculto inicialmente */
+    transition: 0.3s;
+    padding-top: 20px;
+    color: white;
+    z-index: 1000; /* Menú debajo del botón */
+}
+
+#sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#sidebar ul li {
+    padding: 15px 20px;
+}
+
+#sidebar ul li a {
+    text-decoration: none;
+    color: white;
+    display: block;
+}
+
+/* Cuando sidebar está activo */
+#sidebar.active {
+    left: 0; /* Mueve el menú a la vista */
+}
+
+/* Botón menú */
+#menu-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    font-size: 30px;
+    background: none;
+    border: none;
+    color: #2e7d32;
+    cursor: pointer;
+    z-index: 100; /* Botón detrás del menú */
+}
+
+/* Contenido */
+#main-content {
+    margin-left: 20px;
+    padding: 20px;
+}
+
+/* Cuando sidebar está activo */
+#sidebar.active {
+    left: 0;
+}
+
+/* Fondo oscuro cuando el menú está abierto */
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro */
+    z-index: 999; /* Fondo por debajo del botón, pero encima del contenido */
+}
+
+/* Para pantallas grandes */
+@media (min-width: 768px) {
+    #sidebar {
+        left: 0;
+    }
+    #menu-btn {
+        display: none; /* No mostrar el botón en escritorio */
+    }
+    #main-content {
+        margin-left: 270px; /* Contenido se desplaza para dar espacio al menú */
+    }
+}
+
+/* Para pantallas pequeñas (móviles) */
+@media (max-width: 768px) {
+    #sidebar {
+        left: -250px; /* Menú oculto inicialmente */
+    }
+    #sidebar.active {
+        left: 0; /* Menú visible cuando está activo */
+    }
+    #menu-btn {
+        display: block; /* El botón solo aparece en móviles */
+    }
+
+    #main-content {
+        margin-left: 0;
+    }
+    .d-flex.flex-wrap.gap-2 {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+
+/* Estilos para el modal PARCELAS*/
+.tbl_container {
+    margin-top: 20px;
+}
+
+.modal-body p {
+    margin-bottom: 10px;
+}
+
+.table td, .table th {
+    vertical-align: middle;
+}
+
+/* Estilos para CULTIVOS */
+
+body {
+    background-color: #f8f9fa;
+}
+
+.container {
+    max-width: 1200px;
+}
+
+.table {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.modal-header.bg-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn {
+    border-radius: 10px;
+}
+
+
+
+/* Submenú personalizado */
+.dropdown-menu-custom {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding-left: 20px;
+}
+
+.dropdown-menu-custom li a {
+    display: block;
+    padding: 5px 0;
+    color: #333;
+    text-decoration: none;
+}
+
+.dropdown-menu-custom li a:hover {
+    text-decoration: underline;
+}
+
+
+
+/* Estilos para graficos del index*/
+.card-title {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .display-6 {
+    font-size: 1.8rem;
+    font-weight: bold;
+  }
+  
+  .card {
+    border-radius: 1rem;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
+  }
+  
+/* boton de vender en modal cosecha*/
+  #btnToggleEstadoVenta:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
