@@ -5,17 +5,52 @@
 {% block content %}
 {% load static %}
 
-<div class="container py-4">
-    <div class="text-center mb-4">
+<div class="container py-2">
+    <!-- Título -->
+    <div class="text-center mb-3">
         <h2 class="fw-bold">Clientes</h2>
     </div>
 
-    <!-- Botón nuevo cliente -->
-    <div class="mb-3">
-        <a class="btn btn-primary" href="{% url 'crear_cliente' %}">
-            <i class="bi bi-plus-circle"></i> Nuevo Cliente
-        </a>
+    <!-- Acciones y Filtros -->
+    <div class="row gy-3 align-items-center mb-2">
+        <!-- Botones -->
+        <div class="col-12 col-md-4 d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
+            <a href="{% url 'crear_cliente' %}" class="btn btn-primary w-100 d-flex align-items-center justify-content-center">
+                <i class="bi bi-plus-circle fs-5 me-2"></i> <span>Nuevo Cliente</span>
+            </a>
+
+            <a href="/clientes/" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
+            </a>
+        </div>
+
+        <!-- Formulario de búsqueda -->
+        <div class="col-12 col-md-8">
+            <form method="get" class="row g-2 justify-content-center" id="formBusqueda">
+                <!-- Filtro -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <select class="form-select form-select-sm" name="filtro">
+                        <option value="nombre" {% if filtro == "nombre" %}selected{% endif %}>Nombre</option>
+                        <option value="telefono" {% if filtro == "telefono" %}selected{% endif %}>Teléfono</option>
+                        <option value="tipo" {% if filtro == "tipo" %}selected{% endif %}>Tipo</option>
+                    </select>
+                </div>
+
+                <!-- Buscar -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-3">
+                    <input required type="text" name="buscar" class="form-control form-control-sm" placeholder="Buscar..." value="{{ buscar }}">
+                </div>
+
+                <!-- Botón Buscar -->
+                <div class="col-12 col-sm-4 col-md-auto">
+                    <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-search fs-5 me-2"></i> <span>Buscar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
+</div>
 
     <!-- Tabla de clientes -->
     <div class="table-responsive">
@@ -67,47 +102,55 @@
                 {% endfor %}
             </tbody>
         </table>
-    <!-- Paginación -->
-    {% include "paginacion.html" %}
     </div>
-</div>
+    {% include "paginacion.html" %}
+    
+
 
 <!-- Modal Detalles Cliente -->
 <div class="modal fade" id="modalCliente" tabindex="-1" aria-labelledby="modalClienteLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <!-- Header -->
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="modalClienteLabel">🧑‍💼 Información del Cliente</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
 
-            <!-- Header -->
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalClienteLabel">Información del Cliente</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="container-fluid">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <p><strong>🆔 Número:</strong> <span id="clienteId"></span></p>
+              <p><strong>📛 Nombre:</strong> <span id="clienteNombre"></span></p>
             </div>
-
-            <!-- Body -->
-            <div class="modal-body">
-                <p><strong>Numero:</strong> <span id="clienteId"></span></p>
-                <p><strong>Nombre:</strong> <span id="clienteNombre"></span></p>
-                <p><strong>Teléfono:</strong> <span id="clienteTelefono"></span></p>
-                <p><strong>Tipo de Cliente:</strong> <span id="clienteTipo"></span></p>
+            <div class="col-md-6">
+              <p><strong>📞 Teléfono:</strong> <span id="clienteTelefono"></span></p>
+              <p><strong>🏷️ Tipo de Cliente:</strong> <span id="clienteTipo"></span></p>
             </div>
-
-            <!-- Footer -->
-            <div class="modal-footer">
-                <a id="btnEditarCliente" class="btn btn-primary">Editar</a>
-                <button 
-                    id="btnConfirmarEliminarCliente" 
-                    class="btn btn-danger"
-                    data-bs-toggle="modal" 
-                    data-bs-target="#modalConfirmarEliminarCliente"
-                    data-bs-dismiss="modal">
-                    Eliminar
-                </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-
+          </div>
         </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <a id="btnEditarCliente" class="btn btn-outline-primary">
+          <i class="bi bi-pencil-square"></i> Editar
+        </a>
+        <button 
+            class="btn btn-outline-danger"
+            data-bs-toggle="modal"
+            data-bs-target="#modalConfirmarEliminarCliente"
+            data-bs-dismiss="modal">
+            <i class="bi bi-trash"></i> Eliminar
+        </button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
     </div>
+  </div>
 </div>
+
 
 <!-- Modal Confirmar Eliminación Cliente -->
 <div class="modal fade" id="modalConfirmarEliminarCliente" tabindex="-1" aria-labelledby="modalConfirmarEliminarClienteLabel" aria-hidden="true">
@@ -134,5 +177,18 @@
         </div>
     </div>
 </div>
-
+{% if messages %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      {% for message in messages %}
+        Swal.fire({
+          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
+          title: "{{ message|escapejs }}",
+          timer: 3000,
+          showConfirmButton: false
+        });
+      {% endfor %}
+    });
+  </script>
+{% endif %}
 {% endblock %}

@@ -60,6 +60,6 @@ class VentaForm(forms.ModelForm):
         fields = '__all__'
         widgets = {
             'cosecha': forms.HiddenInput(),  # Oculta el campo
-            #'estado': forms.HiddenInput(),  # Oculta el campo
+            'estado': forms.HiddenInput(),  # Oculta el campo
         }
 

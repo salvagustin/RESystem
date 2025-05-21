@@ -12,7 +12,7 @@ class Parcela(models.Model):
         return f"{self.nombre}"
 
 class Cultivo(models.Model):
-    idfruto = models.AutoField(primary_key=True)
+    idcultivo = models.AutoField(primary_key=True)
     nombre = models.CharField('Nombre', max_length=300)
     variedad = models.CharField('Variedad', max_length=300)
     
@@ -55,8 +55,6 @@ class Cliente(models.Model):
     def __str__(self):
         return f"{self.nombre}"
 
-from django.db import models
-from django.db.models import Sum
 
 class Venta(models.Model):
     idventa = models.AutoField(primary_key=True)
@@ -72,8 +70,11 @@ class Venta(models.Model):
     estado = models.BooleanField('Pagado', default=False)
 
     def save(self, *args, **kwargs):
+        if self._state.adding:  # Solo al crear la venta
+            self.estado = True if self.tipoventa == 'C' else False
         super().save(*args, **kwargs)
         self.actualizar_estado_cosecha(self.cosecha)
+
 
     def delete(self, *args, **kwargs):
         cosecha = self.cosecha  # Guardamos la referencia antes de eliminar
@@ -104,7 +105,6 @@ class Venta(models.Model):
 
     def __str__(self):
         return f"Venta #{self.idventa} - Cosecha #{self.cosecha.idcosecha}"
-
 
 class Compra(models.Model):
     idcompra = models.AutoField(primary_key=True)

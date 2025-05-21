@@ -11,8 +11,8 @@ urlpatterns = [
     
     path('cultivos/', views.lista_cultivos, name='lista_cultivos'),
     path('cultivos/nuevo/', views.crear_cultivo, name='crear_cultivo'),
-    path('cultivos/editar/<int:idfruto>/', views.editar_cultivo, name='editar_cultivo'),
-    path('cultivos/eliminar/<int:idfruto>/', views.eliminar_cultivo, name='eliminar_cultivo'),
+    path('cultivos/editar/<int:idcultivo>/', views.editar_cultivo, name='editar_cultivo'),
+    path('cultivos/eliminar/<int:idcultivo>/', views.eliminar_cultivo, name='eliminar_cultivo'),
 
     path('plantaciones/', views.lista_plantaciones, name='lista_plantaciones'),
     path('plantaciones/crear/', views.crear_plantacion, name='crear_plantacion'),
@@ -37,6 +37,6 @@ urlpatterns = [
     path('ventas/crear/', views.crear_venta, name='crear_venta'),
     path('ventas/editar/<int:idventa>/', views.editar_venta, name='editar_venta'),
     path('ventas/eliminar/<int:idventa>/', views.eliminar_venta, name='eliminar_venta'),
-    path('ventas/toggle_estado/<int:idventa>/', views.toggle_estado_venta, name='toggle_estado_venta'),
+    path('ventas/toggle_estadoventa/<int:idventa>/', views.toggle_estado_venta, name='toggle_estado_venta'),
 
 ]

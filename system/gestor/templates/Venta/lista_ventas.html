@@ -1,19 +1,67 @@
 {% extends 'base.html' %}
 {% block title %} | Ventas {% endblock %}
 {% block content %}
-<div class="container py-4">
-    <div class="text-center mb-4">
+<div class="container py-2">
+    <!-- Título -->
+    <div class="text-center mb-3">
         <h2 class="fw-bold">Ventas</h2>
     </div>
 
-  <!-- Botón Nueva Venta abre modal -->
-    <div class="mb-3">
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarCosecha">
-            <i class="bi bi-plus-circle"></i> Nueva Venta
-        </button>
-    </div>
-  
+    <!-- Acciones y Filtros -->
+    <div class="row gy-3 align-items-center mb-2">
+        <!-- Botones -->
+        <div class="col-12 col-md-4 d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
+            <!-- Botón Nueva Venta -->
+            <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#modalSeleccionarCosecha">
+                <i class="bi bi-plus-circle fs-5 me-2"></i> <span>Nueva Venta</span>
+            </button>
 
+            <!-- Botón Restablecer -->
+            <a href="/ventas/" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
+            </a>
+        </div>
+
+        <!-- Formulario de búsqueda -->
+        <div class="col-12 col-md-8">
+            <form method="get" class="row g-2 justify-content-center" id="formBusqueda">
+                <!-- Filtro -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <select class="form-select form-select-sm" name="filtro">
+                        <option value="parcela" {% if filtro == "parcela" %}selected{% endif %}>Parcela</option>
+                        <option value="producto" {% if filtro == "producto" %}selected{% endif %}>Producto</option>
+                        <option value="cosecha" {% if filtro == "cosecha" %}selected{% endif %}>Corte</option>
+                        <option value="cliente" {% if filtro == "cliente" %}selected{% endif %}>Cliente</option>
+                        <option value="tipoventa" {% if filtro == "tipoventa" %}selected{% endif %}>Tipo venta</option>
+                        <option value="estado" {% if filtro == "estado" %}selected{% endif %}>Estado</option>
+                    </select>
+                </div>
+
+                <!-- Buscar -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <input type="text" name="buscar" class="form-control form-control-sm" placeholder="Buscar..." value="{{ buscar }}">
+                </div>
+
+                <!-- Fecha Inicio -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}" title="Desde">
+                </div>
+
+                <!-- Fecha Fin -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}" title="Hasta">
+                </div>
+
+                <!-- Botón Buscar -->
+                <div class="col-12 col-sm-4 col-md-auto">
+                    <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-search fs-5 me-2"></i> <span>Buscar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
     <div class="table-responsive">
         <table class="table table-bordered table-hover text-center align-middle">
@@ -58,14 +106,15 @@
                             data-parcela = "{{ venta.cosecha.plantacion.parcela.nombre }}"
                             data-cosecha = "{{ venta.cosecha.fecha }}"
                             data-cosecha-id = "{{ venta.cosecha.idcosecha }}"
-                            data-tipo = "{{ venta.cosecha.get_tipocosecha_display }}"
+                            data-tipoproducto = "{{ venta.cosecha.get_tipocosecha_display }}"
                             data-producto="{{ venta.cosecha.plantacion.cultivo.nombre }}"
                             data-fecha="{{ venta.fecha }}"
                             data-primera="{{ venta.primera }}"
                             data-segunda="{{ venta.segunda }}"
                             data-tercera="{{ venta.tercera }}"
                             data-total="{{ venta.total }}"
-                            data-estado="{{ venta.estado }}">
+                            data-estado ="{{ venta.estado }}"
+                            data-tipoventa="{{ venta.get_tipoventa_display }}">
                             <i class="bi bi-eye"></i> Detalles
                         </button>
                     </td>
@@ -78,7 +127,7 @@
             </tbody>
         </table>
     </div>
-</div>
+
 
 
 <!-- Modal Seleccionar Cosecha -->
@@ -95,7 +144,7 @@
           <select id="selectCosecha" class="form-select">
             <option value="">Selecciona un corte</option>
             {% for cosecha in cosechas %}
-              <option value="{{ cosecha.idcosecha }}">{{ cosecha.idcosecha}}, {{ cosecha.plantacion.parcela.nombre }}, {{ cosecha.fecha }} </option>
+              <option value="{{ cosecha.idcosecha }}">{{ cosecha.idcosecha}}-{{ cosecha.plantacion.parcela.nombre }}-{{cosecha.plantacion.cultivo.nombre}}-{{ cosecha.fecha }} </option>
             {% endfor %}
           </select>
         </div>
@@ -111,45 +160,66 @@
 
 <!-- Modal Detalles Venta -->
 <div class="modal fade" id="modalVenta" tabindex="-1" aria-labelledby="modalVentaLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
 
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalVentaLabel">Detalles de la Venta</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <!-- Header -->
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalVentaLabel">🧾 Detalles de la Venta</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="container-fluid">
+          <div class="row g-3">
+            <!-- Columna izquierda -->
+            <div class="col-md-6">
+              <p><strong>🔢 Número:</strong> <span id="ventaId"></span></p>
+              <p><strong>👤 Cliente:</strong> <span id="ventaCliente"></span></p>
+              <p><strong>🌿 Parcela:</strong> <span id="ventaParcela"></span></p>
+              <p><strong>✂️ Corte:</strong> <span id="ventaCosechaId"></span>/<span id="ventaCosecha"></span></p>
+              <p><strong>📦 Producto:</strong> <span id="ventaProducto"></span></p>
+              <p><strong>📅 Fecha:</strong> <span id="ventaFecha"></span></p>
+              <p><strong>🧾 Tipo de venta:</strong> <span id="ventaTipoventa"></span></p>
             </div>
 
-            <div class="modal-body">
-                <p><strong>Numero:</strong> <span id="ventaId"></span></p>
-                <p><strong>Cliente:</strong> <span id="ventaCliente"></span></p>
-                <p><strong>Parcela:</strong> <span id="ventaParcela"></span></p>
-                <p><strong>Corte:</strong><span id="ventaCosechaId"></span>/<span id="ventaCosecha"></span> </p>
-                <p><strong>Producto:</strong> <span id="ventaProducto"></span></p>
-                <p><strong>Fecha:</strong> <span id="ventaFecha"></span></p>
-                <p><strong>Primera:</strong> <span id="ventaPrimera"></span></p>
-                <p><strong>Segunda:</strong> <span id="ventaSegunda"></span></p>
-                <p><strong>Tercera:</strong> <span id="ventaTercera"></span></p>
-                <p><strong>Tipo:</strong> <span id="ventaTipo"></span></p>
-                <p><strong>Total:</strong> <span id="ventaTotal"></span></p>
-                <p><strong>Estado:</strong> <span id="ventaEstado"></span></p>
+            <!-- Columna derecha -->
+            <div class="col-md-6">
+              <p><strong>🔹 Primera:</strong> <span id="ventaPrimera"></span></p>
+              <p><strong>🔸 Segunda:</strong> <span id="ventaSegunda"></span></p>
+              <p><strong>🔻 Tercera:</strong> <span id="ventaTercera"></span></p>
+              <p><strong>🔖 Tipo de producto:</strong> <span id="ventaTipoProducto"></span></p>
+              <p><strong>💲 Total:</strong> <span class="text-success fw-bold" id="ventaTotal"></span></p>
+              <p><strong>🔁 Estado:</strong> <span id="ventaEstado"></span></p>
             </div>
-
-            <div class="modal-footer">
-                <button id="btnToggleEstadoVenta" class="btn btn-warning">Cambiar estado</button>
-                <a id="btnEditarVenta" class="btn btn-primary">Editar</a>
-                <button 
-                    class="btn btn-danger"
-                    data-bs-toggle="modal"
-                    data-bs-target="#modalConfirmarEliminarVenta"
-                    data-bs-dismiss="modal">
-                    Eliminar
-                </button>
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-
+          </div>
         </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button id="btnToggleEstadoVenta" class="btn btn-outline-secondary">
+          Finalizar
+        </button>
+        <a id="btnEditarVenta" class="btn btn-outline-primary">
+          <i class="bi bi-pencil-square"></i> Editar
+        </a>
+        <button 
+          class="btn btn-outline-danger"
+          data-bs-toggle="modal"
+          data-bs-target="#modalConfirmarEliminarVenta"
+          data-bs-dismiss="modal">
+          <i class="bi bi-trash"></i> Eliminar
+        </button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+
     </div>
+  </div>
 </div>
+
+
 
 <!-- Modal Confirmar Eliminación -->
 <div class="modal fade" id="modalConfirmarEliminarVenta" tabindex="-1">
@@ -172,52 +242,21 @@
         </div>
     </div>
 </div>
+{% if messages %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      {% for message in messages %}
+        Swal.fire({
+          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
+          title: "{{ message|escapejs }}",
+          timer: 3000,
+          showConfirmButton: false
+        });
+      {% endfor %}
+    });
+  </script>
+{% endif %}
 <script>
-    let ventaIdActual = null;
-
-document.addEventListener('DOMContentLoaded', () => {
-    const modalVenta = document.getElementById('modalVenta');
-
-    if (modalVenta) {
-        modalVenta.addEventListener('show.bs.modal', event => {
-            const button = event.relatedTarget;
-            ventaIdActual = button.getAttribute('data-id');
-        });
-
-        document.getElementById('btnToggleEstadoVenta').addEventListener('click', () => {
-            if (!ventaIdActual) return;
-
-            fetch(`/ventas/toggle_estado/${ventaIdActual}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Accept': 'application/json'
-                },
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.estado !== undefined) {
-                    // Actualizar estado en el modal
-                    const spanEstado = document.getElementById('ventaEstado');
-                    spanEstado.textContent = data.estado ? 'Pagado' : 'Pendiente';
-                    spanEstado.className = data.estado
-                        ? 'text-success'
-                        : 'text-danger';
-
-                    // Actualizar estado en la tabla
-                    const celdaEstado = document.getElementById(`estado-${ventaIdActual}`);
-                    celdaEstado.innerHTML = data.estado
-                        ? '<span class="badge bg-success">Pagado</span>'
-                        : '<span class="badge bg-danger" >Pendiente</span>';
-                } else {
-                    alert("Error al actualizar estado");
-                }
-            })
-            .catch(() => alert("Error en la solicitud al servidor"));
-        });
-    }
-});
-
     document.getElementById("btnIrFormulario").addEventListener("click", function () {
         const cosechaId = document.getElementById("selectCosecha").value;
         if (cosechaId) {
@@ -226,6 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Debes seleccionar una cosecha.");
         }
     });
-    </script>
+</script>
 
 {% endblock %}

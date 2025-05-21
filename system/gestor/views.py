@@ -5,6 +5,7 @@ from django.db.models import Sum, Count
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from collections import defaultdict
+from django.contrib import messages
 from django.contrib.auth import logout
 from django.core.paginator import Paginator
 from django.urls import reverse
@@ -160,10 +161,16 @@ def editar_parcela(request, pk):
 @login_required
 def eliminar_parcela(request, pk):
     parcela = get_object_or_404(Parcela, pk=pk)
+
     if request.method == 'POST':
-        parcela.delete()
+        if Plantacion.objects.filter(parcela=parcela).exists():
+            messages.error(request, f"No se puede eliminar la parcela '{parcela.nombre}' porque tiene plantaciones asociadas.")
+        else:
+            parcela.delete()
+            messages.success(request, f"La parcela '{parcela.nombre}' ha sido eliminada exitosamente.")
         return redirect('/parcelas')
-    return render('/parcelas')
+
+    return redirect('/parcelas')
 
 
 
@@ -212,8 +219,8 @@ def crear_cultivo(request):
 
 # Editar un cultivo existente
 @login_required
-def editar_cultivo(request, idfruto):
-    cultivo = get_object_or_404(Cultivo, pk=idfruto)
+def editar_cultivo(request, idcultivo):
+    cultivo = get_object_or_404(Cultivo, pk=idcultivo)
     if request.method == 'POST':
         form = CultivoForm(request.POST, instance=cultivo)
         if form.is_valid():
@@ -225,13 +232,15 @@ def editar_cultivo(request, idfruto):
 
 # Eliminar un cultivo
 @login_required
-def eliminar_cultivo(request, idfruto):
-    cultivo = get_object_or_404(Cultivo, idfruto=idfruto)
+def eliminar_cultivo(request, idcultivo):
+    cultivo = get_object_or_404(Cultivo, pk=idcultivo)
     if request.method == 'POST':
-        cultivo.delete()
-        return redirect('/cultivos')
+        if Plantacion.objects.filter(cultivo=cultivo).exists():
+            messages.error(request, f"No se puede eliminar el cultivo '{cultivo.nombre}' porque tiene plantaciones asociadas.")
+        else:
+            cultivo.delete()
+            messages.success(request, f"El cultivo '{cultivo.nombre}' ha sido eliminado exitosamente.")
     return redirect('/cultivos')
-
 
 
 
@@ -244,7 +253,7 @@ def lista_plantaciones(request):
     fecha_fin = request.GET.get('fecha_fin', '')
 
     plantaciones = Plantacion.objects.select_related('parcela', 'cultivo').order_by('-fecha')
-    parcelas =  Parcela.objects.filter(estado=1).order_by('-idparcela')
+    parcelas =  Parcela.objects.filter(estado=0).order_by('-idparcela')
     
     # Filtro texto
     if buscar:
@@ -297,11 +306,13 @@ def lista_plantaciones(request):
 def toggle_estado_plantacion(request, idplantacion):
     try:
         plantacion = Plantacion.objects.select_related('parcela').get(pk=idplantacion)
-        
+        print(plantacion.estado)
         # Cambiar el estado de la plantación
         plantacion.estado = not plantacion.estado
+        
         plantacion.save()
-
+        print('**********')
+        print(plantacion.estado)
         # Si la plantación se finaliza (es decir, pasa a False), también cambia el estado de la parcela
         if not plantacion.estado:
             parcela = plantacion.parcela
@@ -353,9 +364,12 @@ def editar_plantacion(request, idplantacion):
 def eliminar_plantacion(request, idplantacion):
     plantacion = get_object_or_404(Plantacion, pk=idplantacion)
     if request.method == 'POST':
-        plantacion.delete()
-        return redirect('/plantaciones/')
-    return redirect('/plantaciones/')
+        if Cosecha.objects.filter(plantacion=plantacion).exists():
+            messages.error(request, f"No se puede eliminar la plantación en parcela '{plantacion.parcela}' porque tiene cortes asociadas.")
+        else:
+            plantacion.delete()
+            messages.success(request, f"La plantación en parcela '{plantacion.parcela}' fue eliminada exitosamente.")
+    return redirect('/plantaciones')
 
 
 
@@ -490,9 +504,12 @@ def editar_cosecha(request, idcosecha):
 def eliminar_cosecha(request, idcosecha):
     cosecha = get_object_or_404(Cosecha, pk=idcosecha)
     if request.method == 'POST':
-        cosecha.delete()
-        return redirect('/cosechas/')
-    return redirect('/cosechas/')
+        if Venta.objects.filter(cosecha=cosecha).exists():
+            messages.error(request, f"No se puede eliminar el corte #{idcosecha} porque tiene ventas asociadas.")
+        else:
+            cosecha.delete()
+            messages.success(request, f"La cosecha #{idcosecha} ha sido eliminada exitosamente.")
+    return redirect('/cosechas')
 
 
 
@@ -501,19 +518,36 @@ def eliminar_cosecha(request, idcosecha):
 # Mostrar lista de clientes
 @login_required
 def lista_clientes(request):
-    clientes = Cliente.objects.all()
+    filtro = request.GET.get('filtro', 'nombre')
+    buscar = request.GET.get('buscar', '')
+
+    clientes = Cliente.objects.all().order_by('nombre')
+
+    if buscar:
+        buscar = buscar.strip().lower()
+        if filtro == 'nombre':
+            clientes = clientes.filter(nombre__icontains=buscar)
+        elif filtro == 'telefono':
+            clientes = clientes.filter(telefono__icontains=buscar)
+        elif filtro == 'tipo':
+            if buscar in ['comprador', 'c']:
+                clientes = clientes.filter(tipocliente='C')
+            elif buscar in ['proveedor', 'p']:
+                clientes = clientes.filter(tipocliente='P')
+
     pagina = request.GET.get("page", 1)
     try:
         paginator = Paginator(clientes, 10)
-        clientes = paginator.page(pagina)
+        clientes_paginados = paginator.page(pagina)
     except:
-        raise Http404
+        raise Http404("Página no encontrada")
 
-    data = {
-        'entity': clientes,
-        'paginator':paginator
-        }
-    return render(request, 'Cliente/lista_clientes.html', data)
+    return render(request, 'Cliente/lista_clientes.html', {
+        'entity': clientes_paginados,
+        'paginator': paginator,
+        'filtro': filtro,
+        'buscar': request.GET.get('buscar', '')
+    })
 
 # Crear un nuevo cliente
 @login_required
@@ -534,8 +568,11 @@ def editar_cliente(request, idcliente):
     if request.method == 'POST':
         form = ClienteForm(request.POST, instance=cliente)
         if form.is_valid():
-            form.save()
-            return redirect('/clientes/')
+            cliente = form.save()
+            # Verifica si se envió la bandera para redirigir a otra vista (opcional)
+            if request.POST.get('ir_a_detalle') == '1':
+                return redirect(f"{reverse('detalle_cliente')}?cliente_id={cliente.idcliente}")
+            return redirect('lista_clientes')  # Nombre de la vista de lista de clientes
     else:
         form = ClienteForm(instance=cliente)
     return render(request, 'Cliente/form_cliente.html', {'form': form})
@@ -545,44 +582,97 @@ def editar_cliente(request, idcliente):
 def eliminar_cliente(request, idcliente):
     cliente = get_object_or_404(Cliente, pk=idcliente)
     if request.method == 'POST':
-        cliente.delete()
-        return redirect('/clientes/')
-    return redirect('/clientes/')
+        tiene_ventas = Venta.objects.filter(cliente=cliente).exists()
+        tiene_compras = Compra.objects.filter(cliente=cliente).exists()
+        if tiene_ventas or tiene_compras:
+            messages.error(request, f"No se puede eliminar el cliente '{cliente}' porque tiene ventas o compras asociadas.")
+        else:
+            cliente.delete()
+            messages.success(request, f"El cliente '{cliente}' ha sido eliminado exitosamente.")
+    return redirect('/clientes')
 
 
 
 # Mostrar lista de ventas
 @login_required
 def lista_ventas(request):
-    ventas = Venta.objects.all().order_by('-idventa')
+    filtro = request.GET.get('filtro', 'cliente')
+    buscar = request.GET.get('buscar', '').strip().lower()
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    cosechas = Cosecha.objects.filter(estado=0).order_by('-fecha')
+    ventas = Venta.objects.select_related('cosecha__plantacion__parcela', 'cosecha__plantacion__cultivo', 'cliente').order_by('-idventa')
+
+    # Filtro por texto
+    if buscar:
+        if filtro == 'parcela':
+            ventas = ventas.filter(cosecha__plantacion__parcela__nombre__icontains=buscar)
+        elif filtro == 'producto' or filtro == 'cultivo':
+            ventas = ventas.filter(cosecha__plantacion__cultivo__nombre__icontains=buscar)
+        elif filtro == 'cosecha':
+            ventas = ventas.filter(cosecha__idcosecha__icontains=buscar)  # Asegúrate de tener campo 'nombre' en Cosecha
+        elif filtro == 'cliente':
+            ventas = ventas.filter(cliente__nombre__icontains=buscar)
+        elif filtro == 'tipoventa':
+            tipo_map = {
+                'contado': 'C',
+                'crédito': 'D',
+                'credito': 'D'
+            }
+            for key, val in tipo_map.items():
+                if buscar in key:
+                    ventas = ventas.filter(tipoventa=val)
+                    break
+        elif filtro == 'estado':
+            if buscar in ['pagado', 'true', '1', 'sí', 'si']:
+                ventas = ventas.filter(estado=True)
+            elif buscar in ['pendiente', 'false', '0', 'no']:
+                ventas = ventas.filter(estado=False)
+
+    # Filtro por fechas
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            ventas = ventas.filter(fecha__gte=fecha_inicio_obj)
+        except ValueError:
+            pass
+
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            ventas = ventas.filter(fecha__lte=fecha_fin_obj)
+        except ValueError:
+            pass
+
+    # Paginación
     pagina = request.GET.get("page", 1)
     try:
         paginator = Paginator(ventas, 10)
-        ventas = paginator.page(pagina)
+        ventas_paginadas = paginator.page(pagina)
     except:
-        raise Http404
+        raise Http404("Página no encontrada")
 
-    # filtrar solo las cosechas con estado = 'Finalizado '
-    cosechas = Cosecha.objects.filter(estado=0)
-    data = {
-        'entity': ventas,
+    return render(request, 'Venta/lista_ventas.html', {
+        'entity': ventas_paginadas,
         'paginator': paginator,
+        'filtro': filtro,
+        'buscar': buscar,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
         'cosechas': cosechas,
-    }
-    return render(request, 'Venta/lista_ventas.html', data)
+    })
 
 # Cambiar estado de venta
 @login_required
+@require_POST
 def toggle_estado_venta(request, idventa):
-    if request.method == 'POST':
-        try:
-            venta = Venta.objects.get(pk=idventa)
-            venta.estado = not venta.estado
-            venta.save()
-            return JsonResponse({'estado': venta.estado})
-        except Venta.DoesNotExist:
-            return JsonResponse({'error': 'No encontrada'}, status=404)
-    return HttpResponseNotAllowed(['POST'])
+    try:
+        venta = Venta.objects.get(pk=idventa)
+        venta.estado = True
+        venta.save()
+        return JsonResponse({'estado': venta.estado})
+    except Venta.DoesNotExist:
+        return JsonResponse({'error': 'Venta no encontrada'}, status=404)
 
 @login_required
 def crear_venta(request):
@@ -646,6 +736,29 @@ def info_cosecha_api(request, cosecha_id):
 @login_required
 def editar_venta(request, idventa):
     venta = get_object_or_404(Venta, pk=idventa)
+    cosecha = get_object_or_404(Cosecha, idcosecha=venta.cosecha.idcosecha)
+
+    # Calcular las cantidades disponibles por categoría
+    cantidades = {}
+    if cosecha:
+        total_primera = cosecha.primera or 0
+        total_segunda = cosecha.segunda or 0
+        total_tercera = cosecha.tercera or 0
+
+        ventas = Venta.objects.filter(cosecha=cosecha)
+        vendida_primera = ventas.aggregate(Sum('primera'))['primera__sum'] or 0
+        vendida_segunda = ventas.aggregate(Sum('segunda'))['segunda__sum'] or 0
+        vendida_tercera = ventas.aggregate(Sum('tercera'))['tercera__sum'] or 0
+
+        cantidades = {
+            'Parcela': cosecha.plantacion.parcela.nombre,
+            'Cultivo': cosecha.plantacion.cultivo.nombre,
+            'Tipo': cosecha.get_tipocosecha_display(),
+            'Primera (disponible)': total_primera - vendida_primera,
+            'Segunda (disponible)': total_segunda - vendida_segunda,
+            'Tercera (disponible)': total_tercera - vendida_tercera,
+        }
+
     if request.method == 'POST':
         form = VentaForm(request.POST, instance=venta)
         if form.is_valid():
@@ -653,13 +766,19 @@ def editar_venta(request, idventa):
             return redirect('/ventas/')
     else:
         form = VentaForm(instance=venta)
-    return render(request, 'Venta/form_venta.html', {'form': form})
+
+    return render(request, 'Venta/form_venta.html', {
+        'form': form,
+        'cosechas': cosecha,
+        'cantidades': cantidades,
+    })
+
 
 # Eliminar una venta
 @login_required
 def eliminar_venta(request, idventa):
     venta = get_object_or_404(Venta, pk=idventa)
     if request.method == 'POST':
-        venta.delete()
-        return redirect('/ventas/')
-    return redirect('/ventas/')
+        venta.delete()  # `delete()` ya actualiza el estado de la cosecha
+        messages.success(request, f"La venta #{idventa} fue eliminada exitosamente.")
+    return redirect('/ventas')

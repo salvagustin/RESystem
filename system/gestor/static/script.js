@@ -50,8 +50,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const cliente = button.getAttribute('data-cliente');
             const parcela = button.getAttribute('data-parcela');
             const cosecha = button.getAttribute('data-cosecha');
+            const tipoventa = button.getAttribute('data-tipoventa');
             const cosechaId = button.getAttribute('data-cosecha-id');
-            const tipo = button.getAttribute('data-tipo');
+            const tipoproducto = button.getAttribute('data-tipoproducto');
             const producto = button.getAttribute('data-producto');
             const fecha = button.getAttribute('data-fecha');
             const primera = button.getAttribute('data-primera');
@@ -59,19 +60,25 @@ document.addEventListener('DOMContentLoaded', function() {
             const tercera = button.getAttribute('data-tercera');
             const total = button.getAttribute('data-total');
             const estado = button.getAttribute('data-estado');
+            
             let estadoTexto = '';
+            const btnToggle = document.getElementById('btnToggleEstadoVenta');
 
-            if (estado === "True") {
+           if (estado === "True") {//1
                 estadoTexto = "Pagado";
+                btnToggle.disabled = true; 
             } else if (estado === "False") {
                 estadoTexto = "Pendiente";
+                btnToggle.disabled = false; 
             }
+
             document.getElementById('ventaId').textContent = id;
             document.getElementById('ventaCliente').textContent = cliente;
             document.getElementById('ventaParcela').textContent = parcela;
             document.getElementById('ventaCosecha').textContent = cosecha;
+            document.getElementById('ventaTipoventa').textContent = tipoventa; 
             document.getElementById('ventaCosechaId').textContent = cosechaId;
-            document.getElementById('ventaTipo').textContent = tipo;
+            document.getElementById('ventaTipoProducto').textContent = tipoproducto;
             document.getElementById('ventaProducto').textContent = producto;
             document.getElementById('ventaFecha').textContent = fecha;
             document.getElementById('ventaPrimera').textContent = primera;
@@ -82,7 +89,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
             document.getElementById('btnEditarVenta').href = `/ventas/editar/${id}/`;
             document.getElementById('formEliminarVenta').action = `/ventas/eliminar/${id}/`;
+            
+            
+            VentaIdActual = id;
+          });
+
+          // Acción para cambiar estado (Finalizar)
+        document.getElementById('btnToggleEstadoVenta').addEventListener('click', () => {
+            if (!VentaIdActual) return;
+
+            fetch(`/ventas/toggle_estadoventa/${VentaIdActual}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Accept': 'application/json'
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.estado !== undefined) {
+                    location.reload();
+                } else {
+                    alert("Error al actualizar estado");
+                }
+            })
+            .catch(() => alert("Fallo en la solicitud al servidor"));
         });
+
     }
 
 
@@ -164,11 +197,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const btnToggle = document.getElementById('btnToggleEstadoPlantacion');
 
             if (estado === "True") {
-                estadoTexto = "Activo";
-                btnToggle.disabled = false; // habilitar botón
+                estadoTexto = "Finalizada";
+                btnToggle.disabled = true; // habilitar botón
             } else if (estado === "False") {
-                estadoTexto = "Finalizado";
-                btnToggle.disabled = true; // deshabilitar botón
+                estadoTexto = "Activo";
+                btnToggle.disabled = false; // deshabilitar botón
             }
 
             document.getElementById('plantacionId').textContent = id;
@@ -208,20 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-// Botón para ir al formulario de nueva plantación
-document.getElementById("btnIrFormulario").addEventListener("click", function () {
-    const parcelaId = document.getElementById("selectParcela").value;
-    if (parcelaId) {
-        window.location.href = `/plantaciones/crear/?parcela_id=${parcelaId}`;
-    } else {
-        alert("Debes seleccionar una parcela.");
-    }
-});
 
-let plantacionIdActual = null;
-
-
-    
     const modalCosecha = document.getElementById('modalCosecha');
     if (modalCosecha) {
         modalCosecha.addEventListener('show.bs.modal', function (event) {
@@ -266,23 +286,24 @@ let plantacionIdActual = null;
 
     const modalCliente = document.getElementById('modalCliente');
     if (modalCliente) {
-        modalCliente.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-    
-            const id = button.getAttribute('data-id');
-            const nombre = button.getAttribute('data-nombre');
-            const telefono = button.getAttribute('data-telefono');
-            const tipocliente = button.getAttribute('data-tipocliente');
-    
-            document.getElementById('clienteId').textContent = id;
-            document.getElementById('clienteNombre').textContent = nombre;
-            document.getElementById('clienteTelefono').textContent = telefono;
-            document.getElementById('clienteTipo').textContent = tipocliente;
-    
-            document.getElementById('btnEditarCliente').href = `/clientes/editar/${id}/`;
-            document.getElementById('formEliminarCliente').action = `/clientes/eliminar/${id}/`;
-        });
+      modalCliente.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+
+        const id = button.getAttribute('data-id');
+        const nombre = button.getAttribute('data-nombre');
+        const telefono = button.getAttribute('data-telefono');
+        const tipo = button.getAttribute('data-tipocliente');
+
+        document.getElementById('clienteId').textContent = id;
+        document.getElementById('clienteNombre').textContent = nombre;
+        document.getElementById('clienteTelefono').textContent = telefono;
+        document.getElementById('clienteTipo').textContent = tipo;
+       
+        document.getElementById('btnEditarCliente').href = `/clientes/editar/${id}/`;
+        document.getElementById('formEliminarCliente').action = `/clientes/eliminar/${id}/`;
+      });
     }
+
 
 
     

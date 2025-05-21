@@ -26,7 +26,7 @@
 
     <!-- Formulario de búsqueda -->
     <div class="col-12 col-md-8">
-      <form method="get" class="row g-2 justify-content-center">
+      <form method="get" class="row g-2 justify-content-center" id="formBusqueda">
         <!-- Filtro -->
         <div class="col-6 col-sm-4 col-md-3 col-lg-2">
           <select class="form-select form-select-sm" name="filtro">
@@ -88,9 +88,9 @@
                     <td>{{ plantacion.cantidad }}</td>
                     <td id="estado-{{ plantacion.idplantacion }}">
                         {% if plantacion.estado %}
-                            <span class="badge bg-success">Activo</span>
-                        {% else %}
                             <span class="badge bg-danger">Finalizado</span>
+                        {% else %}
+                            <span class="badge bg-success">Activo</span>
                         {% endif %}</td>
                     <td>
                         <button 
@@ -223,4 +223,31 @@
         </div>
     </div>
 </div>
+<script>
+  document.getElementById('formBusqueda').addEventListener('submit', function (event) {
+        const buscar = document.querySelector('input[name="buscar"]').value.trim();
+        const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
+        const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
+
+        if (!buscar && (!fechaInicio || !fechaFin)) {
+            event.preventDefault(); // Detiene el envío
+            alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
+        }
+    });
+</script>
+{% if messages %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      {% for message in messages %}
+        Swal.fire({
+          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
+          title: "{{ message|escapejs }}",
+          timer: 3000,
+          showConfirmButton: false
+        });
+      {% endfor %}
+    });
+  </script>
+{% endif %}
+
 {% endblock %}

@@ -66,7 +66,7 @@
             <tbody>
                 {% for cultivo in entity %}
                 <tr>
-                    <td>{{ cultivo.idfruto }}</td>
+                    <td>{{ cultivo.idcultivo }}</td>
                     <td>{{ cultivo.nombre }}</td>
                     <td>{{ cultivo.variedad }}</td>
                     <td>
@@ -78,7 +78,7 @@
                                 class="btn btn-info btn-sm text-white"
                                 data-bs-toggle="modal" 
                                 data-bs-target="#modalCultivo"
-                                data-id="{{ cultivo.idfruto }}"
+                                data-id="{{ cultivo.idcultivo }}"
                                 data-nombre="{{ cultivo.nombre }}"
                                 data-variedad="{{ cultivo.variedad }}">
                                 <i class="bi bi-eye"></i> Detalles
@@ -148,29 +148,38 @@
 
 
 <!-- Modal Confirmar Eliminación -->
-<div class="modal fade" id="modalConfirmarEliminarCultivo" tabindex="-1" aria-labelledby="modalConfirmarEliminarCultivoLabel" aria-hidden="true">
+<div class="modal fade" id="modalConfirmarEliminarCultivo" tabindex="-1">
   <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title" id="modalConfirmarEliminarCultivoLabel">¿Eliminar Cultivo?</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title">¿Eliminar Cultivo?</h5>
+              <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+              <p>¿Estás seguro de eliminar esta Cultivo?</p>
+          </div>
+          <div class="modal-footer">
+              <form id="formEliminarCultivo" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-sm">Sí, eliminar</button>
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+              </form>
+          </div>
       </div>
-      
-      <div class="modal-body">
-        <p>¿Estás seguro de eliminar este cultivo?</p>
-      </div>
-      
-      <div class="modal-footer">
-        <form id="formEliminarCultivo" method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger btn-sm">Sí, eliminar</button>
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-        </form>
-      </div>
-
-    </div>
   </div>
 </div>
-
+{% if messages %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      {% for message in messages %}
+        Swal.fire({
+          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
+          title: "{{ message|escapejs }}",
+          timer: 3000,
+          showConfirmButton: false
+        });
+      {% endfor %}
+    });
+  </script>
+{% endif %}
 {% endblock %}

@@ -175,4 +175,32 @@
       </div>
   </div>
 </div>
+<script>
+  // Botón para ir al formulario de nueva plantación
+document.getElementById("btnIrFormulario").addEventListener("click", function () {
+    const parcelaId = document.getElementById("selectParcela").value;
+    if (parcelaId) {
+        window.location.href = `/plantaciones/crear/?parcela_id=${parcelaId}`;
+    } else {
+        alert("Debes seleccionar una parcela.");
+    }
+});
+</script>
+
+{% if messages %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      {% for message in messages %}
+        Swal.fire({
+          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
+          title: "{{ message|escapejs }}",
+          timer: 3000,
+          showConfirmButton: false
+        });
+      {% endfor %}
+    });
+  </script>
+{% endif %}
+
+
 {% endblock %}
