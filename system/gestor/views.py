@@ -679,14 +679,51 @@ def crear_venta(request):
     cosecha_id = request.GET.get('cosecha_id')
     cosecha = None
 
+    if cosecha_id:
+        cosecha = get_object_or_404(Cosecha, idcosecha=cosecha_id)
+
     if request.method == 'POST':
         form = VentaForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('lista_ventas')
+            venta = form.save(commit=False)
+            if not venta.cosecha:
+                venta.cosecha = cosecha
+
+            # Obtener datos de disponibilidad
+            total_primera = venta.cosecha.primera or 0
+            total_segunda = venta.cosecha.segunda or 0
+            total_tercera = venta.cosecha.tercera or 0
+
+            # Excluir la venta actual si es edición
+            ventas = Venta.objects.filter(cosecha=venta.cosecha)
+            if venta.pk:
+                ventas = ventas.exclude(pk=venta.pk)
+
+            vendida_primera = ventas.aggregate(Sum('primera'))['primera__sum'] or 0
+            vendida_segunda = ventas.aggregate(Sum('segunda'))['segunda__sum'] or 0
+            vendida_tercera = ventas.aggregate(Sum('tercera'))['tercera__sum'] or 0
+
+            disponible_primera = total_primera - vendida_primera
+            disponible_segunda = total_segunda - vendida_segunda
+            disponible_tercera = total_tercera - vendida_tercera
+
+            errores = []
+            if venta.primera and venta.primera > disponible_primera:
+                errores.append(f"No hay suficiente **primera calidad** disponible. Solo quedan {disponible_primera}.")
+            if venta.segunda and venta.segunda > disponible_segunda:
+                errores.append(f"No hay suficiente **segunda calidad** disponible. Solo quedan {disponible_segunda}.")
+            if venta.tercera and venta.tercera > disponible_tercera:
+                errores.append(f"No hay suficiente **tercera calidad** disponible. Solo quedan {disponible_tercera}.")
+            print(errores)
+            if errores:
+                for error in errores:
+                    messages.error(request, error)
+            else:
+                venta.save()
+                messages.success(request, "Venta guardada exitosamente.")
+                return redirect('lista_ventas')
     else:
-        if cosecha_id:
-            cosecha = get_object_or_404(Cosecha, idcosecha=cosecha_id)
+        if cosecha:
             form = VentaForm(initial={'cosecha': cosecha.idcosecha})
         else:
             form = VentaForm()
@@ -716,6 +753,7 @@ def crear_venta(request):
         'cantidades': cantidades,
     })
 
+
 # API para obtener datos por categoría de una cosecha
 @login_required
 def info_cosecha_api(request, cosecha_id):
@@ -738,32 +776,50 @@ def editar_venta(request, idventa):
     venta = get_object_or_404(Venta, pk=idventa)
     cosecha = get_object_or_404(Cosecha, idcosecha=venta.cosecha.idcosecha)
 
-    # Calcular las cantidades disponibles por categoría
-    cantidades = {}
-    if cosecha:
-        total_primera = cosecha.primera or 0
-        total_segunda = cosecha.segunda or 0
-        total_tercera = cosecha.tercera or 0
+    # Calcular cantidades disponibles
+    total_primera = cosecha.primera or 0
+    total_segunda = cosecha.segunda or 0
+    total_tercera = cosecha.tercera or 0
 
-        ventas = Venta.objects.filter(cosecha=cosecha)
-        vendida_primera = ventas.aggregate(Sum('primera'))['primera__sum'] or 0
-        vendida_segunda = ventas.aggregate(Sum('segunda'))['segunda__sum'] or 0
-        vendida_tercera = ventas.aggregate(Sum('tercera'))['tercera__sum'] or 0
+    # Excluir esta venta actual para calcular correctamente la disponibilidad
+    ventas = Venta.objects.filter(cosecha=cosecha).exclude(pk=venta.pk)
+    vendida_primera = ventas.aggregate(Sum('primera'))['primera__sum'] or 0
+    vendida_segunda = ventas.aggregate(Sum('segunda'))['segunda__sum'] or 0
+    vendida_tercera = ventas.aggregate(Sum('tercera'))['tercera__sum'] or 0
 
-        cantidades = {
-            'Parcela': cosecha.plantacion.parcela.nombre,
-            'Cultivo': cosecha.plantacion.cultivo.nombre,
-            'Tipo': cosecha.get_tipocosecha_display(),
-            'Primera (disponible)': total_primera - vendida_primera,
-            'Segunda (disponible)': total_segunda - vendida_segunda,
-            'Tercera (disponible)': total_tercera - vendida_tercera,
-        }
+    disponible_primera = total_primera - vendida_primera
+    disponible_segunda = total_segunda - vendida_segunda
+    disponible_tercera = total_tercera - vendida_tercera
+
+    cantidades = {
+        'Parcela': cosecha.plantacion.parcela.nombre,
+        'Cultivo': cosecha.plantacion.cultivo.nombre,
+        'Tipo': cosecha.get_tipocosecha_display(),
+        'Primera (disponible)': disponible_primera,
+        'Segunda (disponible)': disponible_segunda,
+        'Tercera (disponible)': disponible_tercera,
+    }
 
     if request.method == 'POST':
         form = VentaForm(request.POST, instance=venta)
         if form.is_valid():
-            form.save()
-            return redirect('/ventas/')
+            nueva_venta = form.save(commit=False)
+
+            errores = []
+            if nueva_venta.primera and nueva_venta.primera > disponible_primera:
+                errores.append(f"No hay suficiente **primera calidad** disponible. Solo quedan {disponible_primera}.")
+            if nueva_venta.segunda and nueva_venta.segunda > disponible_segunda:
+                errores.append(f"No hay suficiente **segunda calidad** disponible. Solo quedan {disponible_segunda}.")
+            if nueva_venta.tercera and nueva_venta.tercera > disponible_tercera:
+                errores.append(f"No hay suficiente **tercera calidad** disponible. Solo quedan {disponible_tercera}.")
+
+            if errores:
+                for error in errores:
+                    messages.error(request, error)
+            else:
+                nueva_venta.save()
+                messages.success(request, "Venta actualizada correctamente.")
+                return redirect('/ventas/')
     else:
         form = VentaForm(instance=venta)
 
@@ -772,7 +828,6 @@ def editar_venta(request, idventa):
         'cosechas': cosecha,
         'cantidades': cantidades,
     })
-
 
 # Eliminar una venta
 @login_required

@@ -5,6 +5,7 @@
 
 {% block content %}
 <div class="container py-4">
+
     <div class="text-center mb-4">
         <h2 class="fw-bold">
             {% if form.instance.pk %} Editar Venta {% else %} Nueva Venta {% endif %}
@@ -55,5 +56,22 @@
             </div>
         </div>
     </div>
+
 </div>
+
+{% if messages %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      {% for message in messages %}
+        Swal.fire({
+          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
+          title: "{{ message|escapejs }}",
+          timer: 3000,
+          showConfirmButton: false
+        });
+      {% endfor %}
+    });
+  </script>
+{% endif %}
+
 {% endblock %}

@@ -1,5 +1,4 @@
-
-\]{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load custom_filters %}
 
 {% block title %} | Corte {% endblock %}
@@ -221,9 +220,9 @@
       <!-- Footer -->
       <div class="modal-footer">
         <button id="btnToggleEstadoVenta"  class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi btn-info"></i> Venta</button>
-        <wa id="btnEditarCosecha" class="btn btn-outline-primary">
+        <a id="btnEditarCosecha" class="btn btn-outline-primary">
           <i class="bi bi-pencil-square"></i> Editar
-        </wa>
+        </a>
         <button 
             class="btn btn-outline-danger"
             data-bs-toggle="modal"

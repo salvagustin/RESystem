@@ -75,6 +75,7 @@
                     <th>Fecha</th>
                     <th>Total</th>
                     <th>Estado</th>
+                    <th>Tipo de venta</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -94,9 +95,10 @@
                         {% else %}
                           <span class="badge bg-danger">Pendiente</span>
                         {% endif %}
-                      </td>
+                    </td>
+                    <td>{{ venta.get_tipoventa_display }}</td>
                     <td>
-                        <button 
+                      <button 
                             type="button"
                             class="btn btn-info btn-sm text-white"
                             data-bs-toggle="modal"
@@ -242,6 +244,7 @@
         </div>
     </div>
 </div>
+
 {% if messages %}
   <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -256,7 +259,19 @@
     });
   </script>
 {% endif %}
+
 <script>
+  document.getElementById('formBusqueda').addEventListener('submit', function (event) {
+        const buscar = document.querySelector('input[name="buscar"]').value.trim();
+        const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
+        const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
+
+        if (!buscar && (!fechaInicio || !fechaFin)) {
+            event.preventDefault(); // Detiene el envío
+            alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
+        }
+    });
+
     document.getElementById("btnIrFormulario").addEventListener("click", function () {
         const cosechaId = document.getElementById("selectCosecha").value;
         if (cosechaId) {
