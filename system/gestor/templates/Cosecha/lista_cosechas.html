@@ -60,83 +60,138 @@
             </form>
         </div>
     </div>
-</div>
 
-
-
-
-  
-
-    <!-- Tabla de cosechas -->
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover text-center align-middle">
-            <thead class="table-dark">
-                <tr>
-                    <th>Numero</th>
-                    <th>Parcela</th>
-                    <th>Fecha</th>
-                    <th>Cultivo</th>
-                    <th>Total</th>
-                    <th>Tipo</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cosecha in entity %}
-                <tr>
-                    <td>{{ cosecha.idcosecha }}</td>
-                    <td>{{ cosecha.plantacion.parcela.nombre}}</td>
-                    <td>{{ cosecha.fecha }}</td>
-                    <td>{{ cosecha.plantacion.cultivo.nombre }}</td>
-                    <td>{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_cosecha' }}</td>
-                    <td>{{ cosecha.get_tipocosecha_display }}</td>
-                    <td>
-                        {% if cosecha.estado == 1 %}
-                            <span class="badge bg-danger">Finalizado</span>
-                            
-                        {% elif cosecha.estado == 0 %}
-                            <span class="badge bg-success">Activo</span>
-                        {% endif %}
-                    <td>
-                        <div class="d-flex flex-wrap justify-content-center gap-2">
-
-                            <!-- Botón Detalles -->
-                            <button 
-                                type="button" 
-                                class="btn btn-info btn-sm text-white"
-                                data-bs-toggle="modal" 
-                                data-bs-target="#modalCosecha"
-                                data-id="{{ cosecha.idcosecha }}"
-                                data-parcela="{{ cosecha.plantacion.parcela.nombre }}"
-                                data-cultivo="{{ cosecha.plantacion.cultivo.nombre }}"
-                                data-plantacion="{{ cosecha.plantacion.fecha }}"
-                                data-fecha="{{ cosecha.fecha }}"
-                                data-primera="{{ cosecha.primera }}"
-                                data-segunda="{{ cosecha.segunda }}"
-                                data-tercera="{{ cosecha.tercera }}"
-                                data-estado="{{ cosecha.estado }}"
-                                data-tipocosecha = "{{ cosecha.get_tipocosecha_display }}"
-                                data-disponible-primera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_primera' }}"
-                                data-disponible-segunda="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_segunda' }}"
-                                data-disponible-tercera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_tercera' }}">
-                                <i class="bi bi-eye"></i> Detalles
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3">No hay cosechas registradas.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Cards para móviles -->
+    <div class="d-md-none">
+      {% for cosecha in entity %}
+      <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title fw-bold">#{{ cosecha.idcosecha }} - {{ cosecha.plantacion.cultivo.nombre }}</h5>
+          <p class="mb-1"><strong>Parcela:</strong> {{ cosecha.plantacion.parcela.nombre }}</p>
+          <p class="mb-1"><strong>Fecha:</strong> {{ cosecha.fecha }}</p>
+          <p class="mb-1"><strong>Total:</strong> {{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_cosecha' }}</p>
+          <p class="mb-1"><strong>Tipo:</strong> {{ cosecha.get_tipocosecha_display }}</p>
+          <p class="mb-1"><p class="mb-1"><strong>Total vendido:</strong> ${{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_vendido' }}</p>
+          <p class="mb-1"><strong>Cantidad ventas:</strong> {{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'cantidad_ventas' }}</p>
+            <strong>Estado:</strong>
+            {% if cosecha.estado == 1 %}
+              <span class="badge bg-danger">Finalizado</span>
+            {% elif cosecha.estado == 0 %}
+              <span class="badge bg-success">Activo</span>
+            {% endif %}
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <button 
+              type="button" 
+              class="btn btn-sm btn-info text-white"
+              data-bs-toggle="modal" 
+              data-bs-target="#modalCosecha"
+              data-id="{{ cosecha.idcosecha }}"
+              data-parcela="{{ cosecha.plantacion.parcela.nombre }}"
+              data-cultivo="{{ cosecha.plantacion.cultivo.nombre }}"
+              data-plantacion="{{ cosecha.plantacion.fecha }}"
+              data-fecha="{{ cosecha.fecha }}"
+              data-primera="{{ cosecha.primera }}"
+              data-segunda="{{ cosecha.segunda }}"
+              data-tercera="{{ cosecha.tercera }}"
+              data-estado="{{ cosecha.estado }}"
+              data-tipocosecha="{{ cosecha.get_tipocosecha_display }}"
+              data-disponible-primera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_primera' }}"
+              data-disponible-segunda="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_segunda' }}"
+              data-disponible-tercera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_tercera' }}"
+              data-totalvendido="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_vendido' }}"
+              data-cantidadventas="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'cantidad_ventas' }}"
+              data-perdida="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'perdida' }}">
+              <i class="bi bi-eye"></i> Detalles
+            </button>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="text-center">No hay cosechas registradas.</div>
+      {% endfor %}
+      {% include "paginacion.html" %}
     </div>
+
+    <!-- Tabla para escritorio -->
+    <div class="tbl_container d-none d-md-block">
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Numero</th>
+              <th>Parcela</th>
+              <th>Fecha</th>
+              <th>Cultivo</th>
+              <th>Total</th>
+              <th>Tipo</th>
+              <th>Total Vendido</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cosecha in entity %}
+            <tr>
+              <td>{{ cosecha.idcosecha }}</td>
+              <td>{{ cosecha.plantacion.parcela.nombre }}</td>
+              <td>{{ cosecha.fecha }}</td>
+              <td>{{ cosecha.plantacion.cultivo.nombre }}</td>
+              <td>{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_cosecha' }}</td>
+              <td>{{ cosecha.get_tipocosecha_display }}</td>
+              <td>${{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_vendido' }}</td>
+              <td>
+                {% if cosecha.estado == 1 %}
+                  <span class="badge bg-danger">Finalizado</span>
+                {% elif cosecha.estado == 0 %}
+                  <span class="badge bg-success">Activo</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                  <button 
+                    type="button" 
+                    class="btn btn-info btn-sm text-white"
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalCosecha"
+                    data-id="{{ cosecha.idcosecha }}"
+                    data-parcela="{{ cosecha.plantacion.parcela.nombre }}"
+                    data-cultivo="{{ cosecha.plantacion.cultivo.nombre }}"
+                    data-plantacion="{{ cosecha.plantacion.fecha }}"
+                    data-fecha="{{ cosecha.fecha }}"
+                    data-primera="{{ cosecha.primera }}"
+                    data-segunda="{{ cosecha.segunda }}"
+                    data-tercera="{{ cosecha.tercera }}"
+                    data-estado="{{ cosecha.estado }}"
+                    data-tipocosecha="{{ cosecha.get_tipocosecha_display }}"
+                    data-disponible-primera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_primera' }}"
+                    data-disponible-segunda="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_segunda' }}"
+                    data-disponible-tercera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_tercera' }}"
+                    data-totalvendido="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_vendido' }}"
+                    data-cantidadventas="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'cantidad_ventas' }}"
+                    data-perdida="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'perdida' }}">
+                    <i class="bi bi-eye"></i> Detalles
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8">No hay cosechas registradas.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "paginacion.html" %}
+    </div>
+
     {% include "paginacion.html" %}
+</div>
+{% endblock %}
 
 
-
+{% block modals %}
 <!-- Modal Seleccionar Plantacion -->
 <div class="modal fade" id="modalSeleccionarPlantacion" tabindex="-1" aria-labelledby="modalSeleccionarPlantacionLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -164,8 +219,6 @@
     </div>
   </div>
 
-
-
 <!-- Modal Detalles de Cosecha -->
 <div class="modal fade" id="modalCosecha" tabindex="-1" aria-labelledby="modalCosechaLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg"> <!-- Agrandamos el modal -->
@@ -187,17 +240,19 @@
               <p><strong>🥬 Cultivo:</strong> <span id="cosechaCultivo"></span></p>
               <p><strong>📅 Fecha Corte:</strong> <span id="cosechaFecha"></span></p>
               <p><strong>📦 Tipo:</strong> <span id="cosechaTipo"></span></p>
-              <p><strong>🔁 Estado:</strong> 
-                <span id="cosechaEstado" ></span>
-              </p>
+              <p><strong>🪴 Plantación:</strong> <span id="cosechaPlantacion"></span></p>
+              <p><strong>🔁 Estado:</strong><span id="cosechaEstado" ></span></p>
             </div>
 
             <div class="col-md-6">
-              <p><strong>🪴 Plantación:</strong> <span id="cosechaPlantacion"></span></p>
               <p><strong>🔹 Primera:</strong> <span id="cosechaPrimera"></span></p>
               <p><strong>🔸 Segunda:</strong> <span id="cosechaSegunda"></span></p>
               <p><strong>🔻 Tercera:</strong> <span id="cosechaTercera"></span></p>
               <p><strong>🧮 Total:</strong> <span id="cosechaTotal"></span></p>
+              <p><strong>💰 Total Vendido:</strong> $<span id="totalvendido"></span></p>
+              <p><strong>📊 Cantidad Ventas:</strong> <span id="cantidadventas"></span></p>
+              <p><strong>📉 Pérdida:</strong> <span id="cosechaPerdida"></span></p>
+
             </div>
           </div>
 
@@ -219,10 +274,12 @@
 
       <!-- Footer -->
       <div class="modal-footer">
-        <button id="btnToggleEstadoVenta"  class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi btn-info"></i> Venta</button>
-        <a id="btnEditarCosecha" class="btn btn-outline-primary">
+        <button id="cerrarCosecha" class="btn btn-outline-success" >
+          <i class="bi bi-arrow-counterclockwise"></i> Cerrar</button>
+        <button id="btnToggleEstadoVenta"  class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi bi-cart"></i> Vender</button>
+        <button id="btnEditarCosecha" class="btn btn-outline-primary">
           <i class="bi bi-pencil-square"></i> Editar
-        </a>
+        </button>
         <button 
             class="btn btn-outline-danger"
             data-bs-toggle="modal"
@@ -236,7 +293,6 @@
     </div>
   </div>
 </div>
-
 
 <!-- Modal Confirmar Eliminación -->
 <div class="modal fade" id="modalConfirmarEliminarCosecha" tabindex="-1">
@@ -259,57 +315,140 @@
       </div>
   </div>
 </div>
+{% endblock modals %}
 
+
+
+{% block scripts %}
 <script>
-    const btnVenta = document.getElementById("btnToggleEstadoVenta");
-    const checkDisponibilidadYActualizarBoton = () => {
-    const disp1ra = parseFloat(document.getElementById("disponiblePrimera").textContent) || 0;
-    const disp2da = parseFloat(document.getElementById("disponibleSegunda").textContent) || 0;
-    const disp3ra = parseFloat(document.getElementById("disponibleTercera").textContent) || 0;
+document.addEventListener('DOMContentLoaded', function () {
+  const modalCosecha = document.getElementById('modalCosecha');
+  const btnVenta = document.getElementById("btnToggleEstadoVenta");
+  const btnCerrar = document.getElementById("cerrarCosecha");
+  const btnEditarCosecha = document.getElementById("btnEditarCosecha");
 
-    const hayDisponibilidad = disp1ra > 0 || disp2da > 0 || disp3ra > 0;
+  if (modalCosecha) {
+    modalCosecha.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
 
-      btnVenta.disabled = !hayDisponibilidad;
-    };
+      const id = button.getAttribute('data-id');
+      const parcela = button.getAttribute('data-parcela');
+      const cultivo = button.getAttribute('data-cultivo');
+      const plantacion = button.getAttribute('data-plantacion');
+      const fecha = button.getAttribute('data-fecha');
+      const primera = button.getAttribute('data-primera');
+      const segunda = button.getAttribute('data-segunda');
+      const tercera = button.getAttribute('data-tercera');
+      const estado = button.getAttribute('data-estado');
+      const tipocosecha = button.getAttribute('data-tipocosecha');
+      const total = parseFloat(primera) + parseFloat(segunda) + parseFloat(tercera);
+      const disponiblePrimera = button.getAttribute('data-disponible-primera');
+      const disponibleSegunda = button.getAttribute('data-disponible-segunda');
+      const disponibleTercera = button.getAttribute('data-disponible-tercera');
+      const perdida = button.getAttribute('data-perdida') ? parseFloat(button.getAttribute('data-perdida')) : 0;
+      const cantidadVentas = button.getAttribute('data-cantidadventas');
 
-    // Llamar esta función cada vez que se abra el modal o se cargue info nueva
-    document.getElementById('modalCosecha').addEventListener('shown.bs.modal', checkDisponibilidadYActualizarBoton);
+      const estadoTexto = estado === "True" ? "Finalizado" : "Activo";
 
-    // Manejar click en el botón Venta
-    btnVenta.addEventListener("click", function () {
-      const cosechaId = document.getElementById("cosechaId").textContent.trim();
+      document.getElementById('cosechaId').textContent = id;
+      document.getElementById('cosechaParcela').textContent = parcela;
+      document.getElementById('cosechaCultivo').textContent = cultivo;
+      document.getElementById('cosechaPlantacion').textContent = plantacion;
+      document.getElementById('cosechaFecha').textContent = fecha;
+      document.getElementById('cosechaPrimera').textContent = primera;
+      document.getElementById('cosechaSegunda').textContent = segunda;
+      document.getElementById('cosechaTercera').textContent = tercera;
+      document.getElementById('cosechaEstado').textContent = estadoTexto;
+      document.getElementById('cosechaTipo').textContent = tipocosecha;
+      document.getElementById('cosechaTotal').textContent = total.toFixed(0);
+      document.getElementById('disponiblePrimera').textContent = disponiblePrimera;
+      document.getElementById('disponibleSegunda').textContent = disponibleSegunda;
+      document.getElementById('disponibleTercera').textContent = disponibleTercera;
+      document.getElementById('totalvendido').textContent = total;
+      document.getElementById('cosechaPerdida').textContent = perdida.toFixed(0);
+      document.getElementById('cantidadventas').textContent = cantidadVentas;
 
-      if (!btnVenta.disabled && cosechaId) {
-        // Redireccionar al formulario de ventas con el ID de cosecha
-        window.location.href = `/ventas/crear/?cosecha_id=${encodeURIComponent(cosechaId)}`;
+      document.getElementById('btnEditarCosecha').href = `/cosechas/editar/${id}/`;
+      document.getElementById('formEliminarCosecha').action = `/cosechas/eliminar/${id}/`;
+
+      // 👇 Ejecutar lógica justo después de llenar los datos
+      checkDisponibilidadYActualizarBoton();
+    });
   }
+
+  function checkDisponibilidadYActualizarBoton() {
+  const disp1ra = parseFloat(document.getElementById("disponiblePrimera").textContent) || 0;
+  const disp2da = parseFloat(document.getElementById("disponibleSegunda").textContent) || 0;
+  const disp3ra = parseFloat(document.getElementById("disponibleTercera").textContent) || 0;
+
+  const estadoTexto = document.getElementById("cosechaEstado").textContent.trim();
+
+  const esFinalizado = estadoTexto === "Finalizado";
+
+  if (esFinalizado) {
+    // Si está finalizado, todo desactivado
+    btnVenta.disabled = true;
+    btnCerrar.disabled = true;
+    btnEditarCosecha.disabled = true;
+  } else {
+    // Si NO está finalizado, habilitar según disponibilidad
+    const hayDisponibilidad = disp1ra > 0 || disp2da > 0 || disp3ra > 0;
+    btnVenta.disabled = !hayDisponibilidad;
+    btnCerrar.disabled = !hayDisponibilidad;
+    btnEditarCosecha.disabled = false;
+  }
+}
+
+
+  btnVenta.addEventListener("click", function () {
+    const cosechaId = document.getElementById("cosechaId").textContent.trim();
+    if (!btnVenta.disabled && cosechaId) {
+      window.location.href = `/ventas/crear/?cosecha_id=${encodeURIComponent(cosechaId)}`;
+    }
+  });
+
+  document.getElementById("btnIrFormulario").addEventListener("click", function () {
+    const plantacionId = document.getElementById("selectPlantacion").value;
+    if (plantacionId) {
+      window.location.href = `/cosechas/crear/?plantacion_id=${plantacionId}`;
+    } else {
+      alert("Debes seleccionar una plantación.");
+    }
+  });
+
+  document.getElementById('formBusqueda').addEventListener('submit', function (event) {
+    const buscar = document.querySelector('input[name="buscar"]').value.trim();
+    const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
+    const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
+
+    if (!buscar && (!fechaInicio || !fechaFin)) {
+      event.preventDefault();
+      alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
+    }
+  });
+
+  document.getElementById('cerrarCosecha').addEventListener('click', function () {
+    const cosechaId = document.getElementById('cosechaId').textContent;
+
+    fetch(`/cosechas/cerrar/${cosechaId}/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json'
+      },
+    }).then(response => {
+      if (response.ok) {
+        alert('✅ Cosecha cerrada correctamente');
+        location.reload();
+      } else {
+        alert('❌ Error al cerrar la cosecha');
+      }
     });
-
-
-    document.getElementById("btnIrFormulario").addEventListener("click", function () {
-        const plantacionId = document.getElementById("selectPlantacion").value;
-        if (plantacionId) {
-            window.location.href = `/cosechas/crear/?plantacion_id=${plantacionId}`;
-        } else {
-            alert("Debes seleccionar una plantacion.");
-        }
-    });
-
-
-  
-    
-
-document.getElementById('formBusqueda').addEventListener('submit', function (event) {
-        const buscar = document.querySelector('input[name="buscar"]').value.trim();
-        const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
-        const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
-
-        if (!buscar && (!fechaInicio || !fechaFin)) {
-            event.preventDefault(); // Detiene el envío
-            alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
-        }
-    });
+  });
+});
 </script>
+
+
 {% if messages %}
   <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -324,4 +463,5 @@ document.getElementById('formBusqueda').addEventListener('submit', function (eve
     });
   </script>
 {% endif %}
-{% endblock %}
+{% endblock scripts %}
+

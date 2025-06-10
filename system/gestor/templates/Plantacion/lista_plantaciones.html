@@ -6,6 +6,7 @@
 {% load static %}
 
 <div class="container py-2">
+  
   <!-- Título -->
   <div class="text-center mb-3">
     <h2 class="fw-bold">Plantaciones</h2>
@@ -60,65 +61,114 @@
       </form>
     </div>
   </div>
-</div>
-
-
-
-
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover text-center align-middle">
-            <thead class="table-dark">
-                <tr>
-                    <th>Numero</th>
-                    <th>Parcela</th>
-                    <th>Cultivo</th>
-                    <th>Fecha</th>
-                    <th>Cantidad</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for plantacion in entity %}
-                <tr>
-                    <td>{{ plantacion.idplantacion }}</td>
-                    <td>{{ plantacion.parcela.nombre }}</td>
-                    <td>{{ plantacion.cultivo.nombre }}</td>
-                    <td>{{ plantacion.fecha }}</td>
-                    <td>{{ plantacion.cantidad }}</td>
-                    <td id="estado-{{ plantacion.idplantacion }}">
-                        {% if plantacion.estado %}
-                            <span class="badge bg-danger">Finalizado</span>
-                        {% else %}
-                            <span class="badge bg-success">Activo</span>
-                        {% endif %}</td>
-                    <td>
-                        <button 
-                            type="button" 
-                            class="btn btn-info btn-sm text-white"
-                            data-bs-toggle="modal" 
-                            data-bs-target="#modalPlantacion"
-                            data-id="{{ plantacion.idplantacion }}"
-                            data-parcela="{{ plantacion.parcela.nombre }}"
-                            data-cultivo="{{ plantacion.cultivo.nombre }}"
-                            data-fecha="{{ plantacion.fecha }}"
-                            data-cantidad="{{ plantacion.cantidad }}"
-                            data-estado ="{{ plantacion.estado }}"
-                            >
-                           
-                            <i class="bi bi-eye"></i> Detalles
-                        </button>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3">No hay plantaciones registradas.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<!-- Cards para móviles -->
+<div class="d-md-none">
+  {% for plantacion in entity %}
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body">
+      <h5 class="card-title fw-bold">#{{ plantacion.idplantacion }} - {{ plantacion.cultivo.nombre }}</h5>
+      <p class="mb-1"><strong>Parcela:</strong> {{ plantacion.parcela.nombre }}</p>
+      <p class="mb-1"><strong>Fecha:</strong> {{ plantacion.fecha }}</p>
+      <p class="mb-1"><strong>Cantidad:</strong> {{ plantacion.cantidad }}</p>
+      <p class="mb-1">
+        <strong>Estado:</strong>
+        {% if plantacion.estado %}
+          <span class="badge bg-danger">Finalizado</span>
+        {% else %}
+          <span class="badge bg-success">Activo</span>
+        {% endif %}
+      </p>
+      <div class="d-flex flex-wrap gap-2">
+        <button 
+          type="button" 
+          class="btn btn-sm btn-info text-white"
+          data-bs-toggle="modal" 
+          data-bs-target="#modalPlantacion"
+          data-id="{{ plantacion.idplantacion }}"
+          data-parcela="{{ plantacion.parcela.nombre }}"
+          data-cultivo="{{ plantacion.cultivo.nombre }}"
+          data-fecha="{{ plantacion.fecha }}"
+          data-cantidad="{{ plantacion.cantidad }}"
+          data-totalcosechas="{{ plantacion.num_cosechas }}"
+          data-totalvendido = "{{ plantacion.total_vendido }}"
+          data-estado="{{ plantacion.estado }}">
+          <i class="bi bi-eye"></i> Detalles
+        </button>
+      </div>
     </div>
+  </div>
+  {% empty %}
+  <div class="text-center">No hay plantaciones registradas.</div>
+  {% endfor %}
+  {% include "paginacion.html" %}
 </div>
+
+<!-- Tabla para escritorio -->
+<div class="tbl_container d-none d-md-block">
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover text-center align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Numero</th>
+          <th>Parcela</th>
+          <th>Cultivo</th>
+          <th>Fecha</th>
+          <th>Cantidad</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for plantacion in entity %}
+        <tr>
+          <td>{{ plantacion.idplantacion }}</td>
+          <td>{{ plantacion.parcela.nombre }}</td>
+          <td>{{ plantacion.cultivo.nombre }}</td>
+          <td>{{ plantacion.fecha }}</td>
+          <td>{{ plantacion.cantidad }}</td>
+          <td id="estado-{{ plantacion.idplantacion }}">
+            {% if plantacion.estado %}
+              <span class="badge bg-danger">Finalizado</span>
+            {% else %}
+              <span class="badge bg-success">Activo</span>
+            {% endif %}
+          </td>
+          <td>
+            <button 
+              type="button" 
+              class="btn btn-info btn-sm text-white"
+              data-bs-toggle="modal" 
+              data-bs-target="#modalPlantacion"
+              data-id="{{ plantacion.idplantacion }}"
+              data-parcela="{{ plantacion.parcela.nombre }}"
+              data-cultivo="{{ plantacion.cultivo.nombre }}"
+              data-fecha="{{ plantacion.fecha }}"
+              data-cantidad="{{ plantacion.cantidad }}"
+              data-totalcosechas="{{ plantacion.num_cosechas }}"
+              data-totalvendido = "{{ plantacion.total_vendido }}"
+              data-estado="{{ plantacion.estado }}">
+              <i class="bi bi-eye"></i> Detalles
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">No hay plantaciones registradas.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "paginacion.html" %}
+</div>
+
+    {% include "paginacion.html" %}
+</div>  
+{% endblock %}
+
+
+
+{% block modals %}
 <!-- Modal Seleccionar Parcela -->
 <div class="modal fade" id="modalSeleccionarParcela" tabindex="-1" aria-labelledby="modalSeleccionarParcelaLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -146,7 +196,6 @@
     </div>
   </div>
 
-
 <!-- Modal Detalles de Plantación -->
 <div class="modal fade" id="modalPlantacion" tabindex="-1" aria-labelledby="modalPlantacionLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -167,12 +216,14 @@
               <p><strong>🆔 Número:</strong> <span id="plantacionId"></span></p>
               <p><strong>📍 Parcela:</strong> <span id="plantacionParcela"></span></p>
               <p><strong>🌿 Cultivo:</strong> <span id="plantacionCultivo"></span></p>
+              <p><strong>🌾 N° de Cosechas:</strong> <span id="plantacionCosechas"></span></p>
             </div>
 
             <!-- Columna derecha -->
             <div class="col-md-6">
               <p><strong>📅 Fecha:</strong> <span id="plantacionFecha"></span></p>
               <p><strong>🔢 Cantidad:</strong> <span id="plantacionCantidad"></span></p>
+              <p><strong>💰 Total Vendido:</strong> $<span id="plantacionTotalVendido"></span></p>
               <p><strong>🔁 Estado:</strong> <span id="plantacionEstado"></span></p>
             </div>
           </div>
@@ -223,7 +274,100 @@
         </div>
     </div>
 </div>
+{% endblock modals %}
+
+
+
+{% block scripts %}
 <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const modalPlantacion = document.getElementById('modalPlantacion');
+    if (modalPlantacion) {
+        modalPlantacion.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+
+            const id = button.getAttribute('data-id');
+            const parcela = button.getAttribute('data-parcela');
+            const cultivo = button.getAttribute('data-cultivo');
+            const fecha = button.getAttribute('data-fecha');
+            const cantidad = button.getAttribute('data-cantidad');
+            const estado = button.getAttribute('data-estado'); // "True" o "False"
+            const totalCosechas = button.getAttribute('data-totalcosechas');
+            const totalVendido = button.getAttribute('data-totalvendido');
+
+            let estadoTexto = '';
+            const btnToggle = document.getElementById('btnToggleEstadoPlantacion');
+
+            if (estado === "True") {
+                estadoTexto = "Finalizada";
+                btnToggle.disabled = true; // habilitar botón
+            } else if (estado === "False") {
+                estadoTexto = "Activo";
+                btnToggle.disabled = false; // deshabilitar botón
+            }
+
+            document.getElementById('plantacionId').textContent = id;
+            document.getElementById('plantacionParcela').textContent = parcela;
+            document.getElementById('plantacionCultivo').textContent = cultivo;
+            document.getElementById('plantacionFecha').textContent = fecha;
+            document.getElementById('plantacionCantidad').textContent = cantidad;
+            document.getElementById('plantacionEstado').textContent = estadoTexto;
+            document.getElementById('plantacionCosechas').textContent = totalCosechas;
+            document.getElementById('plantacionTotalVendido').textContent = totalVendido;
+
+            document.getElementById('btnEditarPlantacion').href = `/plantaciones/editar/${id}/`;
+            document.getElementById('formEliminarPlantacion').action = `/plantaciones/eliminar/${id}/`;
+
+            // Guardar el ID actual para usarlo en el botón de Finalizar
+            plantacionIdActual = id;
+        });
+
+        // Acción para cambiar estado (Finalizar)
+        document.getElementById('btnToggleEstadoPlantacion').addEventListener('click', () => {
+            if (!plantacionIdActual) return;
+
+            fetch(`/plantaciones/toggle_estado/${plantacionIdActual}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Accept': 'application/json'
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.estado !== undefined) {
+                    location.reload();
+                } else {
+                    alert("Error al actualizar estado");
+                }
+            })
+            .catch(() => alert("Fallo en la solicitud al servidor"));
+        });
+    }
+    });
+function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let cookie of cookies) {
+              cookie = cookie.trim();
+              if (cookie.startsWith(name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+              }
+          }
+      }
+      return cookieValue;
+    }
+  document.getElementById("btnIrFormulario").addEventListener("click", function () {
+        const parcelaId = document.getElementById("selectParcela").value;
+        if (parcelaId) {
+            window.location.href = `/plantaciones/crear/?parcela_id=${parcelaId}`;
+        } else {
+            alert("Debes seleccionar una parcela.");
+        }
+    });
+
   document.getElementById('formBusqueda').addEventListener('submit', function (event) {
         const buscar = document.querySelector('input[name="buscar"]').value.trim();
         const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
@@ -250,5 +394,4 @@
     });
   </script>
 {% endif %}
-
-{% endblock %}
+{% endblock scripts %}

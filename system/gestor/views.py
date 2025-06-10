@@ -1,17 +1,20 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import Http404, JsonResponse, HttpResponseNotAllowed
-from django.http import HttpResponse
-from django.db.models import Sum, Count
+from django.http import Http404, JsonResponse, HttpResponseNotAllowed, HttpResponse
+from django.db.models import Sum, Count, DecimalField
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from collections import defaultdict
+from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.core.paginator import Paginator
 from django.urls import reverse
-from django.db.models.functions import ExtractMonth
+from django.db.models.functions import ExtractMonth, Coalesce
 from django.db.models.expressions import RawSQL
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Sum, Count, F, ExpressionWrapper, DecimalField
+from django.shortcuts import render
 from collections import defaultdict
 from .models import *
 from .forms import *
@@ -27,45 +30,43 @@ def inicio(request):
     hoy = date.today()
     inicio_semana = hoy - timedelta(days=hoy.weekday())  # lunes
     dias_semana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-
+    
     total_cultivos = Cultivo.objects.count()
     total_plantaciones = Plantacion.objects.count()
-
     total_ventas = Venta.objects.filter(fecha=hoy).aggregate(Sum('total')).get('total__sum') or 0
     plantaciones = Plantacion.objects.filter(estado=0)
     cosechas = Cosecha.objects.filter(estado=0)
-
+    
     cosechas_hoy = Cosecha.objects.filter(fecha=hoy).aggregate(
         primera=Sum('primera'),
         segunda=Sum('segunda'),
         tercera=Sum('tercera')
     )
-
+    
     # Ventas por día de la semana
     ventas_por_dia = [0] * 7
     for i in range(7):
         dia = inicio_semana + timedelta(days=i)
         total_dia = Venta.objects.filter(fecha=dia).aggregate(Sum('total')).get('total__sum') or 0
         ventas_por_dia[i] = float(total_dia)
-
+    
     # Cosechas detalladas hoy
     cosechas_detalle = Cosecha.objects.filter(fecha=hoy).select_related('plantacion')
-
     cosechas_hoy_detalle = defaultdict(lambda: {'primera': 0, 'segunda': 0, 'tercera': 0})
     for c in cosechas_detalle:
         cultivo = c.plantacion.cultivo.nombre
         cosechas_hoy_detalle[cultivo]['primera'] += c.primera or 0
         cosechas_hoy_detalle[cultivo]['segunda'] += c.segunda or 0
         cosechas_hoy_detalle[cultivo]['tercera'] += c.tercera or 0
-
-    # NUEVO: Cosechas por calidad por día POR CULTIVO
+    
+    # Cosechas por calidad por día POR CULTIVO (ya está bien)
     cosechas_por_calidad_y_cultivo = defaultdict(lambda: {
         'primera': [0] * 7,
         'segunda': [0] * 7,
         'tercera': [0] * 7
     })
     cultivos_nombres = set()
-
+    
     for i in range(7):
         dia = inicio_semana + timedelta(days=i)
         cosechas_dia = Cosecha.objects.filter(fecha=dia).select_related('plantacion__cultivo')
@@ -75,13 +76,13 @@ def inicio(request):
             cosechas_por_calidad_y_cultivo[cultivo]['primera'][i] += c.primera or 0
             cosechas_por_calidad_y_cultivo[cultivo]['segunda'][i] += c.segunda or 0
             cosechas_por_calidad_y_cultivo[cultivo]['tercera'][i] += c.tercera or 0
-
+    
     context = {
         'total_cultivos': total_cultivos,
         'total_plantaciones': total_plantaciones,
         'total_ventas': total_ventas,
         'cosechas_hoy': cosechas_hoy,
-        'dias_semana': dias_semana,
+        'dias_semana': dias_semana,  # Importante: pasar los días al template
         'ventas_por_dia': ventas_por_dia,
         'cosechas_hoy_detalle': dict(cosechas_hoy_detalle),
         'plantaciones': plantaciones,
@@ -89,7 +90,6 @@ def inicio(request):
         'calidad_por_cultivo': dict(cosechas_por_calidad_y_cultivo),
         'cultivos_nombres': sorted(cultivos_nombres),
     }
-
     return render(request, 'index.html', context)
 
 @login_required
@@ -97,13 +97,17 @@ def salir(request):
     logout(request)
     return redirect('login.html')
 
+@login_required
+def dashboard_view(request):
+    return render(request, 'reportes.html')
+
 
  
 @login_required
 def lista_parcelas(request):
     filtro = request.GET.get('filtro', 'nombre')
     buscar = request.GET.get('buscar', '')
-    
+
     parcelas = Parcela.objects.all().order_by('nombre')
 
     if buscar:
@@ -111,19 +115,40 @@ def lista_parcelas(request):
         if filtro == 'nombre':
             parcelas = parcelas.filter(nombre__icontains=buscar)
         elif filtro == 'tipo':
-            if buscar in ['campo abierto', 'a','campo']:
+            if buscar in ['campo abierto', 'a', 'campo']:
                 parcelas = parcelas.filter(tipoparcela='A')
             elif buscar in ['malla', 'm']:
                 parcelas = parcelas.filter(tipoparcela='M')
         elif filtro == 'estado':
-            if buscar in ['ocupada', '1', 'true', 'sí', 'si','o']:
+            if buscar in ['ocupada', '1', 'true', 'sí', 'si', 'o']:
                 parcelas = parcelas.filter(estado=True)
-            elif buscar in ['disponible', '0', 'false', 'no','d']:
+            elif buscar in ['disponible', '0', 'false', 'no', 'd']:
                 parcelas = parcelas.filter(estado=False)
 
+    # Agregar información relacionada a cada parcela
+    parcelas_data = []
+    for parcela in parcelas:
+        plantaciones = Plantacion.objects.filter(parcela=parcela)
+        cultivos = list(set([f"{p.cultivo.nombre} ({p.cultivo.variedad})" for p in plantaciones]))
+        total_plantas = plantaciones.aggregate(total=Sum('cantidad'))['total'] or 0
+
+        cosechas = Cosecha.objects.filter(plantacion__in=plantaciones)
+        total_cosechas = cosechas.count()
+
+        total_vendido = Venta.objects.filter(cosecha__in=cosechas).aggregate(total=Sum('total'))['total'] or 0
+
+        parcelas_data.append({
+            'parcela': parcela,
+            'cultivos': cultivos,
+            'total_plantas': total_plantas,
+            'total_cosechas': total_cosechas,
+            'total_vendido': total_vendido,
+        })
+
+    # Paginación manual para datos procesados
     pagina = request.GET.get("page", 1)
     try:
-        paginator = Paginator(parcelas, 10)
+        paginator = Paginator(parcelas_data, 10)
         parcelas_paginadas = paginator.page(pagina)
     except:
         raise Http404("Página no encontrada")
@@ -132,7 +157,7 @@ def lista_parcelas(request):
         'entity': parcelas_paginadas,
         'paginator': paginator,
         'filtro': filtro,
-        'buscar': request.GET.get('buscar', '')
+        'buscar': buscar
     })
 
 @login_required
@@ -187,13 +212,34 @@ def lista_cultivos(request):
 
     if buscar:
         if filtro == 'nombre':
-            cultivos = cultivos.filter(nombre__icontains=buscar).order_by('nombre')
+            cultivos = cultivos.filter(nombre__icontains=buscar)
         elif filtro == 'variedad':
-            cultivos = cultivos.filter(variedad__icontains=buscar).order_by('variedad')
+            cultivos = cultivos.filter(variedad__icontains=buscar)
 
+    # Preparar la lista enriquecida
+    cultivos_info = []
+    for cultivo in cultivos:
+        plantaciones = cultivo.plantacion_set.all()
+        cosechas = Cosecha.objects.filter(plantacion__cultivo=cultivo)
+        ventas = Venta.objects.filter(cosecha__plantacion__cultivo=cultivo)
+
+        total_plantas = plantaciones.aggregate(total=Coalesce(Sum('cantidad'), 0))['total']
+        total_cosechas = cosechas.aggregate(total=Count('idcosecha'))['total']        
+        total_vendido = ventas.aggregate(
+                                total=Coalesce(Sum('total'), 0, output_field=DecimalField())
+                            )['total']
+
+        cultivos_info.append({
+            'cultivo': cultivo,
+            'total_plantas': total_plantas,
+            'total_cosechas': total_cosechas,
+            'total_vendido': total_vendido
+        })
+        
+    # Paginación manual (ya no se pagina directamente `cultivos`, sino `cultivos_info`)
     pagina = request.GET.get("page", 1)
     try:
-        paginator = Paginator(cultivos, 10)
+        paginator = Paginator(cultivos_info, 10)
         cultivos_paginados = paginator.page(pagina)
     except:
         raise Http404("Página no encontrada")
@@ -253,18 +299,18 @@ def lista_plantaciones(request):
     fecha_fin = request.GET.get('fecha_fin', '')
 
     plantaciones = Plantacion.objects.select_related('parcela', 'cultivo').order_by('-fecha')
-    parcelas =  Parcela.objects.filter(estado=0).order_by('-idparcela')
+    parcelas = Parcela.objects.filter(estado=0).order_by('-idparcela')
     
-    # Filtro texto
+    # Filtro por texto
     if buscar:
         if filtro == 'parcela':
             plantaciones = plantaciones.filter(parcela__nombre__icontains=buscar)
         elif filtro == 'cultivo':
             plantaciones = plantaciones.filter(cultivo__nombre__icontains=buscar)
         elif filtro == 'estado':
-            if buscar in ['finalizado', 'true', '1', 'sí', 'si', 'f']:
+            if buscar in ['disponible', 'true', '1', 'D', 'd', 'f']:
                 plantaciones = plantaciones.filter(estado=False)
-            elif buscar in ['activo', 'no finalizado', 'false', '0', 'no', 'a']:
+            elif buscar in ['ocupada', 'O', 'false', '0', 'o']:
                 plantaciones = plantaciones.filter(estado=True)
 
     # Filtro por fechas
@@ -281,6 +327,16 @@ def lista_plantaciones(request):
             plantaciones = plantaciones.filter(fecha__lte=fecha_fin_obj)
         except ValueError:
             pass
+
+    # Anotar datos adicionales antes de paginar
+    for plantacion in plantaciones:
+        cosechas = plantacion.cosecha_set.all()
+        plantacion.num_cosechas = cosechas.count()
+
+        ventas = Venta.objects.filter(cosecha__in=cosechas)
+        plantacion.total_vendido = ventas.aggregate(
+            total=Coalesce(Sum('total'), Decimal('0.00'))
+        )['total']
 
     # Paginación
     pagina = request.GET.get("page", 1)
@@ -306,23 +362,23 @@ def lista_plantaciones(request):
 def toggle_estado_plantacion(request, idplantacion):
     try:
         plantacion = Plantacion.objects.select_related('parcela').get(pk=idplantacion)
-        print(plantacion.estado)
+
         # Cambiar el estado de la plantación
         plantacion.estado = not plantacion.estado
-        
         plantacion.save()
-        print('**********')
-        print(plantacion.estado)
-        # Si la plantación se finaliza (es decir, pasa a False), también cambia el estado de la parcela
-        if not plantacion.estado:
-            parcela = plantacion.parcela
-            parcela.estado = False
-            parcela.save()
+
+        parcela = plantacion.parcela
+
+        # Si no hay más plantaciones activas en la parcela, se marca como disponible
+        hay_activas = Plantacion.objects.filter(parcela=parcela, estado=True).exists()
+        parcela.estado = not hay_activas  # True si está libre, False si ocupada
+        parcela.save()
 
         return JsonResponse({'estado': plantacion.estado})
 
     except Plantacion.DoesNotExist:
         return JsonResponse({'error': 'Plantación no encontrada'}, status=404)
+
 
 # Crear una nueva plantación
 @login_required
@@ -382,26 +438,61 @@ def lista_cosechas(request):
     fecha_inicio = request.GET.get('fecha_inicio', '')
     fecha_fin = request.GET.get('fecha_fin', '')
 
-    cosechas = Cosecha.objects.select_related('plantacion__parcela', 'plantacion__cultivo').order_by('-fecha')
+    cosechas = Cosecha.objects.select_related('plantacion__parcela', 'plantacion__cultivo').order_by('-idcosecha')
     ventas = Venta.objects.all().select_related('cosecha')
+
+    # Preprocesar ventas por cosecha usando diccionarios agrupados por idcosecha
+    ventas_por_cosecha = {}
+    for venta in ventas:
+        cid = venta.cosecha_id
+        if cid not in ventas_por_cosecha:
+            ventas_por_cosecha[cid] = {
+                'primera': 0,
+                'segunda': 0,
+                'tercera': 0,
+                'total': 0,
+                'cantidad': 0,
+            }
+        ventas_por_cosecha[cid]['primera'] += venta.primera or 0
+        ventas_por_cosecha[cid]['segunda'] += venta.segunda or 0
+        ventas_por_cosecha[cid]['tercera'] += venta.tercera or 0
+        ventas_por_cosecha[cid]['total'] += venta.total or 0
+        ventas_por_cosecha[cid]['cantidad'] += 1
+
+    # Crear diccionario de ventas para el template
     ventas_dict = {}
-
     for cosecha in cosechas:
-        ventas_cosecha = [v for v in ventas if v.cosecha_id == cosecha.idcosecha]
-        suma_primera = sum(v.primera for v in ventas_cosecha)
-        suma_segunda = sum(v.segunda for v in ventas_cosecha)
-        suma_tercera = sum(v.tercera for v in ventas_cosecha)
+        v = ventas_por_cosecha.get(cosecha.idcosecha, {
+            'primera': 0,
+            'segunda': 0,
+            'tercera': 0,
+            'total': 0,
+            'cantidad': 0,
+        })
 
-        total_cosecha = cosecha.primera + cosecha.segunda + cosecha.tercera
+        total_cosecha = (cosecha.primera or 0) + (cosecha.segunda or 0) + (cosecha.tercera or 0)
+        total_vendido = v['total']
+        # Calcula disponibles
+        disponible_primera = max((cosecha.primera or 0) - v['primera'], 0)
+        disponible_segunda = max((cosecha.segunda or 0) - v['segunda'], 0)
+        disponible_tercera = max((cosecha.tercera or 0) - v['tercera'], 0)
 
-        
+        # Perdida total = todo lo no vendido
+        perdida = disponible_primera + disponible_segunda + disponible_tercera
+
+        # Diccionario que pasas al template
         ventas_dict[cosecha.idcosecha] = {
-            'disponible_primera': max(cosecha.primera - suma_primera, 0),
-            'disponible_segunda': max(cosecha.segunda - suma_segunda, 0),
-            'disponible_tercera': max(cosecha.tercera - suma_tercera, 0),
-            'total_cosecha': total_cosecha,
+            'disponible_primera': disponible_primera,
+            'disponible_segunda': disponible_segunda,
+            'disponible_tercera': disponible_tercera,
+            'total_cosecha': (cosecha.primera or 0) + (cosecha.segunda or 0) + (cosecha.tercera or 0),
+            'total_vendido': v['total'],
+            'cantidad_ventas': v['cantidad'],
+            'perdida': perdida,  # 👈 Aquí ya tienes el número único de pérdida
+        }
 
-        }   
+
+
     # Filtro por texto
     if buscar:
         if filtro == 'parcela':
@@ -416,7 +507,7 @@ def lista_cosechas(request):
             for key, val in tipo_map.items():
                 if buscar in key:
                     cosechas = cosechas.filter(tipocosecha=val)
-                    break  # Evita múltiples filtros innecesarios
+                    break
         elif filtro == 'estado':
             if buscar in ['finalizado', 'true', '1', 'sí', 'si']:
                 cosechas = cosechas.filter(estado=True)
@@ -445,18 +536,18 @@ def lista_cosechas(request):
         cosechas_paginadas = paginator.page(pagina)
     except:
         raise Http404("Página no encontrada")
-    
+
     plantaciones = Plantacion.objects.filter(estado=0).order_by('-fecha')
-    
+
     return render(request, 'Cosecha/lista_cosechas.html', {
-    'entity': cosechas_paginadas,
-    'paginator': paginator,
-    'filtro': filtro,
-    'buscar': buscar,
-    'fecha_inicio': fecha_inicio,
-    'fecha_fin': fecha_fin,
-    'plantaciones': plantaciones,
-    'ventas_dict': ventas_dict, 
+        'entity': cosechas_paginadas,
+        'paginator': paginator,
+        'filtro': filtro,
+        'buscar': buscar,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'plantaciones': plantaciones,
+        'ventas_dict': ventas_dict,
     })
 
 # Crear una nueva cosecha
@@ -488,16 +579,62 @@ def crear_cosecha(request):
 @login_required
 def editar_cosecha(request, idcosecha):
     cosecha = get_object_or_404(Cosecha, pk=idcosecha)
+
+    # Guardamos los valores originales antes del form
+    original_primera = cosecha.primera
+    original_segunda = cosecha.segunda
+    original_tercera = cosecha.tercera
+    original_estado = cosecha.estado
+
+    # Cantidades vendidas actuales
+    ventas = Venta.objects.filter(cosecha=cosecha).aggregate(
+        total_primera=Sum('primera'),
+        total_segunda=Sum('segunda'),
+        total_tercera=Sum('tercera')
+    )
+    vendida_primera = ventas['total_primera'] or 0
+    vendida_segunda = ventas['total_segunda'] or 0
+    vendida_tercera = ventas['total_tercera'] or 0
+
     if request.method == 'POST':
         form = CosechaForm(request.POST, instance=cosecha)
         if form.is_valid():
-            cosecha = form.save()
-            if request.POST.get('ir_a_venta') == '1':
-                return redirect(f"{reverse('crear_venta')}?cosecha_id={cosecha.idcosecha}")
-            return redirect('lista_cosechas')
+            nueva_primera = form.cleaned_data['primera']
+            nueva_segunda = form.cleaned_data['segunda']
+            nueva_tercera = form.cleaned_data['tercera']
+
+            # Validación: no permitir reducir por debajo de lo vendido
+            if (nueva_primera < vendida_primera or
+                nueva_segunda < vendida_segunda or
+                nueva_tercera < vendida_tercera):
+                form.add_error(None, "No puedes poner una cantidad menor a la ya vendida.")
+            else:
+                aumento = (
+                    nueva_primera > original_primera or
+                    nueva_segunda > original_segunda or
+                    nueva_tercera > original_tercera
+                )
+
+                cosecha = form.save(commit=False)
+
+                # ✅ Cambiar estado si estaba finalizado y hay aumento
+                if original_estado and aumento:
+                    cosecha.estado = False
+
+                cosecha.save()
+
+                if request.POST.get('ir_a_venta') == '1':
+                    return redirect(f"{reverse('crear_venta')}?cosecha_id={cosecha.idcosecha}")
+                return redirect('lista_cosechas')
     else:
         form = CosechaForm(instance=cosecha)
-    return render(request, 'Cosecha/form_cosecha.html', {'form': form})
+
+    return render(request, 'Cosecha/form_cosecha.html', {
+        'form': form,
+        'vendida_primera': vendida_primera,
+        'vendida_segunda': vendida_segunda,
+        'vendida_tercera': vendida_tercera,
+    })
 
 # Eliminar una cosecha
 @login_required
@@ -511,6 +648,19 @@ def eliminar_cosecha(request, idcosecha):
             messages.success(request, f"La cosecha #{idcosecha} ha sido eliminada exitosamente.")
     return redirect('/cosechas')
 
+# Cerrar Cosecha
+@login_required
+@csrf_exempt
+def cerrar_cosecha(request, id):
+    if request.method == 'POST':
+        try:
+            cosecha = Cosecha.objects.get(idcosecha=id)
+            cosecha.estado = 1  # Finalizado
+            cosecha.save()
+            return JsonResponse({'success': True})
+        except Cosecha.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Cosecha no encontrada'}, status=404)
+    return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
 
 
 

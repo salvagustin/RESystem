@@ -5,7 +5,7 @@
 {% block title %} | Dashboard {% endblock title %}
 
 {% block content %}
-<div class="container py-4">
+<!-- Eliminar container y content-card duplicados ya que base.html ya los tiene -->
 
   {% if messages %}
     {% for message in messages %}
@@ -16,8 +16,11 @@
     {% endfor %}
   {% endif %}
 
+  <h1 class="welcome-title">¡Bienvenido!</h1>
+  <p class="welcome-subtitle">Sistema de Gestión de Producción de Hortalizas</p>
+   
   <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
-    <h2 class="fw-bold text-center text-md-start">Sistema de produccion</h2>
+    <h2 class="fw-bold text-center text-md-start">Sistema de producción</h2>
     <div class="d-flex flex-column flex-sm-row gap-2">
       <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarCosecha">
           <i class="bi bi-plus-circle"></i> Venta
@@ -81,7 +84,7 @@
   </div>
 
   <!-- Gráficos -->
-  <div class="row g-4">
+  <div class="row g-4 mb-4">
     <div class="col-12 col-lg-6">
       <div class="card shadow-sm">
         <div class="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center">
@@ -107,85 +110,204 @@
     </div>
   </div>
 
-  <!-- Modales -->
-  <div class="modal fade" id="modalSeleccionarPlantacion" tabindex="-1" aria-labelledby="modalSeleccionarPlantacionLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Seleccionar Plantacion</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <select id="selectPlantacion" class="form-select">
-            <option value="">Selecciona una plantacion</option>
-            {% for plantacion in plantaciones %}
-              <option value="{{ plantacion.idplantacion }}">{{ plantacion.cultivo.nombre }} - Parcela: {{ plantacion.parcela.nombre }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="modal-footer">
-          <button id="btnIrFormularioCorte" class="btn btn-success">Ir al formulario</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="modal fade" id="modalSeleccionarCosecha" tabindex="-1" aria-labelledby="modalSeleccionarCosechaLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Seleccionar Corte</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <select id="selectCosecha" class="form-select">
-            <option value="">Selecciona un corte</option>
-            {% for cosecha in cosechas %}
-              <option value="{{ cosecha.idcosecha }}">{{ cosecha.fecha }} - Parcela: {{ cosecha.plantacion.parcela.nombre }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="modal-footer">
-          <button id="btnIrFormulario" class="btn btn-success">Ir al formulario</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <script>
-    window.diasSemana = {{ dias_semana|safe }};
-    window.ventasPorDia = {{ ventas_por_dia|safe }};
-    window.calidadPorCultivo = {{ calidad_por_cultivo|safe }};
-  </script>
-  <script>
-    console.log("Días semana:", window.diasSemana);
-    console.log("Ventas por día:", window.ventasPorDia);
-    console.log("Calidad por cultivo:", window.calidadPorCultivo);
-  </script>
+<script>
+  // Variables globales para los gráficos
+  window.diasSemana = {{ dias_semana|safe }};
+  window.ventasPorDia = {{ ventas_por_dia|safe }};
+  window.calidadPorCultivo = {{ calidad_por_cultivo|safe }};
+  
+  console.log("Días semana:", window.diasSemana);
+  console.log("Ventas por día:", window.ventasPorDia);
+  console.log("Calidad por cultivo:", window.calidadPorCultivo);
+</script>
 
-  <script src="{% static 'js/dashboard.js' %}"></script>
 
-  <script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Manejador para el botón de corte
     document.getElementById("btnIrFormularioCorte").addEventListener("click", function () {
-        const plantacionId = document.getElementById("selectPlantacion").value;
-        if (plantacionId) {
-            window.location.href = `/cosechas/crear/?plantacion_id=${plantacionId}`;
-        } else {
-            alert("Debes seleccionar una plantacion.");
-        }
+      const plantacionId = document.getElementById("selectPlantacion").value;
+      if (plantacionId) {
+        // Cerrar modal antes de navegar
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarPlantacion'));
+        modal.hide();
+        
+        setTimeout(() => {
+          window.location.href = `/cosechas/crear/?plantacion_id=${plantacionId}`;
+        }, 300);
+      } else {
+        alert("Debes seleccionar una plantación.");
+      }
     });
 
+    // Manejador para el botón de venta
     document.getElementById("btnIrFormulario").addEventListener("click", function () {
-        const cosechaId = document.getElementById("selectCosecha").value;
-        if (cosechaId) {
-            window.location.href = `/ventas/crear/?cosecha_id=${cosechaId}`;
-        } else {
-            alert("Debes seleccionar una cosecha.");
-        }
+      const cosechaId = document.getElementById("selectCosecha").value;
+      if (cosechaId) {
+        // Cerrar modal antes de navegar
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarCosecha'));
+        modal.hide();
+        
+        setTimeout(() => {
+          window.location.href = `/ventas/crear/?cosecha_id=${cosechaId}`;
+        }, 300);
+      } else {
+        alert("Debes seleccionar una cosecha.");
+      }
     });
-  </script>
-</div>
+
+
+    
+        const ctx = document.getElementById('ventasSemanaChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: window.diasSemana,
+                datasets: [{
+                    label: 'Ventas',
+                    data: window.ventasPorDia,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+
+        let cultivo = document.getElementById('selectCultivo').value;
+        // Función para calcular el total por día (suma de primera + segunda + tercera)
+        function calcularTotalPorDia(cultivo) {
+            const datos = window.calidadPorCultivo[cultivo];
+            const totalPorDia = [];
+            
+            for (let i = 0; i < 7; i++) {
+                const total = (datos.primera[i] || 0) + (datos.segunda[i] || 0) + (datos.tercera[i] || 0);
+                totalPorDia.push(total);
+            }
+            
+            return totalPorDia;
+        }
+
+        const calidadChart = new Chart(document.getElementById('graficoCalidad'), {
+            type: 'bar',
+            data: {
+                labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'], // Días de la semana
+                datasets: [{
+                    label: `Total ${cultivo}`,
+                    data: calcularTotalPorDia(cultivo),
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Cantidad Total'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Días de la Semana'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const cultivo = document.getElementById('selectCultivo').value;
+                                const datos = window.calidadPorCultivo[cultivo];
+                                const dia = context.dataIndex;
+                                
+                                return [
+                                    `Primera: ${datos.primera[dia] || 0}`,
+                                    `Segunda: ${datos.segunda[dia] || 0}`,
+                                    `Tercera: ${datos.tercera[dia] || 0}`
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        document.getElementById('selectCultivo').addEventListener('change', function() {
+            const selected = this.value;
+            calidadChart.data.datasets[0].data = calcularTotalPorDia(selected);
+            calidadChart.data.datasets[0].label = `Total ${selected}`;
+            calidadChart.update();
+        });
+
+  });
+</script>
+
 {% endblock %}
+{% block modals %}
+<!-- MODALES - Movidos fuera del main-content para evitar problemas de z-index -->
+<div class="modal fade" id="modalSeleccionarPlantacion" tabindex="-1" aria-labelledby="modalSeleccionarPlantacionLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Seleccionar Plantación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <select id="selectPlantacion" class="form-select">
+          <option value="">Selecciona una plantación</option>
+          {% for plantacion in plantaciones %}
+            <option value="{{ plantacion.idplantacion }}">{{ plantacion.cultivo.nombre }} - Parcela: {{ plantacion.parcela.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button id="btnIrFormularioCorte" type="button" class="btn btn-success">Ir al formulario</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalSeleccionarCosecha" tabindex="-1" aria-labelledby="modalSeleccionarCosechaLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Seleccionar Corte</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <select id="selectCosecha" class="form-select">
+          <option value="">Selecciona un corte</option>
+          {% for cosecha in cosechas %}
+            <option value="{{ cosecha.idcosecha }}">{{ cosecha.fecha }} - Parcela: {{ cosecha.plantacion.parcela.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button id="btnIrFormulario" type="button" class="btn btn-success">Ir al formulario</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock modals %}

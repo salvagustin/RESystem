@@ -61,77 +61,133 @@
             </form>
         </div>
     </div>
-</div>
 
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover text-center align-middle">
-            <thead class="table-dark">
-                <tr>
-                    <th>Numero</th>
-                    <th>Cliente</th>
-                    <th>Parcela</th>
-                    <th># Corte</th>
-                    <th>Producto</th>
-                    <th>Fecha</th>
-                    <th>Total</th>
-                    <th>Estado</th>
-                    <th>Tipo de venta</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for venta in entity %}
-                <tr>
-                    <td>{{ venta.idventa }}</td>    
-                    <td>{{ venta.cliente.nombre }}</td>
-                    <td>{{ venta.cosecha.plantacion.parcela.nombre }}</td>
-                    <td>{{ venta.cosecha.idcosecha }}</td>
-                    <td>{{ venta.cosecha.plantacion.cultivo.nombre }}</td>
-                    <td>{{ venta.fecha }}</td>
-                    <td>${{ venta.total }}</td>
-                    <td id="estado-{{ venta.idventa }}">
-                        {% if venta.estado %}
-                          <span class="badge bg-success">Pagado</span>
-                        {% else %}
-                          <span class="badge bg-danger">Pendiente</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ venta.get_tipoventa_display }}</td>
-                    <td>
-                      <button 
-                            type="button"
-                            class="btn btn-info btn-sm text-white"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalVenta"
-                            data-id="{{ venta.idventa }}"
-                            data-cliente="{{ venta.cliente.nombre }}"
-                            data-parcela = "{{ venta.cosecha.plantacion.parcela.nombre }}"
-                            data-cosecha = "{{ venta.cosecha.fecha }}"
-                            data-cosecha-id = "{{ venta.cosecha.idcosecha }}"
-                            data-tipoproducto = "{{ venta.cosecha.get_tipocosecha_display }}"
-                            data-producto="{{ venta.cosecha.plantacion.cultivo.nombre }}"
-                            data-fecha="{{ venta.fecha }}"
-                            data-primera="{{ venta.primera }}"
-                            data-segunda="{{ venta.segunda }}"
-                            data-tercera="{{ venta.tercera }}"
-                            data-total="{{ venta.total }}"
-                            data-estado ="{{ venta.estado }}"
-                            data-tipoventa="{{ venta.get_tipoventa_display }}">
-                            <i class="bi bi-eye"></i> Detalles
-                        </button>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8">No hay ventas registradas.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Cards para móviles -->
+    <div class="d-md-none">
+      {% for venta in entity %}
+      <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title fw-bold">#{{ venta.idventa }} - {{ venta.cliente.nombre }}</h5>
+          <p class="mb-1"><strong>Parcela:</strong> {{ venta.cosecha.plantacion.parcela.nombre }}</p>
+          <p class="mb-1"><strong>Corte:</strong> #{{ venta.cosecha.idcosecha }}</p>
+          <p class="mb-1"><strong>Producto:</strong> {{ venta.cosecha.plantacion.cultivo.nombre }}</p>
+          <p class="mb-1"><strong>Fecha:</strong> {{ venta.fecha }}</p>
+          <p class="mb-1"><strong>Total:</strong> ${{ venta.total }}</p>
+          <p class="mb-1">
+            <strong>Estado:</strong>
+            {% if venta.estado %}
+              <span class="badge bg-success">Pagado</span>
+            {% else %}
+              <span class="badge bg-danger">Pendiente</span>
+            {% endif %}
+          </p>
+          <p class="mb-2"><strong>Tipo de venta:</strong> {{ venta.get_tipoventa_display }}</p>
+
+          <div class="d-flex flex-wrap gap-2">
+            <button 
+              type="button"
+              class="btn btn-info btn-sm text-white"
+              data-bs-toggle="modal"
+              data-bs-target="#modalVenta"
+              data-id="{{ venta.idventa }}"
+              data-cliente="{{ venta.cliente.nombre }}"
+              data-parcela="{{ venta.cosecha.plantacion.parcela.nombre }}"
+              data-cosecha="{{ venta.cosecha.fecha }}"
+              data-cosecha-id="{{ venta.cosecha.idcosecha }}"
+              data-tipoproducto="{{ venta.cosecha.get_tipocosecha_display }}"
+              data-producto="{{ venta.cosecha.plantacion.cultivo.nombre }}"
+              data-fecha="{{ venta.fecha }}"
+              data-primera="{{ venta.primera }}"
+              data-segunda="{{ venta.segunda }}"
+              data-tercera="{{ venta.tercera }}"
+              data-total="{{ venta.total }}"
+              data-estado="{{ venta.estado }}"
+              data-tipoventa="{{ venta.get_tipoventa_display }}">
+              <i class="bi bi-eye"></i> Detalles
+            </button>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="text-center">No hay ventas registradas.</div>
+      {% endfor %}
     </div>
 
+    <!-- Tabla para escritorio -->
+    <div class="d-none d-md-block">
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Numero</th>
+              <th>Cliente</th>
+              <th>Parcela</th>
+              <th># Corte</th>
+              <th>Producto</th>
+              <th>Fecha</th>
+              <th>Total</th>
+              <th>Estado</th>
+              <th>Tipo de venta</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for venta in entity %}
+            <tr>
+              <td>{{ venta.idventa }}</td>
+              <td>{{ venta.cliente.nombre }}</td>
+              <td>{{ venta.cosecha.plantacion.parcela.nombre }}</td>
+              <td>{{ venta.cosecha.idcosecha }}</td>
+              <td>{{ venta.cosecha.plantacion.cultivo.nombre }}</td>
+              <td>{{ venta.fecha }}</td>
+              <td>${{ venta.total }}</td>
+              <td id="estado-{{ venta.idventa }}">
+                {% if venta.estado %}
+                  <span class="badge bg-success">Pagado</span>
+                {% else %}
+                  <span class="badge bg-danger">Pendiente</span>
+                {% endif %}
+              </td>
+              <td>{{ venta.get_tipoventa_display }}</td>
+              <td>
+                <button 
+                  type="button"
+                  class="btn btn-info btn-sm text-white"
+                  data-bs-toggle="modal"
+                  data-bs-target="#modalVenta"
+                  data-id="{{ venta.idventa }}"
+                  data-cliente="{{ venta.cliente.nombre }}"
+                  data-parcela="{{ venta.cosecha.plantacion.parcela.nombre }}"
+                  data-cosecha="{{ venta.cosecha.fecha }}"
+                  data-cosecha-id="{{ venta.cosecha.idcosecha }}"
+                  data-tipoproducto="{{ venta.cosecha.get_tipocosecha_display }}"
+                  data-producto="{{ venta.cosecha.plantacion.cultivo.nombre }}"
+                  data-fecha="{{ venta.fecha }}"
+                  data-primera="{{ venta.primera }}"
+                  data-segunda="{{ venta.segunda }}"
+                  data-tercera="{{ venta.tercera }}"
+                  data-total="{{ venta.total }}"
+                  data-estado="{{ venta.estado }}"
+                  data-tipoventa="{{ venta.get_tipoventa_display }}">
+                  <i class="bi bi-eye"></i> Detalles
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="10">No hay ventas registradas.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
+    {% include "paginacion.html" %}
+</div>
+{% endblock %}
 
+{% block modals %}
 <!-- Modal Seleccionar Cosecha -->
 <div class="modal fade" id="modalSeleccionarCosecha" tabindex="-1" aria-labelledby="modalSeleccionarCosechaLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -158,7 +214,6 @@
       </div>
     </div>
   </div>
-
 
 <!-- Modal Detalles Venta -->
 <div class="modal fade" id="modalVenta" tabindex="-1" aria-labelledby="modalVentaLabel" aria-hidden="true">
@@ -221,8 +276,6 @@
   </div>
 </div>
 
-
-
 <!-- Modal Confirmar Eliminación -->
 <div class="modal fade" id="modalConfirmarEliminarVenta" tabindex="-1">
     <div class="modal-dialog modal-sm">
@@ -244,6 +297,90 @@
         </div>
     </div>
 </div>
+{% endblock modals %}
+
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+   const modalVenta = document.getElementById('modalVenta');
+    if (modalVenta) {
+        modalVenta.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+    
+            const id = button.getAttribute('data-id');
+            const cliente = button.getAttribute('data-cliente');
+            const parcela = button.getAttribute('data-parcela');
+            const cosecha = button.getAttribute('data-cosecha');
+            const tipoventa = button.getAttribute('data-tipoventa');
+            const cosechaId = button.getAttribute('data-cosecha-id');
+            const tipoproducto = button.getAttribute('data-tipoproducto');
+            const producto = button.getAttribute('data-producto');
+            const fecha = button.getAttribute('data-fecha');
+            const primera = button.getAttribute('data-primera');
+            const segunda = button.getAttribute('data-segunda');
+            const tercera = button.getAttribute('data-tercera');
+            const total = button.getAttribute('data-total');
+            const estado = button.getAttribute('data-estado');
+            
+            let estadoTexto = '';
+            const btnToggle = document.getElementById('btnToggleEstadoVenta');
+
+           if (estado === "True") {//1
+                estadoTexto = "Pagado";
+                btnToggle.disabled = true; 
+            } else if (estado === "False") {
+                estadoTexto = "Pendiente";
+                btnToggle.disabled = false; 
+            }
+
+            document.getElementById('ventaId').textContent = id;
+            document.getElementById('ventaCliente').textContent = cliente;
+            document.getElementById('ventaParcela').textContent = parcela;
+            document.getElementById('ventaCosecha').textContent = cosecha;
+            document.getElementById('ventaTipoventa').textContent = tipoventa; 
+            document.getElementById('ventaCosechaId').textContent = cosechaId;
+            document.getElementById('ventaTipoProducto').textContent = tipoproducto;
+            document.getElementById('ventaProducto').textContent = producto;
+            document.getElementById('ventaFecha').textContent = fecha;
+            document.getElementById('ventaPrimera').textContent = primera;
+            document.getElementById('ventaSegunda').textContent = segunda;
+            document.getElementById('ventaTercera').textContent = tercera;
+            document.getElementById('ventaTotal').textContent = total;
+            document.getElementById('ventaEstado').textContent = estadoTexto;
+    
+            document.getElementById('btnEditarVenta').href = `/ventas/editar/${id}/`;
+            document.getElementById('formEliminarVenta').action = `/ventas/eliminar/${id}/`;
+            
+            
+            VentaIdActual = id;
+          });
+
+          // Acción para cambiar estado (Finalizar)
+        document.getElementById('btnToggleEstadoVenta').addEventListener('click', () => {
+            if (!VentaIdActual) return;
+
+            fetch(`/ventas/toggle_estadoventa/${VentaIdActual}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Accept': 'application/json'
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.estado !== undefined) {
+                    location.reload();
+                } else {
+                    alert("Error al actualizar estado");
+                }
+            })
+            .catch(() => alert("Fallo en la solicitud al servidor"));
+        });
+
+    }
+});
+</script>
 
 {% if messages %}
   <script>
@@ -261,6 +398,7 @@
 {% endif %}
 
 <script>
+
   document.getElementById('formBusqueda').addEventListener('submit', function (event) {
         const buscar = document.querySelector('input[name="buscar"]').value.trim();
         const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
@@ -282,4 +420,4 @@
     });
 </script>
 
-{% endblock %}
+{% endblock scripts %}

@@ -50,63 +50,103 @@
             </form>
         </div>
     </div>
-</div>
 
-    <!-- Tabla de clientes -->
+
+    <!-- Cards para móviles -->
+    <div class="d-md-none">
+    {% for cliente in entity %}
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+        <h5 class="card-title fw-bold">#{{ cliente.idcliente }} - {{ cliente.nombre }}</h5>
+        <p class="mb-1"><strong>Teléfono:</strong> {{ cliente.telefono }}</p>
+        <p class="mb-1">
+            <strong>Tipo Cliente:</strong>
+            {% if cliente.tipocliente == 'C' %}
+            Comprador
+            {% else %}
+            Proveedor
+            {% endif %}
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+            <button 
+            type="button" 
+            class="btn btn-sm btn-info text-white"
+            data-bs-toggle="modal" 
+            data-bs-target="#modalCliente"
+            data-id="{{ cliente.idcliente }}"
+            data-nombre="{{ cliente.nombre }}"
+            data-telefono="{{ cliente.telefono }}"
+            data-tipocliente="{{ cliente.get_tipocliente_display }}">
+            <i class="bi bi-eye"></i> Detalles
+            </button>
+        </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center">No hay clientes registrados.</div>
+    {% endfor %}
+    {% include "paginacion.html" %}
+    </div>
+
+    <!-- Tabla para escritorio -->
+    <div class="tbl_container d-none d-md-block">
     <div class="table-responsive">
         <table class="table table-bordered table-hover text-center align-middle">
-            <thead class="table-dark">
-                <tr>
-                    <th>Numero</th>
-                    <th>Nombre</th>
-                    <th>Teléfono</th>
-                    <th>Tipo Cliente</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cliente in entity %}
-                <tr>
-                    <td>{{ cliente.idcliente }}</td>
-                    <td>{{ cliente.nombre }}</td>
-                    <td>{{ cliente.telefono }}</td>
-                    <td>
-                        {% if cliente.tipocliente == 'C' %}
-                            Comprador
-                        {% else %}
-                            Proveedor
-                        {% endif %}
-                    </td>
-                    
-                    <td>
-                        <div class="d-flex flex-wrap justify-content-center gap-2">
-                            <!-- Botón Detalles -->
-                            <button 
-                                type="button" 
-                                class="btn btn-info btn-sm text-white"
-                                data-bs-toggle="modal" 
-                                data-bs-target="#modalCliente"
-                                data-id="{{ cliente.idcliente }}"
-                                data-nombre="{{ cliente.nombre }}"
-                                data-telefono="{{ cliente.telefono }}"
-                                data-tipocliente="{{ cliente.get_tipocliente_display }}">
-                                <i class="bi bi-eye"></i> Detalles
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6">No hay clientes registrados.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
+        <thead class="table-dark">
+            <tr>
+            <th>Numero</th>
+            <th>Nombre</th>
+            <th>Teléfono</th>
+            <th>Tipo Cliente</th>
+            <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in entity %}
+            <tr>
+            <td>{{ cliente.idcliente }}</td>
+            <td>{{ cliente.nombre }}</td>
+            <td>{{ cliente.telefono }}</td>
+            <td>
+                {% if cliente.tipocliente == 'C' %}
+                Comprador
+                {% else %}
+                Proveedor
+                {% endif %}
+            </td>
+            <td>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                <button 
+                    type="button" 
+                    class="btn btn-info btn-sm text-white"
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalCliente"
+                    data-id="{{ cliente.idcliente }}"
+                    data-nombre="{{ cliente.nombre }}"
+                    data-telefono="{{ cliente.telefono }}"
+                    data-tipocliente="{{ cliente.get_tipocliente_display }}">
+                    <i class="bi bi-eye"></i> Detalles
+                </button>
+                </div>
+            </td>
+            </tr>
+            {% empty %}
+            <tr>
+            <td colspan="5">No hay clientes registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
         </table>
     </div>
     {% include "paginacion.html" %}
-    
+    </div>
+
+    {% include "paginacion.html" %}
+</div>    
+{% endblock %}
 
 
+{% block modals %}
 <!-- Modal Detalles Cliente -->
 <div class="modal fade" id="modalCliente" tabindex="-1" aria-labelledby="modalClienteLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -151,7 +191,6 @@
   </div>
 </div>
 
-
 <!-- Modal Confirmar Eliminación Cliente -->
 <div class="modal fade" id="modalConfirmarEliminarCliente" tabindex="-1" aria-labelledby="modalConfirmarEliminarClienteLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm">
@@ -177,18 +216,49 @@
         </div>
     </div>
 </div>
-{% if messages %}
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      {% for message in messages %}
-        Swal.fire({
-          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
-          title: "{{ message|escapejs }}",
-          timer: 3000,
-          showConfirmButton: false
+{% endblock modals %}
+
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modalCliente = document.getElementById('modalCliente');
+    if (modalCliente) {
+        modalCliente.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+
+            // Obtener datos del botón
+            const id = button.getAttribute('data-id');
+            const nombre = button.getAttribute('data-nombre');
+            const telefono = button.getAttribute('data-telefono');
+            const tipo = button.getAttribute('data-tipocliente');
+
+            // Insertar en el modal
+            document.getElementById('clienteId').textContent = id;
+            document.getElementById('clienteNombre').textContent = nombre;
+            document.getElementById('clienteTelefono').textContent = telefono;
+            document.getElementById('clienteTipo').textContent = tipo;
+
+            // Set links
+            document.getElementById('btnEditarCliente').href = `/clientes/editar/${id}/`;
+            document.getElementById('formEliminarCliente').action = `/clientes/eliminar/${id}/`;
         });
-      {% endfor %}
-    });
-  </script>
+    }
+});
+</script>
+
+{% if messages %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    {% for message in messages %}
+      Swal.fire({
+        icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
+        title: "{{ message|escapejs }}",
+        timer: 3000,
+        showConfirmButton: false
+      });
+    {% endfor %}
+  });
+</script>
 {% endif %}
-{% endblock %}
+{% endblock scripts %}

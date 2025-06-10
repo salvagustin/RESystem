@@ -4,7 +4,6 @@
 
 {% block content %}
 {% load static %}
-
 <div class="container py-2">
   <!-- Título -->
   <div class="text-center mb-3">
@@ -50,10 +49,50 @@
       </form>
     </div>
   </div>
-</div>
+
+  <!-- Cards para móviles -->
+  <div class="d-md-none">
+  {% for item in entity %}
+    {% with parcela=item.parcela %}
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title fw-bold">#{{ parcela.idparcela }} - {{ parcela.nombre }}</h5>
+        <p class="mb-1"><strong>Tipo:</strong> {{ parcela.get_tipoparcela_display }}</p>
+        <p class="mb-1">
+          <strong>Estado:</strong>
+          {% if parcela.estado %}
+            <span class="badge bg-danger">Ocupada</span>
+          {% else %}
+            <span class="badge bg-success">Disponible</span>
+          {% endif %}
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <button 
+            type="button" 
+            class="btn btn-sm btn-info text-white"
+            data-bs-toggle="modal" 
+            data-bs-target="#modalParcela"
+            data-id="{{ parcela.idparcela }}"
+            data-nombre="{{ parcela.nombre }}"
+            data-tipo="{{ parcela.get_tipoparcela_display }}"
+            data-estado="{{ parcela.estado }}"
+            data-cultivos="{{ item.cultivos|join:', ' }}"
+            data-plantas="{{ item.total_plantas }}"
+            data-cosechas="{{ item.total_cosechas }}"
+            data-vendido="{{ item.total_vendido }}">
+            <i class="bi bi-eye"></i> Detalles
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endwith %}
+  {% endfor %}
+  {% include "paginacion.html" %}
+  </div>
 
 
-
+  <!-- Tabla para escritorio -->
+<div class="tbl_container d-none d-md-block">
   <div class="table-responsive">
     <table class="table table-bordered table-hover text-center align-middle">
       <thead class="table-dark">
@@ -62,41 +101,52 @@
           <th>Nombre</th>
           <th>Tipo</th>
           <th>Estado</th>
+          <th>Cortes</th>
+          <th>Vendido</th>
           <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
-        {% for parcela in entity %}
-        <tr>
-          <td>{{ parcela.idparcela }}</td>
-          <td>{{ parcela.nombre }}</td>
-          <td>{{ parcela.get_tipoparcela_display }}</td>
-          <td id="estado-{{ parcela.idparcela }}">
-            {% if parcela.estado %}
-              <span class="badge bg-success">Activo</span>
-            {% else %}
-              <span class="badge bg-danger">Finalizada</span>
-            {% endif %}
-          <td>
-            <div class="d-flex flex-wrap justify-content-center gap-2">
-              <button 
-                type="button" 
-                class="btn btn-info btn-sm text-white"
-                data-bs-toggle="modal" 
-                data-bs-target="#modalParcela"
-                data-id="{{ parcela.idparcela }}"
-                data-nombre="{{ parcela.nombre }}"
-                data-tipo="{{ parcela.get_tipoparcela_display }}"
-                data-estado="{{ parcela.estado }}">
-                <i class="bi bi-eye"></i> Detalles
-              </button>
-            </div>
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="3">No hay parcelas registradas.</td>
-        </tr>
+        {% for item in entity %}
+          {% with parcela=item.parcela %}
+            <tr>
+              <td>{{ parcela.idparcela }}</td>
+              <td>{{ parcela.nombre }}</td>
+              <td>{{ parcela.get_tipoparcela_display }}</td>
+              <td id="estado-{{ parcela.idparcela }}">
+                {% if parcela.estado %}
+                  <span class="badge bg-danger">Ocupada</span>
+                {% else %}
+                  <span class="badge bg-success">Disponible</span>
+                {% endif %}
+              </td>
+
+              <!-- Estas nuevas columnas necesitan pasarse desde tu vista -->
+              <td>{{ item.total_cosechas }}</td>
+              <td>${{ item.total_vendido|floatformat:2 }}</td>
+
+              <td>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                  <button 
+                    type="button" 
+                    class="btn btn-info btn-sm text-white"
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalParcela"
+                    data-id="{{ parcela.idparcela }}"
+                    data-nombre="{{ parcela.nombre }}"
+                    data-tipo="{{ parcela.get_tipoparcela_display }}"
+                    data-estado="{{ parcela.estado }}"
+                    data-cultivos="{{ item.cultivos }}"
+                    data-plantas="{{ item.total_plantas }}"
+                    data-cosechas="{{ item.total_cosechas }}"
+                    data-vendido="{{ item.total_vendido|floatformat:2 }}">
+                    <i class="bi bi-eye"></i> Detalles
+                  </button>
+                </div>
+              </td>
+            </tr>
+            
+          {% endwith %}
         {% endfor %}
       </tbody>
     </table>
@@ -104,6 +154,13 @@
   {% include "paginacion.html" %}
 </div>
 
+
+  {% include "paginacion.html" %}
+ </div> 
+{% endblock %}
+
+
+{% block modals %}
 <!-- Modal Detalles de Parcela -->
 <div class="modal fade" id="modalParcela" tabindex="-1" aria-labelledby="modalParcelaLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -123,12 +180,16 @@
             <div class="col-md-6">
               <p><strong>🆔 Número:</strong> <span id="parcelaId"></span></p>
               <p><strong>📛 Nombre:</strong> <span id="parcelaNombre"></span></p>
+              <p><strong>🌱 Cultivos:</strong> <span id="parcelaCultivos"></span></p>
             </div>
-            
+
             <!-- Columna derecha -->
             <div class="col-md-6">
               <p><strong>📦 Tipo:</strong> <span id="parcelaTipo"></span></p>
-              <p><strong>🔁 Estado:</strong> <span id="parcelaEstado" ></span></p>
+              <p><strong>🔁 Estado:</strong> <span id="parcelaEstado"></span></p>
+              <p><strong>🧮 Plantas:</strong> <span id="parcelaPlantas"></span></p>
+              <p><strong>🧺 Cosechas:</strong> <span id="parcelaCosechas"></span></p>
+              <p><strong>💰 Vendido:</strong> $<span id="parcelaVendido"></span></p>
             </div>
           </div>
         </div>
@@ -153,7 +214,6 @@
   </div>
 </div>
 
-
 <!-- Modal Confirmar Eliminación -->
 <div class="modal fade" id="modalConfirmarEliminarParcela" tabindex="-1">
   <div class="modal-dialog modal-sm">
@@ -175,14 +235,44 @@
       </div>
   </div>
 </div>
+{% endblock modals %}
+
+{% block scripts %}
 <script>
-  // Botón para ir al formulario de nueva plantación
-document.getElementById("btnIrFormulario").addEventListener("click", function () {
-    const parcelaId = document.getElementById("selectParcela").value;
-    if (parcelaId) {
-        window.location.href = `/plantaciones/crear/?parcela_id=${parcelaId}`;
-    } else {
-        alert("Debes seleccionar una parcela.");
+document.addEventListener('DOMContentLoaded', function() {
+  const modalParcela = document.getElementById('modalParcela');
+    if (modalParcela) {
+        modalParcela.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+    
+            const id = button.getAttribute('data-id');
+            const nombre = button.getAttribute('data-nombre');
+            const tipo = button.getAttribute('data-tipo');
+            const estado = button.getAttribute('data-estado');
+            const cultivos = button.getAttribute('data-cultivos');
+            const plantas = button.getAttribute('data-plantas');
+            const cosechas = button.getAttribute('data-cosechas');
+            const vendido = button.getAttribute('data-vendido');
+            let estadoTexto = '';
+
+            if (estado === "False") {
+                estadoTexto = "Disponible";
+            } else if (estado === "True") {
+                estadoTexto = "Ocupada";
+            }
+            document.getElementById('parcelaId').textContent = id;
+            document.getElementById('parcelaNombre').textContent = nombre;
+            document.getElementById('parcelaTipo').textContent = tipo;
+            document.getElementById('parcelaEstado').textContent = estadoTexto;
+            document.getElementById('parcelaEstado').textContent = estadoTexto;
+            document.getElementById('parcelaCultivos').textContent = cultivos ? cultivos : 'Ninguno';
+            document.getElementById('parcelaPlantas').textContent = plantas ? plantas : '0';
+            document.getElementById('parcelaCosechas').textContent = cosechas ? cosechas : '0';
+            document.getElementById('parcelaVendido').textContent = vendido ? vendido : '0';
+            
+            document.getElementById('btnEditarParcela').href = `/parcelas/editar/${id}/`;
+            document.getElementById('formEliminarParcela').action = `/parcelas/eliminar/${id}/`;
+        });
     }
 });
 </script>
@@ -201,6 +291,5 @@ document.getElementById("btnIrFormulario").addEventListener("click", function ()
     });
   </script>
 {% endif %}
+{% endblock scripts %}
 
-
-{% endblock %}

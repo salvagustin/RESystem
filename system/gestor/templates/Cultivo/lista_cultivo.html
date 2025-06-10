@@ -47,56 +47,93 @@
         </div>
       </form>
     </div>
+
+    
   </div>
-</div>
 
-
-
-    <!-- Tabla de cultivos -->
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover text-center align-middle">
-            <thead class="table-dark">
-                <tr>
-                    <th>Numero</th>
-                    <th>Nombre</th>
-                    <th>Variedad</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cultivo in entity %}
-                <tr>
-                    <td>{{ cultivo.idcultivo }}</td>
-                    <td>{{ cultivo.nombre }}</td>
-                    <td>{{ cultivo.variedad }}</td>
-                    <td>
-                        <div class="d-flex flex-wrap justify-content-center gap-2">
-
-                            <!-- Botón Detalles -->
-                            <button 
-                                type="button" 
-                                class="btn btn-info btn-sm text-white"
-                                data-bs-toggle="modal" 
-                                data-bs-target="#modalCultivo"
-                                data-id="{{ cultivo.idcultivo }}"
-                                data-nombre="{{ cultivo.nombre }}"
-                                data-variedad="{{ cultivo.variedad }}">
-                                <i class="bi bi-eye"></i> Detalles
-                            </button>
-
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3">No hay cultivos registrados.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+  <!-- Cards para móviles -->
+  <div class="d-md-none">
+    {% for item in entity %}
+    {% with cultivo=item.cultivo %}
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title fw-bold">#{{ cultivo.idcultivo }} - {{ cultivo.nombre }}</h5>
+        <p class="mb-1"><strong>Variedad:</strong> {{ cultivo.variedad }}</p>
+        <div class="d-flex flex-wrap gap-2">
+          <button 
+            type="button" 
+            class="btn btn-sm btn-info text-white"
+            data-bs-toggle="modal" 
+            data-bs-target="#modalCultivo"
+            data-id="{{ cultivo.idcultivo }}"
+            data-nombre="{{ cultivo.nombre }}"
+            data-variedad="{{ cultivo.variedad }}"
+            data-plantas="{{ item.total_plantas }}"
+            data-cosechas="{{ item.total_cosechas }}"
+            data-vendido="{{ item.total_vendido }}">>
+            <i class="bi bi-eye"></i> Detalles
+          </button>
+        </div>
+      </div>
     </div>
-</div>
+    {% endwith %}
+    {% endfor %}
+    {% include "paginacion.html" %}
+  </div>
 
+  <!-- Tabla para escritorio -->
+  <div class="tbl_container d-none d-md-block">
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover text-center align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Numero</th>
+            <th>Nombre</th>
+            <th>Variedad</th>
+            <th>Cortes</th>
+            <th>Vendido</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in entity %}
+          {% with cultivo=item.cultivo %}
+          <tr>
+            <td>{{ cultivo.idcultivo }}</td>
+            <td>{{ cultivo.nombre }}</td>
+            <td>{{ cultivo.variedad }}</td>
+            <td>{{ item.total_cosechas }}</td>
+            <td>${{ item.total_vendido|floatformat:2 }}</td>
+            <td>
+              <div class="d-flex flex-wrap justify-content-center gap-2">
+                <button 
+                  type="button" 
+                  class="btn btn-info btn-sm text-white"
+                  data-bs-toggle="modal" 
+                  data-bs-target="#modalCultivo"
+                  data-id="{{ cultivo.idcultivo }}"
+                  data-nombre="{{ cultivo.nombre }}"
+                  data-variedad="{{ cultivo.variedad }}"
+                  data-plantas="{{ item.total_plantas }}"
+                  data-cosechas="{{ item.total_cosechas }}"
+                  data-vendido="{{ item.total_vendido }}">
+                  <i class="bi bi-eye"></i> Detalles
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "paginacion.html" %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block modals %}
 <!-- Modal Detalles de Cultivo -->
 <div class="modal fade" id="modalCultivo" tabindex="-1" aria-labelledby="modalCultivoLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -116,12 +153,14 @@
             <div class="col-md-6">
               <p><strong>🆔 Número:</strong> <span id="cultivoId"></span></p>
               <p><strong>📛 Nombre:</strong> <span id="cultivoNombre"></span></p>
+              <p><strong>🪴 Total Plantado:</strong> <span id="cultivoPlantado"></span></p>
+              <p><strong>📦 Número de Cortes:</strong> <span id="cultivoCosechas"></span></p>
             </div>
 
             <!-- Columna derecha -->
             <div class="col-md-6">
               <p><strong>🌿 Variedad:</strong> <span id="cultivoVariedad"></span></p>
-              <!-- Si agregas más campos como tipo, estado, etc., puedes seguir aquí -->
+              <p><strong>💵 Total Vendido:</strong> $<span id="cultivoTotalVendido"></span></p>
             </div>
           </div>
         </div>
@@ -168,6 +207,36 @@
       </div>
   </div>
 </div>
+{% endblock modals %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const modalCultivo = document.getElementById('modalCultivo');
+    if (modalCultivo) {
+        modalCultivo.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+    
+            const id = button.getAttribute('data-id');
+            const nombre = button.getAttribute('data-nombre');
+            const variedad = button.getAttribute('data-variedad');
+            const plantado = button.getAttribute('data-plantas');
+            const cosechas = button.getAttribute('data-cosechas');
+            const totalVendido = button.getAttribute('data-vendido');
+
+            document.getElementById('cultivoId').textContent = id;
+            document.getElementById('cultivoNombre').textContent = nombre;
+            document.getElementById('cultivoVariedad').textContent = variedad;
+            document.getElementById('cultivoPlantado').textContent = plantado;
+            document.getElementById('cultivoCosechas').textContent = cosechas;
+            document.getElementById('cultivoTotalVendido').textContent = totalVendido;
+    
+            document.getElementById('btnEditarCultivo').href = `/cultivos/editar/${id}/`;
+            document.getElementById('formEliminarCultivo').action = `/cultivos/eliminar/${id}/`;
+        });
+    }
+});   
+</script>
 {% if messages %}
   <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -182,4 +251,4 @@
     });
   </script>
 {% endif %}
-{% endblock %}
+{% endblock scripts %}

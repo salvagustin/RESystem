@@ -30,7 +30,11 @@
 
                         <div class="d-flex justify-content-between mt-3">
                             <a href="{% url 'lista_cosechas' %}" class="btn btn-secondary">Cancelar</a>
+                            {% if form.instance.pk %}
+
+                            {% else %}
                             <a href="#" class="btn btn-success" id="btnVender">Vender</a>
+                            {% endif %}
                             <button type="submit" class="btn btn-primary">
                                 {% if form.instance.pk %} Actualizar {% else %} Guardar {% endif %}
                             </button>

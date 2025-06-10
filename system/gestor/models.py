@@ -7,7 +7,7 @@ class Parcela(models.Model):
     nombre = models.CharField('Nombre', max_length=300)
     Opciones = (("A", "Campo abierto"), ("M", "Malla"))
     tipoparcela =  models.CharField('Tipo', max_length=1, choices=Opciones, blank=False, null=False)
-    estado = models.BooleanField('Estado', default=True)
+    estado = models.BooleanField('Estado', default=False)
     def __str__(self):
         return f"{self.nombre}"
 
@@ -25,7 +25,16 @@ class Plantacion(models.Model):
     cultivo = models.ForeignKey(Cultivo, on_delete=models.CASCADE, verbose_name="Cultivo")
     fecha = models.DateField('Fecha de plantacion', auto_now_add=True)
     cantidad = models.IntegerField('Cantidad de plantas', blank=False, null=False)
-    estado = models.BooleanField('Estado', default=True)
+    estado = models.BooleanField('Estado', default=False)  # False=Activa por defecto
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if is_new:
+            # Al crear una nueva plantación, marcar la parcela como ocupada
+            self.parcela.estado = True
+            self.parcela.save()
+
     def __str__(self):
         return f"{self.parcela}, {self.cultivo.nombre}, {self.fecha}"
 

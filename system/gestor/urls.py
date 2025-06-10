@@ -25,6 +25,8 @@ urlpatterns = [
     path('cosechas/crear/', views.crear_cosecha , name='crear_cosecha'),
     path('cosechas/editar/<int:idcosecha>/', views.editar_cosecha, name='editar_cosecha'),
     path('cosechas/eliminar/<int:idcosecha>/', views.eliminar_cosecha, name='eliminar_cosecha'),
+    path('cosechas/cerrar/<int:id>/', views.cerrar_cosecha, name='cerrar_cosecha'),
+
 
 
     path('clientes/', views.lista_clientes, name='lista_clientes'),
@@ -39,4 +41,6 @@ urlpatterns = [
     path('ventas/eliminar/<int:idventa>/', views.eliminar_venta, name='eliminar_venta'),
     path('ventas/toggle_estadoventa/<int:idventa>/', views.toggle_estado_venta, name='toggle_estado_venta'),
 
+
+    path('dashboard/', views.dashboard_view, name='dashboard'),
 ]

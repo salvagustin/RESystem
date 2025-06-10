@@ -1,86 +1,697 @@
-{% load static %}
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Hortalizas{% block title %}{% endblock %}</title>
-
+    <title>Sistema de Hortalizas</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <link rel="stylesheet" href="{% static 'crispy-forms/css/crispy.css' %}">
-
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    <!-- Tu CSS -->
-    <link rel="stylesheet" href="{% static 'style.css' %}">
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* HEADER */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1001;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .body-sidebar-open .header {
+            left: 280px;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #2c3e50;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            margin-right: 15px;
+        }
+
+        .menu-btn:hover {
+            background: rgba(108, 117, 125, 0.1);
+            transform: scale(1.1);
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            z-index: 1600;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-shadow: 5px 0 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header h3 {
+            color: #fff;
+            font-size: 22px;
+            font-weight: 600;
+            text-align: center;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .sidebar-header h3::before {
+            content: "🌱";
+            font-size: 28px;
+        }
+
+        /* MENU ITEMS */
+        .sidebar-menu {
+            list-style: none;
+            padding: 20px 0;
+        }
+
+        .menu-item {
+            margin: 0;
+        }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+        }
+
+        .menu-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-left-color: #3498db;
+            transform: translateX(5px);
+        }
+
+        .menu-link.active {
+            background: rgba(52, 152, 219, 0.2);
+            color: #fff;
+            border-left-color: #3498db;
+        }
+
+        .menu-link i {
+            width: 24px;
+            font-size: 18px;
+            margin-right: 15px;
+            text-align: center;
+        }
+
+        /* DROPDOWN */
+        .dropdown-menu-custom {
+            max-height: 0;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.2);
+            transition: all 0.4s ease;
+            list-style: none;
+        }
+
+        .dropdown.active .dropdown-menu-custom {
+            max-height: 300px;
+        }
+
+        .dropdown .menu-link .dropdown-arrow {
+            margin-left: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .dropdown.active .menu-link .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu-custom .menu-link {
+            padding: 12px 25px 12px 55px;
+            font-size: 14px;
+            border-left: none;
+        }
+
+        .dropdown-menu-custom .menu-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(10px);
+        }
+
+        /* OVERLAY - Z-INDEX CORREGIDO */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* OCULTAR OVERLAY CUANDO HAY UN MODAL ACTIVO */
+        .modal-open .overlay {
+            display: none !important;
+        }
+
+        /* AJUSTAR SIDEBAR CUANDO HAY MODALS */
+        .modal-open .sidebar {
+            z-index: 1030;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            margin-top: 70px;
+            padding: 30px 20px;
+            transition: all 0.4s ease;
+            min-height: calc(100vh - 70px);
+        }
+
+        .body-sidebar-open .main-content {
+            margin-left: 280px;
+        }
+
+        .content-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .welcome-title {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .welcome-subtitle {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        /* STATUS INDICATOR */
+        .sidebar-status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            text-align: center;
+            color: #ecf0f1;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #27ae60;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* SCROLLBAR */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .body-sidebar-open .header {
+                left: 0;
+            }
+            
+            .body-sidebar-open .main-content {
+                margin-left: 0;
+            }
+            
+            .content-card {
+                padding: 20px;
+            }
+            
+            .welcome-title {
+                font-size: 2rem;
+            }
+        }
+
+        /* ANIMATIONS */
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .content-card {
+            animation: slideInRight 0.6s ease;
+        }
+
+        /* BOOTSTRAP MODAL Z-INDEX FIXES - ESTA ES LA PARTE CLAVE */
+        .modal {
+            z-index: 1055; /* Bootstrap por defecto */
+        }
+        .modal-backdrop {
+            z-index: 1050;
+        }
+
+
+        /* Asegurar que otros elementos no interfieran */
+        .modal-open .header {
+            z-index: 1000 !important;
+        }
+
+        .modal-open .sidebar {
+            z-index: 1000 !important;
+        }
+
+        /* Fix adicional para evitar problemas con el backdrop personalizado */
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        /* Ocultar completamente el overlay del sidebar cuando un modal está activo
+        body.modal-open .overlay {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        } ...existing code... */
+
+        /* Ocultar completamente el overlay del sidebar cuando un modal está activo */
+        body.modal-open .overlay {
+            display: none !important;
+        }
+    </style>
+    
+
 </head>
 <body>
+    <!-- HEADER -->
+    <header class="header">
+        <button class="menu-btn" id="menuBtn">
+            <i class="bi bi-list"></i>
+        </button>
+        <h1 class="header-title">System</h1>
+    </header>
 
-<!-- BOTÓN para abrir el menú -->
-<button id="menu-btn">☰</button>
-
-<!-- SIDEBAR (menú lateral) -->
-<nav id="sidebar">
-    <div class="sidebar-header">
-        <h3>Hortalizas</h3>
-    </div>
-    <ul>
-        <li><a href="{% url 'inicio' %}">Inicio</a></li>
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hortalizas Pro</h3>
+        </div>
         
-    
-        <!-- Submenú Administración -->
-        <li class="dropdown">
-            <a href="#" class="dropdown-toggle" id="adminToggle">Administración <i class="bi bi-caret-down-fill"></i></a>
-            <ul class="dropdown-menu-custom">
-                <li><a href="{% url 'lista_parcelas' %}">Parcelas</a></li>
-                <li><a href="{% url 'lista_cultivos' %}">Cultivos</a></li>
-                <li><a href="{% url 'lista_plantaciones' %}">Plantación</a></li>
-                <li><a href="{% url 'lista_cosechas' %}">Cortes</a></li>
-            </ul>
-        </li>
-    
-        <!-- Otros ítems -->
-        <li><a href="{% url 'lista_clientes' %}">Clientes</a></li>
-        <li><a href="{% url 'lista_ventas' %}">Ventas</a></li>
-        <li><a href="#">Compras</a></li>
-        <li class="dropdown2">
-            <a href="#" class="dropdown-toggle" id="adminToggle2">Mercado Formal <i class="bi bi-caret-down-fill"></i></a>
-            <ul class="dropdown-menu-custom">
-                <li><a href="#">Clientes</a></li>
-                <li><a href="#">Entregas</a></li>
-                <li><a href="#">Ventas</a></li>
-                <li><a href="#">......</a></li>
-            </ul>
-        </li>
-        <li><a href="#">Reportes</a></li>
-        <li><a href="#">Control Calidad</a></li>
-        <li><a href="#">Producción</a></li>
-        <li><a href="#">Cafe</a></li>
-        <li><a href="#">Planillas</a></li>
-    </ul>
-    
-</nav>
+        <ul class="sidebar-menu">
+            <li class="menu-item">
+                <a href="/" class="menu-link active">
+                    <i class="bi bi-house-door"></i>
+                    Inicio
+                </a>
+            </li>
+            
+            <li class="menu-item dropdown" id="adminDropdown">
+                <a href="#" class="menu-link">
+                    <i class="bi bi-gear"></i>
+                    Administración
+                    <i class="bi bi-chevron-down dropdown-arrow"></i>
+                </a>
+                <ul class="dropdown-menu-custom">
+                    <li><a href="{% url 'lista_parcelas' %}" class="menu-link">Parcelas</a></li>
+                    <li><a href="{% url 'lista_cultivos' %}" class="menu-link">Cultivos</a></li>
+                    <li><a href="{% url 'lista_plantaciones' %}" class="menu-link">Plantación</a></li>
+                    <li><a href="{% url 'lista_cosechas' %}" class="menu-link">Cortes</a></li>
+                </ul>
+            </li>
+            
+            <li class="menu-item">
+                <a href="{% url 'lista_clientes' %}" class="menu-link">
+                    <i class="bi bi-people"></i>
+                    Clientes
+                </a>
+            </li>
+            
+            <li class="menu-item">
+                <a href="{% url 'lista_ventas' %}" class="menu-link">
+                    <i class="bi bi-cart-check"></i>
+                    Ventas
+                </a>
+            </li>
+            
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="bi bi-bag"></i>
+                    Compras
+                </a>
+            </li>
+            
+            <li class="menu-item dropdown" id="marketDropdown">
+                <a href="#" class="menu-link">
+                    <i class="bi bi-shop"></i>
+                    Mercado Formal
+                    <i class="bi bi-chevron-down dropdown-arrow"></i>
+                </a>
+                <ul class="dropdown-menu-custom">
+                    <li><a href="#" class="menu-link">Clientes</a></li>
+                    <li><a href="#" class="menu-link">Entregas</a></li>
+                    <li><a href="#" class="menu-link">Ventas</a></li>
+                    <li><a href="#" class="menu-link">Contratos</a></li>
+                </ul>
+            </li>
+            
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="bi bi-graph-up"></i>
+                    Reportes
+                </a>
+            </li>
+            
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="bi bi-shield-check"></i>
+                    Control Calidad
+                </a>
+            </li>
+            
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="bi bi-factory"></i>
+                    Producción
+                </a>
+            </li>
+            
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="bi bi-cup-hot"></i>
+                    Café
+                </a>
+            </li>
+            
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="bi bi-file-spreadsheet"></i>
+                    Planillas
+                </a>
+            </li>
+        </ul>
+        
+        <div class="sidebar-status">
+            <span class="status-dot"></span>
+            Sistema Activo
+        </div>
+    </nav>
 
-<!-- Fondo oscuro cuando el menú está abierto -->
-<div id="overlay"></div>
+    <!-- OVERLAY -->
+    <div class="overlay" id="overlay"></div>
 
-<!-- CONTENIDO PRINCIPAL -->
-<div id="main-content"> 
-    {% block content %}
-    <h1>Bienvenido al sistema</h1>
-    {% endblock %}
-</div>
-<!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<!-- Bootstrap Bundle (JS + Popper) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- MAIN CONTENT -->
+    <main class="main-content" id="mainContent">
+        <div class="content-card">
+            <div class="row">
+                <!-- CONTENIDO PRINCIPAL -->
+                <div id="main-content"> 
+                    {% block content %}
+                    <h1>Bienvenido al sistema</h1>
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </main>
 
-<!-- Tu JS -->
-<script src="{% static 'script.js' %}"></script>
+    <!-- Contenedor para modales fuera del main-content -->
+    <div id="modals-container">
+        {% block modals %}
+        {% endblock %}
+    </div>
+    {% block scripts %}{% endblock scripts %}
+
+    <!-- Bootstrap Bundle (JS + Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Variables globales
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const menuBtn = document.getElementById('menuBtn');
+        const body = document.body;
+        
+        // Función para abrir/cerrar sidebar
+        function toggleSidebar() {
+            const isOpen = sidebar.classList.contains('active');
+            
+            if (isOpen) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        }
+        
+        function openSidebar() {
+            sidebar.classList.add('active');
+            overlay.classList.add('active');
+            body.classList.add('body-sidebar-open');
+            // Guardar estado en localStorage
+            localStorage.setItem('sidebarState', 'open');
+        }
+        
+        function closeSidebar() {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            body.classList.remove('body-sidebar-open');
+            // Guardar estado en localStorage
+            localStorage.setItem('sidebarState', 'closed');
+        }
+        
+        // Event listeners
+        menuBtn.addEventListener('click', toggleSidebar);
+        overlay.addEventListener('click', closeSidebar);
+        
+        // MANEJO MEJORADO DE MODALS DE BOOTSTRAP
+        document.addEventListener('DOMContentLoaded', function() {
+            // Función para cerrar sidebar cuando se abre un modal
+            function handleModalShow() {
+                if (sidebar.classList.contains('active')) {
+                    closeSidebar();
+                }
+            }
+            
+            // Escuchar todos los eventos de modal
+            document.addEventListener('show.bs.modal', handleModalShow);
+            
+            // También manejar modals que se crean dinámicamente
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1 && node.classList && node.classList.contains('modal')) {
+                                node.addEventListener('show.bs.modal', handleModalShow);
+                            }
+                        });
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
+        
+        // Manejar dropdowns
+        document.querySelectorAll('.dropdown > .menu-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const dropdown = this.parentElement;
+                const isActive = dropdown.classList.contains('active');
+                
+                // Cerrar todos los dropdowns
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    d.classList.remove('active');
+                });
+                
+                // Abrir el dropdown clickeado si no estaba activo
+                if (!isActive) {
+                    dropdown.classList.add('active');
+                    // Guardar estado del dropdown
+                    localStorage.setItem(`dropdown-${dropdown.id}`, 'open');
+                } else {
+                    localStorage.setItem(`dropdown-${dropdown.id}`, 'closed');
+                }
+            });
+        });
+        
+        // Manejar links activos
+        document.querySelectorAll('.menu-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                // No manejar clicks de dropdown toggles
+                if (this.querySelector('.dropdown-arrow')) return;
+                
+                // Remover clase active de todos los links
+                document.querySelectorAll('.menu-link').forEach(l => {
+                    l.classList.remove('active');
+                });
+                
+                // Agregar clase active al link clickeado
+                this.classList.add('active');
+                
+                // Guardar link activo
+                localStorage.setItem('activeLink', this.textContent.trim());
+                
+                // En dispositivos móviles, cerrar sidebar después de click
+                if (window.innerWidth <= 768) {
+                    setTimeout(closeSidebar, 300);
+                }
+            });
+        });
+        
+        // Restaurar estado del sidebar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarState = localStorage.getItem('sidebarState');
+            
+            // En desktop, mantener sidebar abierto por defecto
+            if (window.innerWidth > 768) {
+                if (sidebarState !== 'closed') {
+                    openSidebar();
+                }
+            }
+            
+            // Restaurar dropdowns activos
+            document.querySelectorAll('.dropdown').forEach(dropdown => {
+                const dropdownState = localStorage.getItem(`dropdown-${dropdown.id}`);
+                if (dropdownState === 'open') {
+                    dropdown.classList.add('active');
+                }
+            });
+            
+            // Restaurar link activo
+            const activeLink = localStorage.getItem('activeLink');
+            if (activeLink) {
+                document.querySelectorAll('.menu-link').forEach(link => {
+                    if (link.textContent.trim() === activeLink && !link.querySelector('.dropdown-arrow')) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+        
+        // Manejar redimensionamiento de ventana
+        window.addEventListener('resize', function() {
+            if (window.innerWidth <= 768) {
+                body.classList.remove('body-sidebar-open');
+            } else {
+                const sidebarState = localStorage.getItem('sidebarState');
+                if (sidebarState !== 'closed') {
+                    body.classList.add('body-sidebar-open');
+                }
+            }
+        });
+        
+        // Cerrar sidebar con tecla Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+                closeSidebar();
+            }
+        });
+        
+        // Prevenir scroll del body cuando sidebar está abierto en móvil
+        sidebar.addEventListener('touchmove', function(e) {
+            e.stopPropagation();
+        }, { passive: false });
+        
+        overlay.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </body>
 </html>
