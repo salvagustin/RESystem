@@ -2,7 +2,7 @@
 FROM python:3.11-slim
 
 # Establece el directorio de trabajo
-WORKDIR /app
+WORKDIR /system
 
 # Copia todo el contenido del proyecto (excepto lo que esté en .dockerignore)
 COPY . .
