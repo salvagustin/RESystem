@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-tso!0&8fln0l^^_0o#!w=+9rq@rw8eu=y35j=fxc3hvr9dghw3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost','34.95.40.193']
+ALLOWED_HOSTS = []
+
 LOGIN_REDIRECT_URL='/'
 LOGOUT_REDIRECT_URL='/'
 
@@ -42,6 +43,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'gestor',
+    'bootstrap5',
+    'jquery',
+    'bootstrap_datepicker_plus',
+    'crispy_forms',
+    'crispy_bootstrap5',
+
 ]
 
 MIDDLEWARE = [
