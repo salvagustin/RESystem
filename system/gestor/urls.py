@@ -1,9 +1,11 @@
 from django.urls import path
+from django.contrib.auth import views as auth_views
 from gestor.views import *
 from . import views
 
 urlpatterns = [
     path('', inicio, name='inicio'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='inicio'), name='logout'),
     path('parcelas/', views.lista_parcelas, name='lista_parcelas'),
     path('parcelas/crear/', views.crear_parcela, name='crear_parcela'),
     path('parcelas/editar/<int:pk>/', views.editar_parcela, name='editar_parcela'),

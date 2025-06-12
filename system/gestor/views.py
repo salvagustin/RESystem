@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import Http404, JsonResponse, HttpResponseNotAllowed, HttpResponse
 from django.db.models import Sum, Count, DecimalField
 from django.http import HttpResponse
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from collections import defaultdict
 from decimal import Decimal
 from django.contrib import messages
@@ -102,7 +102,9 @@ def dashboard_view(request):
     return render(request, 'reportes.html')
 
 
- 
+
+
+
 @login_required
 def lista_parcelas(request):
     filtro = request.GET.get('filtro', 'nombre')
@@ -173,6 +175,9 @@ def crear_parcela(request):
 
 @login_required
 def editar_parcela(request, pk):
+    if not request.user.has_perm('gestor.change_parcela'):
+        messages.error(request, "No tienes permiso para editar parcelas.")
+        return redirect('inicio') 
     parcela = get_object_or_404(Parcela, pk=pk)
     if request.method == 'POST':
         form = ParcelaForm(request.POST, instance=parcela)
@@ -185,6 +190,9 @@ def editar_parcela(request, pk):
 
 @login_required
 def eliminar_parcela(request, pk):
+    if not request.user.has_perm('gestor.delete_parcela'):
+        messages.error(request, "No tienes permiso para eliminar parcelas.")
+        return redirect('inicio') 
     parcela = get_object_or_404(Parcela, pk=pk)
 
     if request.method == 'POST':
@@ -266,6 +274,9 @@ def crear_cultivo(request):
 # Editar un cultivo existente
 @login_required
 def editar_cultivo(request, idcultivo):
+    if not request.user.has_perm('gestor.change_cultivo'):
+        messages.error(request, "No tienes permiso para editar cultivos.")
+        return redirect('inicio') 
     cultivo = get_object_or_404(Cultivo, pk=idcultivo)
     if request.method == 'POST':
         form = CultivoForm(request.POST, instance=cultivo)
@@ -279,6 +290,9 @@ def editar_cultivo(request, idcultivo):
 # Eliminar un cultivo
 @login_required
 def eliminar_cultivo(request, idcultivo):
+    if not request.user.has_perm('gestor.delete_cultivo'):
+        messages.error(request, "No tienes permiso para eliminar cultivos.")
+        return redirect('inicio') 
     cultivo = get_object_or_404(Cultivo, pk=idcultivo)
     if request.method == 'POST':
         if Plantacion.objects.filter(cultivo=cultivo).exists():
@@ -360,13 +374,16 @@ def lista_plantaciones(request):
 @login_required
 @require_POST
 def toggle_estado_plantacion(request, idplantacion):
+    if not request.user.has_perm('gestor.change_plantacion'):
+        messages.error(request, "No tienes permiso para editar plantaciones.")
+        return redirect('inicio') 
     try:
         plantacion = Plantacion.objects.select_related('parcela').get(pk=idplantacion)
 
         # Cambiar el estado de la plantación
         plantacion.estado = not plantacion.estado
         plantacion.save()
-
+        messages.success(request, f"El estado de la plantación en parcela '{plantacion.parcela.nombre}' ha sido actualizado.")
         parcela = plantacion.parcela
 
         # Si no hay más plantaciones activas en la parcela, se marca como disponible
@@ -405,6 +422,9 @@ def crear_plantacion(request):
 # Editar una plantación existente
 @login_required
 def editar_plantacion(request, idplantacion):
+    if not request.user.has_perm('gestor.change_plantacion'):
+        messages.error(request, "No tienes permiso para editar plantaciones.")
+        return redirect('inicio') 
     plantacion = get_object_or_404(Plantacion, pk=idplantacion)
     if request.method == 'POST':
         form = PlantacionForm(request.POST, instance=plantacion)
@@ -418,6 +438,9 @@ def editar_plantacion(request, idplantacion):
 # Eliminar una plantación
 @login_required
 def eliminar_plantacion(request, idplantacion):
+    if not request.user.has_perm('gestor.change_plantacion'):
+        messages.error(request, "No tienes permiso para eliminar plantaciones.")
+        return redirect('inicio') 
     plantacion = get_object_or_404(Plantacion, pk=idplantacion)
     if request.method == 'POST':
         if Cosecha.objects.filter(plantacion=plantacion).exists():
@@ -578,6 +601,9 @@ def crear_cosecha(request):
 # Editar una cosecha existente
 @login_required
 def editar_cosecha(request, idcosecha):
+    if not request.user.has_perm('gestor.change_cosecha'):
+        messages.error(request, "No tienes permiso para editar cosechas.")
+        return redirect('inicio') 
     cosecha = get_object_or_404(Cosecha, pk=idcosecha)
 
     # Guardamos los valores originales antes del form
@@ -639,6 +665,9 @@ def editar_cosecha(request, idcosecha):
 # Eliminar una cosecha
 @login_required
 def eliminar_cosecha(request, idcosecha):
+    if not request.user.has_perm('gestor.delete_cosecha'):
+        messages.error(request, "No tienes permiso para eliminar cosechas.")
+        return redirect('inicio')
     cosecha = get_object_or_404(Cosecha, pk=idcosecha)
     if request.method == 'POST':
         if Venta.objects.filter(cosecha=cosecha).exists():
@@ -652,6 +681,9 @@ def eliminar_cosecha(request, idcosecha):
 @login_required
 @csrf_exempt
 def cerrar_cosecha(request, id):
+    if not request.user.has_perm('gestor.change_cosecha'):
+        messages.error(request, "No tienes permiso para editar cosechas.")
+        return redirect('inicio')
     if request.method == 'POST':
         try:
             cosecha = Cosecha.objects.get(idcosecha=id)
@@ -702,6 +734,9 @@ def lista_clientes(request):
 # Crear un nuevo cliente
 @login_required
 def crear_cliente(request):
+    if not request.user.has_perm('gestor.add_cliente'):
+        messages.error(request, "No tienes permiso para agregar clientes.")
+        return redirect('inicio')
     if request.method == 'POST':
         form = ClienteForm(request.POST)
         if form.is_valid():
@@ -714,6 +749,9 @@ def crear_cliente(request):
 # Editar un cliente existente
 @login_required
 def editar_cliente(request, idcliente):
+    if not request.user.has_perm('gestor.change_cliente'):
+        messages.error(request, "No tienes permiso para editar clientes.")
+        return redirect('inicio')
     cliente = get_object_or_404(Cliente, pk=idcliente)
     if request.method == 'POST':
         form = ClienteForm(request.POST, instance=cliente)
@@ -730,6 +768,9 @@ def editar_cliente(request, idcliente):
 # Eliminar un cliente
 @login_required
 def eliminar_cliente(request, idcliente):
+    if not request.user.has_perm('gestor.delete_cliente'):
+        messages.error(request, "No tienes permiso para eliminar clientes.")
+        return redirect('inicio')
     cliente = get_object_or_404(Cliente, pk=idcliente)
     if request.method == 'POST':
         tiene_ventas = Venta.objects.filter(cliente=cliente).exists()
@@ -816,6 +857,9 @@ def lista_ventas(request):
 @login_required
 @require_POST
 def toggle_estado_venta(request, idventa):
+    if not request.user.has_perm('gestor.change_venta'):
+        messages.error(request, "No tienes permiso para cerrar ventas.")
+        return redirect('inicio')
     try:
         venta = Venta.objects.get(pk=idventa)
         venta.estado = True
@@ -923,6 +967,9 @@ def info_cosecha_api(request, cosecha_id):
 # Editar una venta existente
 @login_required
 def editar_venta(request, idventa):
+    if not request.user.has_perm('gestor.change_venta'):
+        messages.error(request, "No tienes permiso para editar ventas.")
+        return redirect('inicio')
     venta = get_object_or_404(Venta, pk=idventa)
     cosecha = get_object_or_404(Cosecha, idcosecha=venta.cosecha.idcosecha)
 
@@ -982,6 +1029,9 @@ def editar_venta(request, idventa):
 # Eliminar una venta
 @login_required
 def eliminar_venta(request, idventa):
+    if not request.user.has_perm('gestor.delete_venta'):
+        messages.error(request, "No tienes permiso para eliminar ventas.")
+        return redirect('inicio')
     venta = get_object_or_404(Venta, pk=idventa)
     if request.method == 'POST':
         venta.delete()  # `delete()` ya actualiza el estado de la cosecha

@@ -274,6 +274,9 @@
 
       <!-- Footer -->
       <div class="modal-footer">
+        <button id="iraventas" class="btn btn-outline-secondary">
+          <i class="bi bi-cart"></i> Ventas
+        </button>
         <button id="cerrarCosecha" class="btn btn-outline-success" >
           <i class="bi bi-arrow-counterclockwise"></i> Cerrar</button>
         <button id="btnToggleEstadoVenta"  class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi bi-cart"></i> Vender</button>
@@ -347,6 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const disponibleTercera = button.getAttribute('data-disponible-tercera');
       const perdida = button.getAttribute('data-perdida') ? parseFloat(button.getAttribute('data-perdida')) : 0;
       const cantidadVentas = button.getAttribute('data-cantidadventas');
+      const totalvendido = button.getAttribute('data-totalvendido') ? parseFloat(button.getAttribute('data-totalvendido')) : 0;
 
       const estadoTexto = estado === "True" ? "Finalizado" : "Activo";
 
@@ -364,7 +368,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('disponiblePrimera').textContent = disponiblePrimera;
       document.getElementById('disponibleSegunda').textContent = disponibleSegunda;
       document.getElementById('disponibleTercera').textContent = disponibleTercera;
-      document.getElementById('totalvendido').textContent = total;
+      document.getElementById('totalvendido').textContent = totalvendido.toFixed(0);
       document.getElementById('cosechaPerdida').textContent = perdida.toFixed(0);
       document.getElementById('cantidadventas').textContent = cantidadVentas;
 
@@ -399,7 +403,15 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 }
 
-
+document.getElementById('iraventas').addEventListener('click', function() {
+    const idCosecha = document.getElementById('cosechaId').innerText.trim();
+    if (idCosecha) {
+        // Redirigir con parámetro de búsqueda por cosecha
+        window.location.href = `/ventas/?filtro=cosecha&buscar=${encodeURIComponent(idCosecha)}`;
+    } else {
+        alert("No se ha podido obtener el ID de la cosecha.");
+    }
+});
   btnVenta.addEventListener("click", function () {
     const cosechaId = document.getElementById("cosechaId").textContent.trim();
     if (!btnVenta.disabled && cosechaId) {

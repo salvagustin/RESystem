@@ -356,6 +356,28 @@ document.addEventListener('DOMContentLoaded', function() {
             VentaIdActual = id;
           });
 
+
+          document.getElementById('formBusqueda').addEventListener('submit', function (event) {
+          const buscar = document.querySelector('input[name="buscar"]').value.trim();
+          const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
+          const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
+
+          if (!buscar && (!fechaInicio || !fechaFin)) {
+              event.preventDefault(); // Detiene el envío
+              alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
+          }
+      });
+
+      document.getElementById("btnIrFormulario").addEventListener("click", function () {
+          const cosechaId = document.getElementById("selectCosecha").value;
+          if (cosechaId) {
+              window.location.href = `/ventas/crear/?cosecha_id=${cosechaId}`;
+          } else {
+              alert("Debes seleccionar una cosecha.");
+          }
+      });
+
+          
           // Acción para cambiar estado (Finalizar)
         document.getElementById('btnToggleEstadoVenta').addEventListener('click', () => {
             if (!VentaIdActual) return;
@@ -396,28 +418,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   </script>
 {% endif %}
-
-<script>
-
-  document.getElementById('formBusqueda').addEventListener('submit', function (event) {
-        const buscar = document.querySelector('input[name="buscar"]').value.trim();
-        const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
-        const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
-
-        if (!buscar && (!fechaInicio || !fechaFin)) {
-            event.preventDefault(); // Detiene el envío
-            alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
-        }
-    });
-
-    document.getElementById("btnIrFormulario").addEventListener("click", function () {
-        const cosechaId = document.getElementById("selectCosecha").value;
-        if (cosechaId) {
-            window.location.href = `/ventas/crear/?cosecha_id=${cosechaId}`;
-        } else {
-            alert("Debes seleccionar una cosecha.");
-        }
-    });
-</script>
 
 {% endblock scripts %}

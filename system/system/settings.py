@@ -85,10 +85,14 @@ WSGI_APPLICATION = 'system.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME':'produccionre',
-        'USER':'admin',
-        'PASSWORD':'admin123',
-        'HOST':'34.135.91.8',
+        #'NAME':'produccionre',
+        'NAME':'gestorre',
+        #'USER':'admin',
+        'USER':'root',
+        #'PASSWORD':'admin123',
+        'PASSWORD':'',
+        #'HOST':'34.135.91.8',
+        'HOST':'localhost',
         'PORT':'3306'
 
     }
@@ -135,3 +139,13 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Tiempo en segundos antes de que expire la sesión por inactividad
+SESSION_COOKIE_AGE = 600 #600 segundos = 10 minutos
+
+# Si la sesión se renueva con cada request del usuario
+SESSION_SAVE_EVERY_REQUEST = True  # Opcional
+
+# Para que la sesión expire al cerrar el navegador
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Opcional
