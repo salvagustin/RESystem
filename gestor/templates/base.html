@@ -1,376 +1,535 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Hortalizas</title>
+    
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+ <style>
+    /* Modo oscuro para modales */
+body.dark-mode .modal-content {
+  background-color: #2c2f3e;
+  color: #f5f5f5;
+}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            transition: all 0.3s ease;
-        }
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+  background-color: #1f2230;
+  border-color: #444;
+}
 
-        /* HEADER */
-        .header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 70px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-            z-index: 1001;
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
+body.dark-mode .modal-header .btn-close {
+  filter: invert(1);
+}
 
+body.dark-mode .modal-body {
+  background-color: #2c2f3e;
+  color: #f5f5f5;
+}
+
+body.dark-mode .btn-outline-primary,
+body.dark-mode .btn-outline-danger {
+  color: #f5f5f5;
+  border-color: #888;
+}
+
+body.dark-mode .btn-outline-primary:hover,
+body.dark-mode .btn-outline-danger:hover {
+  background-color: #444;
+  border-color: #aaa;
+}
+
+body.dark-mode .btn-secondary {
+  background-color: #3a3a3a;
+  color: #f5f5f5;
+  border-color: #555;
+}
+
+    /* MODO OSCURO */
+body.dark-mode {
+    background: #1e1e2f;
+    color: #f5f5f5;
+}
+
+body.dark-mode .header,
+body.dark-mode .sidebar,
+body.dark-mode .content-card,
+body.dark-mode .footer {
+    background: rgba(30, 30, 47, 0.9);
+    color: #f5f5f5;
+}
+
+body.dark-mode .menu-link {
+    color: #f5f5f5;
+}
+
+body.dark-mode .menu-link:hover,
+body.dark-mode .menu-link.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-left-color: #9b59b6;
+}
+
+body.dark-mode .card {
+    background-color: #2c2f3e;
+    border-color: #444;
+    color: #f5f5f5;
+}
+
+body.dark-mode .card-header {
+    background-color: #3c3f4e !important;
+    color: #f5f5f5;
+}
+
+
+
+/* Asegura color de texto en botones */
+body.dark-mode .btn {
+    color: #f5f5f5;
+    border-color: #ccc;
+}
+/* Asegura texto claro en badges o etiquetas */
+body.dark-mode .badge {
+    color: #f5f5f5;
+    background-color: #3c3f4e;
+}
+/* Select y option */
+body.dark-mode select,
+body.dark-mode option {
+    background-color: #2c2f3e;
+    color: #f5f5f5;
+}
+/* Asegura texto blanco en gráficos o títulos */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6,
+body.dark-mode p,
+body.dark-mode label,
+body.dark-mode span,
+body.dark-mode th,
+body.dark-mode td {
+    color: #f5f5f5 !important;
+}
+/* Estilo de inputs */
+body.dark-mode input,
+body.dark-mode textarea {
+    background-color: #2c2f3e;
+    color: #f5f5f5;
+    border-color: #555;
+}
+
+/* Asegura contraste en los botones azules y verdes */
+body.dark-mode .btn-primary {
+    background-color: #007bff;
+    color: #fff;
+    border-color: #007bff;
+}
+
+body.dark-mode .btn-success {
+    background-color: #28a745;
+    color: #fff;
+    border-color: #28a745;
+}
+
+/* Tooltip o popover si los usas */
+body.dark-mode .tooltip,
+body.dark-mode .popover {
+    background-color: #2c2f3e;
+    color: #f5f5f5;
+}
+
+
+
+
+body.dark-mode .form-select {
+    background-color: #2c2f3e;
+    color: #f5f5f5;
+    border-color: #555;
+}
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    html, body {
+    height: 100%;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        transition: all 0.2s ease-out;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        z-index: 1001;
+        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease-out;
+    }
+
+    .body-sidebar-open .header {
+        left: 280px;
+    }
+
+    .menu-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #2c3e50;
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 8px;
+        transition: all 0.15s ease-out;
+        margin-right: 15px;
+    }
+
+    .menu-btn:hover {
+        background: rgba(108, 117, 125, 0.1);
+        transform: scale(1.1);
+    }
+
+    .header-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 280px;
+        height: 100vh;
+        background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+        transition: all 0.2s ease-out;
+        z-index: 1600;
+        overflow-y: auto;
+        overflow-x: hidden;
+        box-shadow: 5px 0 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    .sidebar-header {
+        padding: 25px 20px;
+        background: rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar-header h3 {
+        color: #fff;
+        font-size: 22px;
+        font-weight: 600;
+        text-align: center;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .sidebar-header h3::before {
+        content: "🌱";
+        font-size: 28px;
+    }
+
+    .sidebar-menu {
+        list-style: none;
+        padding: 20px 0;
+    }
+
+    .menu-item {
+        margin: 0;
+    }
+
+    .menu-link {
+        display: flex;
+        align-items: center;
+        padding: 15px 25px;
+        color: #ecf0f1;
+        text-decoration: none;
+        transition: all 0.15s ease-out;
+        position: relative;
+        font-weight: 500;
+        border-left: 3px solid transparent;
+    }
+
+    .menu-link:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border-left-color: #3498db;
+        transform: translateX(5px);
+    }
+
+    .menu-link.active {
+        background: rgba(52, 152, 219, 0.2);
+        color: #fff;
+        border-left-color: #3498db;
+    }
+
+    .menu-link i {
+        width: 24px;
+        font-size: 18px;
+        margin-right: 15px;
+        text-align: center;
+    }
+
+    .dropdown-menu-custom {
+        max-height: 0;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.2);
+        transition: max-height 0.2s ease-out;
+        list-style: none;
+    }
+
+    .dropdown.active .dropdown-menu-custom {
+        max-height: 300px;
+    }
+
+    .dropdown .menu-link .dropdown-arrow {
+        margin-left: auto;
+        transition: transform 0.15s ease-out;
+    }
+
+    .dropdown.active .menu-link .dropdown-arrow {
+        transform: rotate(180deg);
+    }
+
+    .dropdown-menu-custom .menu-link {
+        padding: 12px 25px 12px 55px;
+        font-size: 14px;
+        border-left: none;
+    }
+
+    .dropdown-menu-custom .menu-link:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateX(10px);
+    }
+
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1500;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.15s ease-out;
+    }
+
+    .overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .modal-open .overlay {
+        display: none !important;
+    }
+
+    .modal-open .sidebar {
+        z-index: 1030;
+    }
+
+    .main-content {
+    flex: 1;
+    margin-top: 60px;
+    padding: 15px;
+    transition: all 0.2s ease-out; /* ocupa todo el alto restante bajo el header */
+    }
+
+
+    .body-sidebar-open .main-content {
+        margin-left: 280px;
+    }
+
+    .content-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 25px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        animation: slideInRight 0.3s ease-out;
+    }
+
+    .welcome-title {
+        color: #2c3e50;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .welcome-subtitle {
+        color: #7f8c8d;
+        font-size: 1.2rem;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .sidebar-status {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
+        padding: 15px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+        text-align: center;
+        color: #ecf0f1;
+        font-size: 12px;
+    }
+
+    .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #27ae60;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    .sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1);
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    @media (max-width: 768px) {
         .body-sidebar-open .header {
-            left: 280px;
-        }
-
-        .menu-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #2c3e50;
-            cursor: pointer;
-            padding: 10px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            margin-right: 15px;
-        }
-
-        .menu-btn:hover {
-            background: rgba(108, 117, 125, 0.1);
-            transform: scale(1.1);
-        }
-
-        .header-title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin: 0;
-        }
-
-        /* SIDEBAR */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: -280px;
-            width: 280px;
-            height: 100vh;
-            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-            z-index: 1600;
-            overflow-y: auto;
-            overflow-x: hidden;
-            box-shadow: 5px 0 25px rgba(0, 0, 0, 0.3);
-        }
-
-        .sidebar.active {
             left: 0;
         }
-
-        .sidebar-header {
-            padding: 25px 20px;
-            background: rgba(0, 0, 0, 0.2);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .sidebar-header h3 {
-            color: #fff;
-            font-size: 22px;
-            font-weight: 600;
-            text-align: center;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .sidebar-header h3::before {
-            content: "🌱";
-            font-size: 28px;
-        }
-
-        /* MENU ITEMS */
-        .sidebar-menu {
-            list-style: none;
-            padding: 20px 0;
-        }
-
-        .menu-item {
-            margin: 0;
-        }
-
-        .menu-link {
-            display: flex;
-            align-items: center;
-            padding: 15px 25px;
-            color: #ecf0f1;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            position: relative;
-            font-weight: 500;
-            border-left: 3px solid transparent;
-        }
-
-        .menu-link:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border-left-color: #3498db;
-            transform: translateX(5px);
-        }
-
-        .menu-link.active {
-            background: rgba(52, 152, 219, 0.2);
-            color: #fff;
-            border-left-color: #3498db;
-        }
-
-        .menu-link i {
-            width: 24px;
-            font-size: 18px;
-            margin-right: 15px;
-            text-align: center;
-        }
-
-        /* DROPDOWN */
-        .dropdown-menu-custom {
-            max-height: 0;
-            overflow: hidden;
-            background: rgba(0, 0, 0, 0.2);
-            transition: all 0.4s ease;
-            list-style: none;
-        }
-
-        .dropdown.active .dropdown-menu-custom {
-            max-height: 300px;
-        }
-
-        .dropdown .menu-link .dropdown-arrow {
-            margin-left: auto;
-            transition: transform 0.3s ease;
-        }
-
-        .dropdown.active .menu-link .dropdown-arrow {
-            transform: rotate(180deg);
-        }
-
-        .dropdown-menu-custom .menu-link {
-            padding: 12px 25px 12px 55px;
-            font-size: 14px;
-            border-left: none;
-        }
-
-        .dropdown-menu-custom .menu-link:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateX(10px);
-        }
-
-        /* OVERLAY - Z-INDEX CORREGIDO */
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1500;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        /* OCULTAR OVERLAY CUANDO HAY UN MODAL ACTIVO */
-        .modal-open .overlay {
-            display: none !important;
-        }
-
-        /* AJUSTAR SIDEBAR CUANDO HAY MODALS */
-        .modal-open .sidebar {
-            z-index: 1030;
-        }
-
-        /* MAIN CONTENT */
-        .main-content {
-            margin-top: 70px;
-            padding: 30px 20px;
-            transition: all 0.4s ease;
-            min-height: calc(100vh - 70px);
-        }
-
+        
         .body-sidebar-open .main-content {
-            margin-left: 280px;
+            margin-left: 0;
         }
-
+        
         .content-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
         }
-
+        
         .welcome-title {
-            color: #2c3e50;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-            text-align: center;
+            font-size: 2rem;
         }
+    }
 
-        .welcome-subtitle {
-            color: #7f8c8d;
-            font-size: 1.2rem;
-            text-align: center;
-            margin-bottom: 30px;
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(30px);
         }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
 
-        /* STATUS INDICATOR */
-        .sidebar-status {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            text-align: center;
-            color: #ecf0f1;
-            font-size: 12px;
-        }
+    .modal {
+        z-index: 1055;
+    }
 
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #27ae60;
-            border-radius: 50%;
-            margin-right: 8px;
-            animation: pulse 2s infinite;
-        }
+    .modal-backdrop {
+        z-index: 1050;
+    }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
+    .modal-open .header {
+        z-index: 1000 !important;
+    }
 
-        /* SCROLLBAR */
-        .sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
+    .modal-open .sidebar {
+        z-index: 1000 !important;
+    }
 
-        .sidebar::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-        }
+    body.modal-open {
+        overflow: hidden;
+    }
 
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
-        }
+    body.modal-open .overlay {
+        display: none !important;
+    }
 
-        .sidebar::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
+    .footer {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ecf0f1;
+    text-align: center;
+    padding: 20px 10px;
+    font-size: 0.9rem;
+    position: relative;
+    z-index: 1;
+    margin-top: auto;
+    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.1);
+    max-height: 40px;
+    }
 
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
-            .body-sidebar-open .header {
-                left: 0;
-            }
-            
-            .body-sidebar-open .main-content {
-                margin-left: 0;
-            }
-            
-            .content-card {
-                padding: 20px;
-            }
-            
-            .welcome-title {
-                font-size: 2rem;
-            }
-        }
+    .footer-content {
+        max-width: 960px;
+        margin: 0 auto;
+    }
 
-        /* ANIMATIONS */
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+    @media (max-width: 768px) {
+        .footer {
+            font-size: 0.8rem;
+            padding: 15px 5px;
         }
+    }
 
-        .content-card {
-            animation: slideInRight 0.6s ease;
-        }
-
-        /* BOOTSTRAP MODAL Z-INDEX FIXES - ESTA ES LA PARTE CLAVE */
-        .modal {
-            z-index: 1055; /* Bootstrap por defecto */
-        }
-        .modal-backdrop {
-            z-index: 1050;
-        }
+</style>
 
 
-        /* Asegurar que otros elementos no interfieran */
-        .modal-open .header {
-            z-index: 1000 !important;
-        }
-
-        .modal-open .sidebar {
-            z-index: 1000 !important;
-        }
-
-        /* Fix adicional para evitar problemas con el backdrop personalizado */
-        body.modal-open {
-            overflow: hidden;
-        }
-
-        /* Ocultar completamente el overlay del sidebar cuando un modal está activo
-        body.modal-open .overlay {
-            opacity: 0 !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
-        } ...existing code... */
-
-        /* Ocultar completamente el overlay del sidebar cuando un modal está activo */
-        body.modal-open .overlay {
-            display: none !important;
-        }
-    </style>
     
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </head>
 <body>
@@ -379,7 +538,11 @@
         <button class="menu-btn" id="menuBtn">
             <i class="bi bi-list"></i>
         </button>
-        <h1 class="header-title">System</h1>
+        <h1 class="header-title fw-bold text-center text-md-start">System</h1>
+        <button class="btn btn-outline-dark ms-auto" id="toggleDarkMode">
+            <i class="bi bi-moon-fill"></i>
+        </button>
+
     </header>
 
     <!-- SIDEBAR -->
@@ -389,98 +552,113 @@
         </div>
         
         <ul class="sidebar-menu">
-            <li class="menu-item">
-                <a href="/" class="menu-link active">
-                    <i class="bi bi-house-door"></i>
-                    Inicio
-                </a>
-            </li>
-            
-            <li class="menu-item dropdown" id="adminDropdown">
-                <a href="#" class="menu-link">
-                    <i class="bi bi-gear"></i>
-                    Administración
-                    <i class="bi bi-chevron-down dropdown-arrow"></i>
-                </a>
-                <ul class="dropdown-menu-custom">
-                    <li><a href="{% url 'lista_parcelas' %}" class="menu-link">Parcelas</a></li>
-                    <li><a href="{% url 'lista_cultivos' %}" class="menu-link">Cultivos</a></li>
-                    <li><a href="{% url 'lista_plantaciones' %}" class="menu-link">Plantación</a></li>
-                    <li><a href="{% url 'lista_clientes' %}" class="menu-link">Clientes</a></li>
-                </ul>
-            </li>
-            <li class="menu-item">
-                <a href="{% url 'lista_cosechas' %}" class="menu-link">
-                    <i class="bi bi-list"></i>
-                    Cortes
-                </a>
-            </li>
-            
-            
-            <li class="menu-item">
-                <a href="{% url 'lista_ventas' %}" class="menu-link">
-                    <i class="bi bi-cart-check"></i>
-                    Ventas
-                </a>
-            </li>
-            
-            <li class="menu-item">
-                <a href="#" class="menu-link">
-                    <i class="bi bi-bag"></i>
-                    Compras
-                </a>
-            </li>
-            
-            <li class="menu-item dropdown" id="marketDropdown">
-                <a href="#" class="menu-link">
-                    <i class="bi bi-shop"></i>
-                    Mercado Formal
-                    <i class="bi bi-chevron-down dropdown-arrow"></i>
-                </a>
-                <ul class="dropdown-menu-custom">
-                    <li><a href="#" class="menu-link">Clientes</a></li>
-                    <li><a href="#" class="menu-link">Entregas</a></li>
-                    <li><a href="#" class="menu-link">Ventas</a></li>
-                    <li><a href="#" class="menu-link">Contratos</a></li>
-                </ul>
-            </li>
-            
-            <li class="menu-item">
-                <a href="#" class="menu-link">
-                    <i class="bi bi-graph-up"></i>
-                    Reportes
-                </a>
-            </li>
-            
-            <li class="menu-item">
-                <a href="#" class="menu-link">
-                    <i class="bi bi-shield-check"></i>
-                    Control Calidad
-                </a>
-            </li>
-            
-            <li class="menu-item">
-                <a href="#" class="menu-link">
-                    <i class="bi bi-cup-hot"></i>
-                    Café
-                </a>
-            </li>
-            
-            <li class="menu-item">
-                <a href="#" class="menu-link">
-                    <i class="bi bi-file-spreadsheet"></i>
-                    Planillas
-                </a>
-            </li>
-            <li class="menu-item">
-                <a class="menu-link" href="{% url 'logout' %}">Cerrar sesión</a>
-            </li>
+    <li class="menu-item">
+        <a href="/" class="menu-link active">
+            <i class="bi bi-house-door"></i>
+            Inicio
+        </a>
+    </li>
+
+    <li class="menu-item dropdown" id="adminDropdown">
+        <a href="#" class="menu-link">
+            <i class="bi bi-gear"></i>
+            Administración
+            <i class="bi bi-chevron-down dropdown-arrow"></i>
+        </a>
+        <ul class="dropdown-menu-custom">
+            <li><a href="{% url 'lista_parcelas' %}" class="menu-link">Parcelas</a></li>
+            <li><a href="{% url 'lista_cultivos' %}" class="menu-link">Cultivos</a></li>
+            <li><a href="{% url 'lista_plantaciones' %}" class="menu-link">Plantación</a></li>
+            <li><a href="{% url 'lista_clientes' %}" class="menu-link">Clientes</a></li>
         </ul>
+    </li>
+
+    <li class="menu-item">
+        <a href="{% url 'lista_cosechas' %}" class="menu-link">
+            <i class="bi bi-file-break"></i>
+            Cortes
+        </a>
+    </li>
+
+    <li class="menu-item">
+        <a href="{% url 'lista_ventas' %}" class="menu-link">
+            <i class="bi bi-cart-check"></i>
+            Ventas
+        </a>
+    </li>
+
+    <li class="menu-item">
+        <a href="#" class="menu-link">
+            <i class="bi bi-bag"></i>
+            Compras
+        </a>
+    </li>
+
+    <li class="menu-item dropdown" id="marketDropdown">
+        <a href="#" class="menu-link">
+            <i class="bi bi-shop"></i>
+            Mercado Formal
+            <i class="bi bi-chevron-down dropdown-arrow"></i>
+        </a>
+        <ul class="dropdown-menu-custom">
+            <li><a href="{% url 'lista_clientesformales' %}" class="menu-link">Clientes</a></li>
+            <li><a href="{% url 'lista_entregasformales' %}" class="menu-link">Entregas</a></li>
+            <li><a href="{% url 'lista_ventasformales' %}" class="menu-link">Ventas</a></li>
+            <li><a href="#" class="menu-link">Otros</a></li>
+        </ul>
+    </li>
+
+    <li class="menu-item dropdown" id="marketDropdown2">
+        <a href="#" class="menu-link">
+            <i class="bi bi-shop-window"></i>
+            Mercado Informal
+            <i class="bi bi-chevron-down dropdown-arrow"></i>
+        </a>
+        <ul class="dropdown-menu-custom">
+            <li><a href="{% url 'lista_clientesinformales' %}" class="menu-link">Clientes</a></li>
+            <li><a href="{% url 'lista_entregasinformales' %}" class="menu-link">Entregas</a></li>
+            <li><a href="{% url 'lista_ventasinformales' %}" class="menu-link">Ventas</a></li>
+            <li><a href="#" class="menu-link">Otros</a></li>
+        </ul>
+    </li>
+
+    <li class="menu-item">
+        <a href="{% url 'reportes' %}" class="menu-link">
+            <i class="bi bi-graph-up"></i>
+            Reportes
+        </a>
+    </li>
+
+    <li class="menu-item">
+        <a href="{% url 'control_calidad' %}" class="menu-link">
+            <i class="bi bi-shield-check"></i>
+            Control Calidad
+        </a>
+    </li>
+
+    <li class="menu-item">
+        <a href="#" class="menu-link">
+            <i class="bi bi-cup-hot"></i>
+            Café
+        </a>
+    </li>
+
+    <li class="menu-item">
+        <a href="#" class="menu-link">
+            <i class="bi bi-file-spreadsheet"></i>
+            Planillas
+        </a>
+    </li>
+
+    <li class="menu-item">
+        <a href="{% url 'logout' %}" class="menu-link">
+            <i class="bi bi-box-arrow-right"></i>
+            Cerrar sesión
+        </a>
+    </li>
+</ul>
+
         
-        <div class="sidebar-status">
-            <span class="status-dot"></span>
-            Sistema Activo
-        </div>
     </nav>
 
     <!-- OVERLAY -->
@@ -493,7 +671,6 @@
                 <!-- CONTENIDO PRINCIPAL -->
                 <div id="main-content"> 
                     {% block content %}
-                    <h1>Bienvenido al sistema</h1>
                     {% endblock %}
                 </div>
             </div>
@@ -700,11 +877,41 @@
         overlay.addEventListener('touchmove', function(e) {
             e.preventDefault();
         }, { passive: false });
-
-
+        
     </script>
 
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggleButton = document.getElementById("toggleDarkMode");
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedTheme = localStorage.getItem('theme');
+
+        // Aplica el tema guardado o el del sistema
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+
+        // Listener de botón
+        if (toggleButton) {
+            toggleButton.addEventListener("click", () => {
+                document.body.classList.toggle("dark-mode");
+                const newTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+                localStorage.setItem('theme', newTheme);
+            });
+        } else {
+            console.warn('Botón de modo oscuro no encontrado en el DOM');
+        }
+
+    });
+    </script>
+
+
+
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
 </body>
 </html>

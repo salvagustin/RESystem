@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-tso!0&8fln0l^^_0o#!w=+9rq@rw8eu=y35j=fxc3hvr9dghw3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOST = ['localhost','34.95.40.193']
 
 LOGIN_REDIRECT_URL='/'
 LOGOUT_REDIRECT_URL='/'
@@ -44,8 +44,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'gestor',
     'bootstrap5',
-    'jquery',
-    'bootstrap_datepicker_plus',
     'crispy_forms',
     'crispy_bootstrap5',
 
@@ -88,18 +86,18 @@ WSGI_APPLICATION = 'system.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME':'produccionre',
+        'NAME':'gestorre',
         'USER':'admin',
         'PASSWORD':'admin123',       
         'HOST':'34.135.91.8',
         #'USER':'root',
         #'PASSWORD':'',
         #'HOST':'localhost',
-        'PORT':'3306'
+        #'PORT':'3306'
 
     }
 }
-
+ 
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -135,7 +133,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -144,7 +142,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Tiempo en segundos antes de que expire la sesión por inactividad
-SESSION_COOKIE_AGE = 600 #600 segundos = 10 minutos
+SESSION_COOKIE_AGE = 3600 #600 segundos = 10 minutos
 
 # Si la sesión se renueva con cada request del usuario
 SESSION_SAVE_EVERY_REQUEST = True  # Opcional

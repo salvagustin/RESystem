@@ -4,7 +4,7 @@
 {% block title %} | Corte {% endblock %}
 
 {% block content %}
-<div class="container py-2">
+<div class="container py-1">
     <!-- Título -->
     <div class="text-center mb-3">
         <h2 class="fw-bold">Cortes</h2>
@@ -69,10 +69,6 @@
           <h5 class="card-title fw-bold">#{{ cosecha.idcosecha }} - {{ cosecha.plantacion.cultivo.nombre }}</h5>
           <p class="mb-1"><strong>Parcela:</strong> {{ cosecha.plantacion.parcela.nombre }}</p>
           <p class="mb-1"><strong>Fecha:</strong> {{ cosecha.fecha }}</p>
-          <p class="mb-1"><strong>Total:</strong> {{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_cosecha' }}</p>
-          <p class="mb-1"><strong>Tipo:</strong> {{ cosecha.get_tipocosecha_display }}</p>
-          <p class="mb-1"><p class="mb-1"><strong>Total vendido:</strong> ${{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_vendido' }}</p>
-          <p class="mb-1"><strong>Cantidad ventas:</strong> {{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'cantidad_ventas' }}</p>
             <strong>Estado:</strong>
             {% if cosecha.estado == 1 %}
               <span class="badge bg-danger">Finalizado</span>
@@ -89,13 +85,8 @@
               data-id="{{ cosecha.idcosecha }}"
               data-parcela="{{ cosecha.plantacion.parcela.nombre }}"
               data-cultivo="{{ cosecha.plantacion.cultivo.nombre }}"
-              data-plantacion="{{ cosecha.plantacion.fecha }}"
               data-fecha="{{ cosecha.fecha }}"
-              data-primera="{{ cosecha.primera }}"
-              data-segunda="{{ cosecha.segunda }}"
-              data-tercera="{{ cosecha.tercera }}"
-              data-estado="{{ cosecha.estado }}"
-              data-tipocosecha="{{ cosecha.get_tipocosecha_display }}"
+              data-estado="{% if cosecha.estado %}1{% else %}0{% endif %}"              
               data-disponible-primera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_primera' }}"
               data-disponible-segunda="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_segunda' }}"
               data-disponible-tercera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_tercera' }}"
@@ -110,7 +101,6 @@
       {% empty %}
       <div class="text-center">No hay cosechas registradas.</div>
       {% endfor %}
-      {% include "paginacion.html" %}
     </div>
 
     <!-- Tabla para escritorio -->
@@ -123,9 +113,6 @@
               <th>Parcela</th>
               <th>Fecha</th>
               <th>Cultivo</th>
-              <th>Total</th>
-              <th>Tipo</th>
-              <th>Total Vendido</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -137,9 +124,6 @@
               <td>{{ cosecha.plantacion.parcela.nombre }}</td>
               <td>{{ cosecha.fecha }}</td>
               <td>{{ cosecha.plantacion.cultivo.nombre }}</td>
-              <td>{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_cosecha' }}</td>
-              <td>{{ cosecha.get_tipocosecha_display }}</td>
-              <td>${{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_vendido' }}</td>
               <td>
                 {% if cosecha.estado == 1 %}
                   <span class="badge bg-danger">Finalizado</span>
@@ -157,13 +141,8 @@
                     data-id="{{ cosecha.idcosecha }}"
                     data-parcela="{{ cosecha.plantacion.parcela.nombre }}"
                     data-cultivo="{{ cosecha.plantacion.cultivo.nombre }}"
-                    data-plantacion="{{ cosecha.plantacion.fecha }}"
                     data-fecha="{{ cosecha.fecha }}"
-                    data-primera="{{ cosecha.primera }}"
-                    data-segunda="{{ cosecha.segunda }}"
-                    data-tercera="{{ cosecha.tercera }}"
-                    data-estado="{{ cosecha.estado }}"
-                    data-tipocosecha="{{ cosecha.get_tipocosecha_display }}"
+                    data-estado="{% if cosecha.estado %}1{% else %}0{% endif %}"                    data-total="100"
                     data-disponible-primera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_primera' }}"
                     data-disponible-segunda="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_segunda' }}"
                     data-disponible-tercera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_tercera' }}"
@@ -183,7 +162,6 @@
           </tbody>
         </table>
       </div>
-      {% include "paginacion.html" %}
     </div>
 
     {% include "paginacion.html" %}
@@ -219,9 +197,9 @@
     </div>
   </div>
 
-<!-- Modal Detalles de Cosecha -->
+<!-- Modal Detalles de Cosecha - CORREGIDO -->
 <div class="modal fade" id="modalCosecha" tabindex="-1" aria-labelledby="modalCosechaLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg"> <!-- Agrandamos el modal -->
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       
       <!-- Header -->
@@ -234,56 +212,44 @@
       <div class="modal-body">
         <div class="container-fluid">
           <div class="row g-3">
+            <!-- LADO IZQUIERDO -->
             <div class="col-md-6">
               <p><strong>📌 Número:</strong> <span id="cosechaId"></span></p>
               <p><strong>🌿 Parcela:</strong> <span id="cosechaParcela"></span></p>
               <p><strong>🥬 Cultivo:</strong> <span id="cosechaCultivo"></span></p>
               <p><strong>📅 Fecha Corte:</strong> <span id="cosechaFecha"></span></p>
-              <p><strong>📦 Tipo:</strong> <span id="cosechaTipo"></span></p>
-              <p><strong>🪴 Plantación:</strong> <span id="cosechaPlantacion"></span></p>
-              <p><strong>🔁 Estado:</strong><span id="cosechaEstado" ></span></p>
+              <p><strong>🔁 Estado:</strong> <span id="cosechaEstado"></span></p>
             </div>
 
+            <!-- LADO DERECHO - CORREGIDO -->
             <div class="col-md-6">
-              <p><strong>🔹 Primera:</strong> <span id="cosechaPrimera"></span></p>
-              <p><strong>🔸 Segunda:</strong> <span id="cosechaSegunda"></span></p>
-              <p><strong>🔻 Tercera:</strong> <span id="cosechaTercera"></span></p>
-              <p><strong>🧮 Total:</strong> <span id="cosechaTotal"></span></p>
+              <!-- Cantidades por categoría -->
               <p><strong>💰 Total Vendido:</strong> $<span id="totalvendido"></span></p>
-              <p><strong>📊 Cantidad Ventas:</strong> <span id="cantidadventas"></span></p>
+              <p><strong>📊 Cantidad Vendida:</strong> <span id="cantidadventas"></span></p>
               <p><strong>📉 Pérdida:</strong> <span id="cosechaPerdida"></span></p>
-
             </div>
           </div>
 
           <hr>
+           <!-- Detalles extra -->
+          <div id="detalleCosechaExtra"></div><hr>
+          
 
-          <div class="row g-3">
-            <div class="col-md-4">
-              <p><strong>✅ Disponible 1ra:</strong> <span id="disponiblePrimera"></span></p>
-            </div>
-            <div class="col-md-4">
-              <p><strong>✅ Disponible 2da:</strong> <span id="disponibleSegunda"></span></p>
-            </div>
-            <div class="col-md-4">
-              <p><strong>✅ Disponible 3ra:</strong> <span id="disponibleTercera"></span></p>
-            </div>
-          </div>
+          <hr>
+
+         
         </div>
       </div>
 
       <!-- Footer -->
       <div class="modal-footer">
-        <button id="iraventas" class="btn btn-outline-secondary">
-          <i class="bi bi-cart"></i> Ventas
+        <button id="cerrarCosecha" class="btn btn-outline-success">
+          <i class="bi bi-check-circle"></i> Cerrar Cosecha
         </button>
-        <button id="cerrarCosecha" class="btn btn-outline-success" >
-          <i class="bi bi-arrow-counterclockwise"></i> Cerrar</button>
-        <button id="btnToggleEstadoVenta"  class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi bi-cart"></i> Vender</button>
-        <button id="btnEditarCosecha" class="btn btn-outline-primary">
+        <a id="btnEditarCosecha" class="btn btn-outline-primary" href="#">
           <i class="bi bi-pencil-square"></i> Editar
-        </button>
-        <button 
+        </a>
+        <button id="btnEliminarCosecha"
             class="btn btn-outline-danger"
             data-bs-toggle="modal"
             data-bs-target="#modalConfirmarEliminarCosecha"
@@ -326,122 +292,125 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const modalCosecha = document.getElementById('modalCosecha');
-  const btnVenta = document.getElementById("btnToggleEstadoVenta");
   const btnCerrar = document.getElementById("cerrarCosecha");
   const btnEditarCosecha = document.getElementById("btnEditarCosecha");
+  const btnEliminarCosecha = document.getElementById("btnEliminarCosecha");
 
-  if (modalCosecha) {
-    modalCosecha.addEventListener('show.bs.modal', function (event) {
-      const button = event.relatedTarget;
-
-      const id = button.getAttribute('data-id');
-      const parcela = button.getAttribute('data-parcela');
-      const cultivo = button.getAttribute('data-cultivo');
-      const plantacion = button.getAttribute('data-plantacion');
-      const fecha = button.getAttribute('data-fecha');
-      const primera = button.getAttribute('data-primera');
-      const segunda = button.getAttribute('data-segunda');
-      const tercera = button.getAttribute('data-tercera');
-      const estado = button.getAttribute('data-estado');
-      const tipocosecha = button.getAttribute('data-tipocosecha');
-      const total = parseFloat(primera) + parseFloat(segunda) + parseFloat(tercera);
-      const disponiblePrimera = button.getAttribute('data-disponible-primera');
-      const disponibleSegunda = button.getAttribute('data-disponible-segunda');
-      const disponibleTercera = button.getAttribute('data-disponible-tercera');
-      const perdida = button.getAttribute('data-perdida') ? parseFloat(button.getAttribute('data-perdida')) : 0;
-      const cantidadVentas = button.getAttribute('data-cantidadventas');
-      const totalvendido = button.getAttribute('data-totalvendido') ? parseFloat(button.getAttribute('data-totalvendido')) : 0;
-
-      const estadoTexto = estado === "True" ? "Finalizado" : "Activo";
-
-      document.getElementById('cosechaId').textContent = id;
-      document.getElementById('cosechaParcela').textContent = parcela;
-      document.getElementById('cosechaCultivo').textContent = cultivo;
-      document.getElementById('cosechaPlantacion').textContent = plantacion;
-      document.getElementById('cosechaFecha').textContent = fecha;
-      document.getElementById('cosechaPrimera').textContent = primera;
-      document.getElementById('cosechaSegunda').textContent = segunda;
-      document.getElementById('cosechaTercera').textContent = tercera;
-      document.getElementById('cosechaEstado').textContent = estadoTexto;
-      document.getElementById('cosechaTipo').textContent = tipocosecha;
-      document.getElementById('cosechaTotal').textContent = total.toFixed(0);
-      document.getElementById('disponiblePrimera').textContent = disponiblePrimera;
-      document.getElementById('disponibleSegunda').textContent = disponibleSegunda;
-      document.getElementById('disponibleTercera').textContent = disponibleTercera;
-      document.getElementById('totalvendido').textContent = totalvendido.toFixed(0);
-      document.getElementById('cosechaPerdida').textContent = perdida.toFixed(0);
-      document.getElementById('cantidadventas').textContent = cantidadVentas;
-
-      document.getElementById('btnEditarCosecha').href = `/cosechas/editar/${id}/`;
-      document.getElementById('formEliminarCosecha').action = `/cosechas/eliminar/${id}/`;
-
-      // 👇 Ejecutar lógica justo después de llenar los datos
-      checkDisponibilidadYActualizarBoton();
-    });
-  }
-
-  function checkDisponibilidadYActualizarBoton() {
-  const disp1ra = parseFloat(document.getElementById("disponiblePrimera").textContent) || 0;
-  const disp2da = parseFloat(document.getElementById("disponibleSegunda").textContent) || 0;
-  const disp3ra = parseFloat(document.getElementById("disponibleTercera").textContent) || 0;
-
-  const estadoTexto = document.getElementById("cosechaEstado").textContent.trim();
-
-  const esFinalizado = estadoTexto === "Finalizado";
-
-  if (esFinalizado) {
-    // Si está finalizado, todo desactivado
-    btnVenta.disabled = true;
+  function checkDisponibilidadYActualizarBoton(estado) {
+  if (estado === 1) {
+    // Estado "Finalizado" => desactivar botones
     btnCerrar.disabled = true;
-    btnEditarCosecha.disabled = true;
+    btnCerrar.classList.add('disabled');
+    btnCerrar.style.pointerEvents = 'none';
+
+    btnEditarCosecha.classList.add('disabled');
+    btnEditarCosecha.style.pointerEvents = 'none';
+
+    btnEliminarCosecha.classList.add('disabled');
+    btnEliminarCosecha.style.pointerEvents = 'none';
   } else {
-    // Si NO está finalizado, habilitar según disponibilidad
-    const hayDisponibilidad = disp1ra > 0 || disp2da > 0 || disp3ra > 0;
-    btnVenta.disabled = !hayDisponibilidad;
-    btnCerrar.disabled = !hayDisponibilidad;
-    btnEditarCosecha.disabled = false;
+    // Estado "Activo" => habilitar botones
+    btnCerrar.disabled = false;
+    btnCerrar.classList.remove('disabled');
+    btnCerrar.style.pointerEvents = 'auto';
+    
+    btnEditarCosecha.classList.remove('disabled');
+    btnEditarCosecha.style.pointerEvents = 'auto';
+    btnEliminarCosecha.classList.remove('disabled');
+    btnEliminarCosecha.style.pointerEvents = 'auto';
   }
 }
 
-document.getElementById('iraventas').addEventListener('click', function() {
-    const idCosecha = document.getElementById('cosechaId').innerText.trim();
-    if (idCosecha) {
-        // Redirigir con parámetro de búsqueda por cosecha
-        window.location.href = `/ventas/?filtro=cosecha&buscar=${encodeURIComponent(idCosecha)}`;
-    } else {
-        alert("No se ha podido obtener el ID de la cosecha.");
-    }
-});
-  btnVenta.addEventListener("click", function () {
-    const cosechaId = document.getElementById("cosechaId").textContent.trim();
-    if (!btnVenta.disabled && cosechaId) {
-      window.location.href = `/ventas/crear/?cosecha_id=${encodeURIComponent(cosechaId)}`;
-    }
-  });
 
-  document.getElementById("btnIrFormulario").addEventListener("click", function () {
-    const plantacionId = document.getElementById("selectPlantacion").value;
+  function mostrarDetalleCosecha(idCosecha) {
+  const detalles = window.DETALLE_POR_COSECHA?.[idCosecha] || [];
+  const contenedor = document.getElementById('detalleCosechaExtra');
+  if (!contenedor) return;
+
+  if (detalles.length > 0) {
+    contenedor.innerHTML = `
+      <h6>📦 Detalles por Categoría y Tipo</h6>
+      <table class="table table-sm table-bordered mb-0">
+        <thead>
+          <tr>
+            <th>Categoría</th>
+            <th>Tipo</th>
+            <th>Cantidad</th>
+            <th>Disponible</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${detalles.map(d => `
+            <tr>
+              <td>${d.categoria_display}</td>
+              <td>${d.tipocosecha_display}</td>
+              <td>${d.cantidad}</td>
+              <td>${d.disponible}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } else {
+    contenedor.innerHTML = '';
+  }
+}
+
+  document.getElementById('btnIrFormulario').addEventListener('click', function () {
+    const select = document.getElementById('selectPlantacion');
+    const plantacionId = select.value;
     if (plantacionId) {
       window.location.href = `/cosechas/crear/?plantacion_id=${plantacionId}`;
     } else {
-      alert("Debes seleccionar una plantación.");
+      alert("Por favor, selecciona una plantación.");
     }
   });
+  
+  if (modalCosecha) {
+    modalCosecha.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      if (!button) return;
 
-  document.getElementById('formBusqueda').addEventListener('submit', function (event) {
-    const buscar = document.querySelector('input[name="buscar"]').value.trim();
-    const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
-    const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
+      // Obtener todos los datos
+      const id = button.getAttribute('data-id');
+      const parcela = button.getAttribute('data-parcela');
+      const cultivo = button.getAttribute('data-cultivo');
+      const fecha = button.getAttribute('data-fecha');
+      const estado = Number(button.getAttribute('data-estado'));
 
-    if (!buscar && (!fechaInicio || !fechaFin)) {
-      event.preventDefault();
-      alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
-    }
-  });
+      
+      const perdida = parseFloat(button.getAttribute('data-perdida')) || 0;
+      const cantidadVentas = button.getAttribute('data-cantidadventas') || '0';
+      const totalvendido = parseFloat(button.getAttribute('data-totalvendido')) || 0;
 
-  document.getElementById('cerrarCosecha').addEventListener('click', function () {
-    const cosechaId = document.getElementById('cosechaId').textContent;
+      // Actualizar elementos del lado izquierdo
+      document.getElementById('cosechaId').textContent = id || '';
+      document.getElementById('cosechaParcela').textContent = parcela || '';
+      document.getElementById('cosechaCultivo').textContent = cultivo || '';
+      document.getElementById('cosechaFecha').textContent = fecha || '';
+      document.getElementById('cosechaEstado').textContent = estado === 0 ? "Activo" : "Finalizado";
+      
+      // Actualizar elementos del lado derecho
+      document.getElementById('totalvendido').textContent = totalvendido.toFixed(0);
+      document.getElementById('cosechaPerdida').textContent = perdida.toFixed(0);
+      document.getElementById('cantidadventas').textContent = cantidadVentas;
+    
+      // Configurar botones
+      document.getElementById('btnEditarCosecha').href = `/cosechas/editar/${id}/`;
+      
+      
+      // Verificar disponibilidad y actualizar botones
+      checkDisponibilidadYActualizarBoton(estado);
+      
+      // Mostrar detalles extra si existen
+      mostrarDetalleCosecha(id);
 
+    });
+  }
+
+  // Cerrar cosecha 
+  document.getElementById('cerrarCosecha')?.addEventListener('click', function () {
+    const cosechaId = document.getElementById('cosechaId')?.textContent;
     fetch(`/cosechas/cerrar/${cosechaId}/`, {
       method: 'POST',
       headers: {
@@ -450,16 +419,41 @@ document.getElementById('iraventas').addEventListener('click', function() {
       },
     }).then(response => {
       if (response.ok) {
-        alert('✅ Cosecha cerrada correctamente');
+        Swal.fire({
+          icon: 'success',
+          title: 'Cosecha cerrada',
+          timer: 3000,
+          showConfirmButton: false
+        });
         location.reload();
       } else {
-        alert('❌ Error al cerrar la cosecha');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al cerrar la cosecha',
+          timer: 3000,
+          showConfirmButton: false
+        });
       }
     });
   });
+
+  document.getElementById('formBusqueda').addEventListener('submit', function (event) {
+        const buscar = document.querySelector('input[name="buscar"]').value.trim();
+        const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
+        const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
+
+        if (!buscar && (!fechaInicio || !fechaFin)) {
+            event.preventDefault(); // Detiene el envío
+            alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
+        }
+    });
 });
 </script>
 
+<script>
+  // Pasar detalles de cosecha al JS global
+  window.DETALLE_POR_COSECHA = {{ detalle_por_cosecha|safe }};
+</script>
 
 {% if messages %}
   <script>

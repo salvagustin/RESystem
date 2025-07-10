@@ -4,52 +4,162 @@
 {% block title %} | Formulario Corte {% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="text-center mb-4">
-        <h2 class="fw-bold">
-            {% if form.instance.pk %} Editar Corte {% else %} Nuevo Corte {% endif %}
-        </h2>
-    </div>
-
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-
-                        <!-- Mostrar nombre de la parcela relacionada con la plantación -->
-                        {% if plantacion %}
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Parcela: {{ plantacion.parcela.nombre }} {{ plantacion.cultivo.nombre}}</label>
-                                
-                            </div>
-                        {% endif %}
-
-                        {{ form|crispy }}
-
-                        <div class="d-flex justify-content-between mt-3">
-                            <a href="{% url 'lista_cosechas' %}" class="btn btn-secondary">Cancelar</a>
-                            {% if form.instance.pk %}
-
-                            {% else %}
-                            <a href="#" class="btn btn-success" id="btnVender">Vender</a>
-                            {% endif %}
-                            <button type="submit" class="btn btn-primary">
-                                {% if form.instance.pk %} Actualizar {% else %} Guardar {% endif %}
-                            </button>
-                        </div>
-                        <input type="hidden" name="ir_a_venta" id="ir_a_venta" value="0">
-                    </form>
-                </div>
-            </div>
+<div class="container py-3">
+  <div class="row row-cols-1 row-cols-lg-2 g-4">
+    
+    <!-- Formulario de Cosecha -->
+    <div class="col">
+      <div class="card shadow-sm h-100 w-100">
+        <div class="card-header bg-primary text-white fw-bold">
+          {% if form.instance.pk %} Editar Corte {% else %} Nuevo Corte {% endif %}
         </div>
+        <div class="card-body">
+          <form id="form-cosecha" method="post">
+            {% csrf_token %}
+            <div class="text-center mb-4">
+              {% if plantacion %}
+              <input type="hidden" name="plantacion_id" value="{{ plantacion.idplantacion }}">
+              <div class="mb-3 py-2">
+                <label class="form-label fw-bold">Parcela: {{ plantacion.parcela.nombre }} - Cultivo: {{ plantacion.cultivo.nombre }}</label>
+              </div>
+              {% endif %}
+            </div>
+            {{ form|crispy }}
+
+            <!-- Categoría -->
+            <div class="mb-3">
+            <label for="categoria">Categoría</label>
+            <select id="categoria" class="form-select" name="categoria">
+                <option value="">Seleccione una categoría</option>
+                {% for value, label in categoria_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            </div>
+
+            <!-- Tipo de corte -->
+            <div class="mb-3">
+            <label for="tipocosecha">Tipo de cosecha</label>
+            <select id="tipocosecha" class="form-select" name="tipocosecha">
+                <option value="">Seleccione tipo de corte</option>
+                {% for value, label in tipocosecha_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            </div>
+
+
+            <div class="mb-3">
+              <label for="cantidad">Cantidad</label>
+              <input type="number" class="form-control" id="cantidad" name="cantidad" min="1">
+            </div>
+
+            <input type="hidden" name="cortes_json" id="cortes_json">
+
+            <button type="button" class="btn btn-success" id="agregar-corte">Agregar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>            
+            <a href="{% url 'lista_cosechas' %}" class="btn btn-secondary">Cancelar</a>
+          </form>
+        </div>
+      </div>
     </div>
+
+    <!-- Lista de Cortes Agregados -->
+    <div class="col">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-success text-white fw-bold">
+          <i class="bi bi-list-check"></i> Cortes Agregados
+        </div>
+        <div class="card-body">
+          <ul id="cortes-lista" class="list-group mb-3"></ul>
+          <p id="total-general" class="mt-2 fw-bold">Total Cantidad: 0</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-    document.getElementById('btnVender').addEventListener('click', function() {
-        document.getElementById('ir_a_venta').value = '1';
-        document.querySelector('form').submit();
+document.addEventListener('DOMContentLoaded', function () {
+  const categoria = document.getElementById('categoria');
+  const tipocosecha = document.getElementById('tipocosecha');
+  const cantidad = document.getElementById('cantidad');
+  const cortesLista = document.getElementById('cortes-lista');
+  const cortesJson = document.getElementById('cortes_json');
+  const totalGeneral = document.getElementById('total-general');
+  const agregarBtn = document.getElementById('agregar-corte');
+
+  let cortes = [];
+
+  function getLabel(selectElement, value) {
+    const option = [...selectElement.options].find(opt => opt.value === value);
+    return option ? option.text : value;
+  }
+
+  function actualizarLista() {
+    cortesLista.innerHTML = '';
+    let totalCantidad = 0;
+
+    cortes.forEach((corte, index) => {
+      totalCantidad += corte.cantidad;
+
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-center';
+      li.innerHTML = `
+        <div>
+          <strong>${getLabel(categoria, corte.categoria)}</strong> - ${corte.cantidad} (${getLabel(tipocosecha, corte.tipocosecha)})
+        </div>
+        <button class="btn btn-sm btn-danger eliminar-corte" data-index="${index}">
+          <i class="bi bi-trash"></i>
+        </button>
+      `;
+      cortesLista.appendChild(li);
     });
+
+    totalGeneral.textContent = `Total Cantidad: ${totalCantidad}`;
+    cortesJson.value = JSON.stringify(cortes);
+  }
+
+  agregarBtn.addEventListener('click', function () {
+    const cat = categoria.value;
+    const tipo = tipocosecha.value;
+    const cant = parseInt(cantidad.value);
+
+    if (!cat || !tipo || isNaN(cant) || cant <= 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Datos inválidos',
+        text: 'Por favor completa todos los campos correctamente.',
+        timer: 2500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    cortes.push({
+      categoria: cat,
+      tipocosecha: tipo,
+      cantidad: cant
+    });
+
+    actualizarLista();
+
+    categoria.selectedIndex = 0;
+    tipocosecha.selectedIndex = 0;
+    cantidad.value = '';
+  });
+
+  cortesLista.addEventListener('click', function (e) {
+    if (e.target.closest('.eliminar-corte')) {
+      const index = e.target.closest('.eliminar-corte').getAttribute('data-index');
+      cortes.splice(index, 1);
+      actualizarLista();
+    }
+  });
+});
 </script>
+
 {% endblock %}

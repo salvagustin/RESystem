@@ -1,6 +1,8 @@
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit
+from django.forms import inlineformset_factory
+from django.forms import formset_factory
 from .models import *
 
 class ParcelaForm(forms.ModelForm):
@@ -16,7 +18,6 @@ class CultivoForm(forms.ModelForm):
         model = Cultivo
         fields = ['nombre', 'variedad']
 
-
 class PlantacionForm(forms.ModelForm):
     class Meta:
         model = Plantacion
@@ -27,8 +28,8 @@ class CosechaForm(forms.ModelForm):
         model = Cosecha
         fields = '__all__'
         widgets = {
-            'plantacion': forms.HiddenInput(),  # Oculta el campo de selección
-            'estado': forms.HiddenInput(),  # Oculta el campo de selección
+            'plantacion': forms.HiddenInput(),
+            'estado': forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -37,17 +38,28 @@ class CosechaForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.layout = Layout(
             Row(
-                Column('primera', css_class='col-md-4 mb-3'),
-                Column('segunda', css_class='col-md-4 mb-3'),
-                Column('tercera', css_class='col-md-4 mb-3'),
-            ),
-            Row(
                 Column('estado', css_class='col-md-6 mb-3'),
             ),
             Row(
                 Column(Submit('submit', 'Guardar', css_class='btn btn-primary'), css_class='d-flex justify-content-end')
             )
         )
+
+class DetalleCosechaForm(forms.ModelForm):
+    class Meta:
+        model = DetalleCosecha
+        fields = '__all__'
+        widgets = {
+            'cosecha': forms.HiddenInput()
+        }
+
+DetalleCosechaFormSet = inlineformset_factory(
+    Cosecha,
+    DetalleCosecha,
+    form=DetalleCosechaForm,
+    extra=1,
+    can_delete=True
+)
 
 class ClienteForm(forms.ModelForm):
     class Meta:
@@ -57,9 +69,48 @@ class ClienteForm(forms.ModelForm):
 class VentaForm(forms.ModelForm):
     class Meta:
         model = Venta
+        exclude = ['cliente', 'estado', 'fecha', 'total']
+
+class DetalleVentaForm(forms.ModelForm):
+    class Meta:
+        model = DetalleVenta
         fields = '__all__'
         widgets = {
-            'cosecha': forms.HiddenInput(),  # Oculta el campo
-            'estado': forms.HiddenInput(),  # Oculta el campo
+            'venta': forms.HiddenInput(),
+            'cosecha': forms.HiddenInput(),
         }
 
+DetalleVentaFormSet = inlineformset_factory(
+    Venta, DetalleVenta, form=DetalleVentaForm,
+    extra=1, can_delete=True
+)
+
+
+class DetalleVentaSimpleForm(forms.Form):
+    cultivo = forms.ModelChoiceField(
+        queryset=Plantacion.objects.all(),
+        label='Cultivo / Plantación',
+    )
+    categoria = forms.ChoiceField(choices=[
+        ('primera', 'Primera'),
+        ('segunda', 'Segunda'),
+        ('tercera', 'Tercera'),
+    ])
+    cantidad = forms.IntegerField(min_value=1, label='Cantidad')
+   #tipocosecha = forms.ChoiceField(choices=Cosecha.OPCIONES, label='Presentación')
+
+DetalleVentaSimpleFormSet = formset_factory(
+DetalleVentaSimpleForm, extra=1, can_delete=True)
+
+
+class ProductoForm(forms.Form):
+    cultivo = forms.ModelChoiceField(queryset=Plantacion.objects.all(), label='Cultivo')
+    categoria = forms.ChoiceField(choices=[
+        ('primera', 'Primera'),
+        ('segunda', 'Segunda'),
+        ('tercera', 'Tercera'),
+    ])
+    cantidad = forms.IntegerField(min_value=1)
+    #tipocosecha = forms.ChoiceField(choices=Cosecha.OPCIONES, label='Presentación')
+
+ProductoFormSet = formset_factory(ProductoForm, extra=1, can_delete=True)

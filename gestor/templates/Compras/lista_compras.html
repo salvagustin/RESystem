@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %} | Compras {% endblock %}
+
+{% block content %}
+{% load static %}
+
+<div class="container py-2">
+  
+  <!-- Título -->
+  <div class="text-center mb-3">
+    <h2 class="fw-bold">Plantaciones</h2>
+  </div>
+
+<!-- Acciones y Filtros -->
+  <div class="row gy-3 align-items-center mb-2">
+    <!-- Botones -->
+    <div class="col-12 col-md-4 d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
+       <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#modalSeleccionarParcela">
+                <i class="bi bi-plus-circle fs-5 me-2"></i> <span>Nueva plantacion</span>
+            </button>
+
+      <a href="{% url 'lista_plantaciones' %}" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
+        <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
+      </a>
+    </div>
+
+    <!-- Formulario de búsqueda -->
+    <div class="col-12 col-md-8">
+      <form method="get" class="row g-2 justify-content-center" id="formBusqueda">
+        <!-- Filtro -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <select class="form-select form-select-sm" name="filtro">
+            <option value="parcela" {% if filtro == "parcela" %}selected{% endif %}>Parcela</option>
+            <option value="cultivo" {% if filtro == "cultivo" %}selected{% endif %}>Cultivo</option>
+            <option value="estado" {% if filtro == "estado" %}selected{% endif %}>Estado</option>
+          </select>
+        </div>
+
+        <!-- Buscar -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <input type="text" name="buscar" class="form-control form-control-sm" placeholder="Buscar..." value="{{ buscar }}">
+        </div>
+
+        <!-- Fecha Inicio -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}" title="Desde">
+        </div>
+
+        <!-- Fecha Fin -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}" title="Hasta">
+        </div>
+
+        <!-- Botón Buscar -->
+        <div class="col-12 col-sm-4 col-md-auto">
+          <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center">
+            <i class="bi bi-search fs-5 me-2"></i> <span>Buscar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+</div>
+
+
+
+</div> 
+{% endblock %}
+
+
+
+{% block modals %}
+
+{% endblock %}
+
+
+
+{% block scripts %}
+
+
+{% if messages %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      {% for message in messages %}
+        Swal.fire({
+          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
+          title: "{{ message|escapejs }}",
+          timer: 3000,
+          showConfirmButton: false
+        });
+      {% endfor %}
+    });
+  </script>
+{% endif %}
+{% endblock scripts %}

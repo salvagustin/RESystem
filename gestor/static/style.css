@@ -60,24 +60,11 @@ body {
 
 
 
-/* Estilos para graficos del index*/
-.card-title {
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .display-6 {
-    font-size: 1.8rem;
-    font-weight: bold;
-  }
-  
-  .card {
-    border-radius: 1rem;
-    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
-  }
+
   
 /* boton de vender en modal cosecha*/
   #btnToggleEstadoVenta:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
+

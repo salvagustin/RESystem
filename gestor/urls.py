@@ -6,6 +6,8 @@ from . import views
 urlpatterns = [
     path('', inicio, name='inicio'),
     path('logout/', auth_views.LogoutView.as_view(next_page='inicio'), name='logout'),
+
+
     path('parcelas/', views.lista_parcelas, name='lista_parcelas'),
     path('parcelas/crear/', views.crear_parcela, name='crear_parcela'),
     path('parcelas/editar/<int:pk>/', views.editar_parcela, name='editar_parcela'),
@@ -30,7 +32,6 @@ urlpatterns = [
     path('cosechas/cerrar/<int:id>/', views.cerrar_cosecha, name='cerrar_cosecha'),
 
 
-
     path('clientes/', views.lista_clientes, name='lista_clientes'),
     path('clientes/crear/', views.crear_cliente , name='crear_cliente'),
     path('clientes/editar/<int:idcliente>/', views.editar_cliente, name='editar_cliente'),
@@ -42,7 +43,25 @@ urlpatterns = [
     path('ventas/editar/<int:idventa>/', views.editar_venta, name='editar_venta'),
     path('ventas/eliminar/<int:idventa>/', views.eliminar_venta, name='eliminar_venta'),
     path('ventas/toggle_estadoventa/<int:idventa>/', views.toggle_estado_venta, name='toggle_estado_venta'),
+    path('ventas/detalles/<int:venta_id>/', views.obtener_detalles_venta, name='obtener_detalles_venta'),
 
 
-    path('dashboard/', views.dashboard_view, name='dashboard'),
+    #path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('controlcalidad/', views.control_calidad, name='control_calidad'),
+    path('reportes/', views.reportes_view, name='reportes'),
+
+    path('ajax/categorias/', views.ajax_categorias, name='ajax_categorias'),
+    path('ajax/tipocosechas/', views.ajax_tipocosechas, name='ajax_tipocosechas'),
+
+
+#    # Mercado Formal
+    path('clientesformales/', views.lista_clientesformales, name='lista_clientesformales'),
+    path('ventasformales/', views.lista_ventasformales, name='lista_ventasformales'),
+    path('entregasformales/', views.lista_entregasformales, name='lista_entregasformales'),
+
+     # Mercado Informal
+    path('clientesinformales/', views.lista_clientesinformales, name='lista_clientesinformales'),
+    path('ventasinformales/', views.lista_ventasinformales, name='lista_ventasinformales'),
+    path('entregasinformales/', views.lista_entregasinformales, name='lista_entregasinformales'),
+
 ]

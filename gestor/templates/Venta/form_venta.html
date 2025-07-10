@@ -1,77 +1,396 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
-
+{% load custom_filters %}
 {% block title %} | Formulario Ventas {% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container py-1">
 
-    <div class="text-center mb-4">
-        <h2 class="fw-bold">
-            {% if form.instance.pk %} Editar Venta {% else %} Nueva Venta {% endif %}
-        </h2>
+  <div class="row row-cols-1 row-cols-lg-3 g-4">
+    <!-- Formulario de venta -->
+    <div class="col">
+      <div class="card shadow-sm h-100 w-100">
+        <div class="card-header bg-primary text-white fw-bold">
+          <i class="bi bi-ui-checks"></i>{% if form.instance.pk %} Editar Venta {% else %} Nueva Venta {% endif %}
+        </div>
+        <div class="card-body">
+          <form id="venta-form" method="post">
+            {% csrf_token %}
+            <div class="text-center mb-4">
+              {% if cliente %}
+              <input type="hidden" name="cliente_id" value="{{ cliente.idcliente }}">
+              <div class="mb-3 py-2">
+                <label class="form-label fw-bold">Cliente: {{ cliente.nombre }}</label>
+              </div>
+              {% endif %}
+            </div>
+
+            {{ form|crispy }}
+
+            <div class="mb-3">
+              <label for="cultivo">Cultivo (Plantación):</label>
+              <select id="cultivo" name="cultivo" class="form-select">
+                <option value="">Seleccione un cultivo</option>
+                {% for plantacion in cultivos %}
+                <option value="{{ plantacion.idplantacion }}">{{ plantacion }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="categoria">Categoría</label>
+              <select id="categoria" class="form-select" name="categoria" disabled>
+                <option value="">Seleccione una categoría</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="tipocosecha">Tipo de cosecha</label>
+              <select id="tipocosecha" class="form-select" name="tipocosecha" disabled>
+                <option value="">Seleccione un tipo</option>
+                {% for value, label in tipo_cosecha_opciones %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="cantidad">Cantidad</label>
+              <input type="number" class="form-control" name="cantidad" id="cantidad" min="1">
+            </div>
+
+            <div class="mb-3">
+              <label for="total">Total cobrado</label>
+              <input type="number" class="form-control" name="total" id="total" min="1">
+            </div>
+
+            <input type="hidden" name="productos_json" id="productos_json">
+
+            <button type="button" class="btn btn-success" id="agregar-producto">Agregar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'lista_ventas' %}" class="btn btn-secondary">Cancelar</a>
+          </form>
+        </div>
+      </div>
     </div>
 
-    <div class="row gy-4 flex-lg-row-reverse">
-        <!-- Formulario de venta (derecha en escritorio) -->
-        <div class="col-12 col-lg-6">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white fw-bold">
-                    {% if form.instance.pk %} Editar Venta {% else %} Nueva Venta {% endif %}
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        {{ form|crispy }}
-
-                        <div class="d-flex justify-content-between mt-3">
-                            <a href="{% url 'lista_ventas' %}" class="btn btn-secondary">Cancelar</a>
-                            <button type="submit" class="btn btn-primary">
-                                {% if form.instance.pk %} Actualizar {% else %} Guardar {% endif %}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+    <!-- Cuadro de Productos -->
+    <div class="col">
+      <div class="card shadow bg-light h-100 w-100">
+        <div class="card-header bg-success text-white fw-bold">
+          <i class="bi bi-card-list"></i> Lista de Productos
         </div>
-
-        <!-- Información de la Cosecha (izquierda en escritorio) -->
-        <div class="col-12 col-lg-6">
-            <div class="card shadow bg-light h-100">
-                <div class="card-header bg-success text-white fw-bold">Información del corte</div>
-                <div class="card-body">
-                    {% if cantidades %}
-                        <ul class="list-group list-group-flush">
-                            {% for categoria, cantidad in cantidades.items %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span class="fw-semibold">{{ categoria }}</span>
-                                <span class="badge bg-success rounded-pill">{{ cantidad }}</span>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="text-muted mb-0">No hay datos de cosecha disponibles.</p>
-                    {% endif %}
-                </div>
-            </div>
+        <div class="card-body">
+          <ul id="productos-lista" class="list-group mb-3"></ul>
+          <input type="hidden" name="productos_json" id="productos_json">
+          <p id="total-general" class="mt-2 fw-bold">Total: $0.00</p>
         </div>
+      </div>
     </div>
 
+    <!-- Cuadro de Disponibilidades -->
+    <div class="col">
+      <div class="card shadow bg-light h-100 w-100">
+        <div class="card-header bg-success text-white fw-bold">
+          <i class="bi bi-box-seam me-2"></i>Disponibilidad por Cultivo y Tipo de Cosecha
+        </div>
+        <div class="card-body" id="disponibilidad-body" style="max-height: 600px; overflow-y: auto;">
+          {% for cultivo, tipos in cantidades.items %}
+          <div class="mb-4 border-bottom pb-2">
+            <h5 class="text-primary fw-bold">{{ cultivo }}</h5>
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2 ms-1 me-1">
+              {% for tipo, datos in tipos.items %}
+              <div class="col">
+                <div class="border rounded p-2 h-100 bg-white shadow-sm">
+                  <p class="mb-1 fw-semibold text-dark">
+                    {% for val, name in tipo_cosecha_opciones %}
+                    {% if val == tipo %}{{ name }}{% endif %}
+                    {% endfor %}
+                  </p>
+                  <div class="text-muted small">
+                    <div><strong>Primera:</strong> {{ datos.primera }}</div>
+                    <div><strong>Segunda:</strong> {{ datos.segunda }}</div>
+                    <div><strong>Tercera:</strong> {{ datos.tercera }}</div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% empty %}
+          <p>No hay disponibilidad.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+{% endblock %}
 
-{% if messages %}
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      {% for message in messages %}
-        Swal.fire({
-          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
-          title: "{{ message|escapejs }}",
-          timer: 3000,
-          showConfirmButton: false
-        });
-      {% endfor %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const cultivoSelect = document.getElementById("cultivo");
+  const categoriaSelect = document.getElementById("categoria");
+  const tipocosechaSelect = document.getElementById("tipocosecha");
+  const addBtn = document.getElementById('agregar-producto');
+  const lista = document.getElementById('productos-lista');
+  const productosInput = document.getElementById('productos_json');
+  const cantidadInput = document.getElementById('cantidad');
+  const totalInput = document.getElementById('total');
+  const productos = [];
+
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  function actualizarTotalGeneral() {
+    const totalGeneral = productos.reduce((acc, prod) => acc + prod.total, 0);
+    document.getElementById('total-general').innerText = `Total: $${totalGeneral.toFixed(2)}`;
+  }
+
+  cultivoSelect.addEventListener("change", function () {
+    const cultivoId = this.value;
+    categoriaSelect.innerHTML = '<option selected>Cargando...</option>';
+    tipocosechaSelect.innerHTML = '<option value="">Seleccione un tipo</option>';
+    tipocosechaSelect.disabled = true;
+    categoriaSelect.disabled = true;
+
+    if (!cultivoId) return;
+
+    fetch(`/ajax/categorias/?cultivo_id=${cultivoId}`)
+      .then(response => response.json())
+      .then(data => {
+        categoriaSelect.innerHTML = '';
+        if (data.categorias.length === 0) {
+          categoriaSelect.innerHTML = '<option value="">Sin categorías disponibles</option>';
+        } else {
+          categoriaSelect.disabled = false;
+          categoriaSelect.innerHTML = '<option value="">Seleccione una categoría</option>';
+          data.categorias.forEach(cat => {
+          categoriaSelect.innerHTML += `<option value="${cat}">${capitalize(cat)}</option>`;
+          });
+        }
+      });
+  });
+
+  categoriaSelect.addEventListener("change", function () {
+    const categoria = this.value;
+    const cultivoId = cultivoSelect.value;
+
+    tipocosechaSelect.innerHTML = '<option>Cargando...</option>';
+    tipocosechaSelect.disabled = true;
+
+    if (!cultivoId || !categoria) return;
+
+      fetch(`/ajax/tipocosechas/?cultivo_id=${cultivoId}&categoria=${categoria}`)
+      .then(response => response.json())
+      .then(data => {
+        tipocosechaSelect.innerHTML = '';
+        if (data.tipos.length === 0) {
+          tipocosechaSelect.innerHTML = '<option value="">Sin tipos disponibles</option>';
+        } else {
+          tipocosechaSelect.innerHTML = '<option value="">Seleccione un tipo</option>';
+          data.tipos.forEach(tipo => {
+          tipocosechaSelect.innerHTML += `<option value="${tipo.valor}">${tipo.nombre}</option>`;
+          });
+          tipocosechaSelect.disabled = false;
+        }
+      });
+  });
+
+  function obtenerCantidadDisponible(cultivoText, tipocosechaText, categoria) {
+    const bloquesCultivo = document.querySelectorAll('.card-body > .mb-4');
+
+    for (const bloque of bloquesCultivo) {
+      const titulo = bloque.querySelector('h5');
+      if (!titulo || titulo.innerText.trim() !== cultivoText) continue;
+
+      const tarjetas = bloque.querySelectorAll('.col, .mb-2');
+      for (const tarjeta of tarjetas) {
+        const tipoLabel = tarjeta.querySelector('p');
+        if (!tipoLabel || tipoLabel.innerText.trim().toLowerCase() !== tipocosechaText.toLowerCase()) continue;
+
+        const categoriaLineas = tarjeta.querySelectorAll('.text-muted > div');
+        for (const linea of categoriaLineas) {
+          const [nombreCatRaw, cantidadStr] = linea.innerText.split(':');
+          const nombreCat = nombreCatRaw.replace(/[\n\r]/g, '').trim().toLowerCase();
+          if (nombreCat === categoria.toLowerCase()) {
+            return parseInt(cantidadStr.trim()) || 0;
+          }
+        }
+      }
+    }
+    return 0;
+  }
+
+  addBtn.addEventListener('click', () => {
+    const cultivo = cultivoSelect;
+    const categoria = categoriaSelect;
+    const tipocosecha = tipocosechaSelect;
+    const cantidad = cantidadInput;
+    const total = totalInput;
+
+    if (!cultivo.value || !categoria.value || !cantidad.value || !tipocosecha.value || !total.value) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campos incompletos',
+        text: 'Completa todos los campos antes de agregar.',
+        timer: 2500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    const cantidadVal = parseInt(cantidad.value);
+    if (isNaN(cantidadVal) || cantidadVal <= 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Cantidad inválida',
+        text: 'La cantidad debe ser un número entero positivo.',
+        timer: 2500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    const disponible = obtenerCantidadDisponible(
+      cultivo.options[cultivo.selectedIndex].text.trim(),
+      tipocosecha.options[tipocosecha.selectedIndex].text.trim(),
+      categoria.value
+    );
+
+    if (cantidadVal > disponible) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Cantidad excedida',
+        text: `Solo hay disponibles ${disponible} unidades de ${capitalize(categoria.value)}.`,
+        timer: 3000,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    const totalVal = parseFloat(total.value);
+    if (isNaN(totalVal) || totalVal <= 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Total inválido',
+        text: 'El total debe ser un número positivo.',
+        timer: 2500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    const producto = {
+      cultivo_id: cultivo.value,
+      cultivo_text: cultivo.options[cultivo.selectedIndex].text.trim(),
+      categoria: categoria.value.toLowerCase(),
+      cantidad: cantidadVal,
+      total: totalVal,
+      tipocosecha: tipocosecha.value,
+      tipocosecha_text: tipocosecha.options[tipocosecha.selectedIndex].text.trim().toLowerCase()
+    };
+
+    productos.push(producto);
+    productosInput.value = JSON.stringify(productos);
+
+    const li = document.createElement('li');
+    li.classList.add('list-group-item');
+    li.innerHTML = `
+      <strong>${producto.cultivo_text}</strong> - ${producto.cantidad} 
+      (${capitalize(producto.categoria)}, ${capitalize(producto.tipocosecha_text)}), 
+      Subtotal: $${producto.total.toFixed(2)}
+      <button type="button" class="btn btn-sm btn-danger float-end eliminar-producto"><i class="bi bi-trash"></i></button>
+    `;
+    lista.appendChild(li);
+    actualizarTotalGeneral();
+
+    li.querySelector('.eliminar-producto').addEventListener('click', function () {
+      const index = productos.indexOf(producto);
+      if (index !== -1) productos.splice(index, 1);
+      productosInput.value = JSON.stringify(productos);
+      li.remove();
+      actualizarTotalGeneral();
+      restaurarDisponibilidad(producto);
     });
-  </script>
-{% endif %}
+
+    actualizarDisponibilidad(producto);
+
+    cultivo.selectedIndex = 0;
+    categoriaSelect.innerHTML = '<option value="">Seleccione una categoría</option>';
+    categoriaSelect.disabled = true;
+    tipocosechaSelect.innerHTML = '<option value="">Seleccione un tipo</option>';
+    tipocosechaSelect.disabled = true;
+    cantidadInput.value = '';
+    totalInput.value = '';
+  });
+
+  function actualizarDisponibilidad(producto) {
+  const bloquesCultivo = document.querySelectorAll('.card-body > .mb-4');
+
+  bloquesCultivo.forEach(bloque => {
+    const titulo = bloque.querySelector('h5');
+    if (!titulo || titulo.innerText.trim() !== producto.cultivo_text) return;
+
+    const secciones = bloque.querySelectorAll('.col');
+    secciones.forEach(sec => {
+      const tipoLabel = sec.querySelector('p');
+      if (!tipoLabel || tipoLabel.innerText.trim().toLowerCase() !== producto.tipocosecha_text) return;
+
+      const categoriaLineas = sec.querySelectorAll('.text-muted > div');
+      categoriaLineas.forEach(linea => {
+        const [nombreCatRaw, cantidadStr] = linea.innerText.split(':');
+        const nombreCat = nombreCatRaw.trim().toLowerCase();
+        let cantidadCat = parseInt(cantidadStr.trim());
+
+        if (nombreCat === producto.categoria) {
+          const nuevoValor = cantidadCat - producto.cantidad;
+          linea.innerHTML = `<strong>${capitalize(nombreCat)}:</strong> ${Math.max(nuevoValor, 0)}`;
+        }
+      });
+    });
+  });
+}
+
+  
+  function restaurarDisponibilidad(producto) {
+  const bloquesCultivo = document.querySelectorAll('.card-body > .mb-4');
+
+  let bloqueCultivo = Array.from(bloquesCultivo).find(b => {
+    const titulo = b.querySelector('h5');
+    return titulo && titulo.innerText.trim() === producto.cultivo_text;
+  });
+
+  if (!bloqueCultivo) return;
+
+  const secciones = bloqueCultivo.querySelectorAll('.col');
+  let secTipo = Array.from(secciones).find(sec => {
+    const tipoLabel = sec.querySelector('p');
+    return tipoLabel && tipoLabel.innerText.trim().toLowerCase() === producto.tipocosecha_text;
+  });
+
+  if (!secTipo) return;
+
+  const categoriaLineas = secTipo.querySelectorAll('.text-muted > div');
+  let lineaCategoria = Array.from(categoriaLineas).find(linea => {
+    const [nombreCatRaw] = linea.innerText.split(':');
+    return nombreCatRaw.trim().toLowerCase() === producto.categoria;
+  });
+
+  if (lineaCategoria) {
+    const cantidadActual = parseInt(lineaCategoria.innerText.split(':')[1].trim());
+    lineaCategoria.innerHTML = `<strong>${capitalize(producto.categoria)}:</strong> ${cantidadActual + producto.cantidad}`;
+  }
+}
+
+
+});
+
+
+</script>
 
 {% endblock %}
+

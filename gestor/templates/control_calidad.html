@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %} | Control de Calidad {% endblock title %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="text-center mb-5">
+    <h1 class="fw-bold">🧪 Control de Calidad</h1>
+    <p class="text-muted">Resumen por parcela, cultivo, plantación y cosecha</p>
+  </div>
+
+  {% for bloque in bloques %}
+  <div class="card shadow-sm mb-5">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0">{{ bloque.titulo }}</h4>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-striped mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Nombre</th>
+              <th class="text-center text-success">Primera</th>
+              <th class="text-center text-warning">Segunda</th>
+              <th class="text-center text-info">Tercera</th>
+              <th class="text-center text-danger">Pérdida</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in bloque.items %}
+            <tr>
+              <td class="fw-semibold">{{ item.nombre }}</td>
+              <td class="text-center">{{ item.primera }}</td>
+              <td class="text-center">{{ item.segunda }}</td>
+              <td class="text-center">{{ item.tercera }}</td>
+              <td class="text-center fw-bold text-danger">{{ item.perdida }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock content %}
+
+{% block scripts %}
+{% endblock scripts %}
