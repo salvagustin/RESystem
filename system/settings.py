@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-tso!0&8fln0l^^_0o#!w=+9rq@rw8eu=y35j=fxc3hvr9dghw3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOST = ['localhost','34.95.40.193']
+ALLOWED_HOST = ['localhost']
 
 LOGIN_REDIRECT_URL='/'
 LOGOUT_REDIRECT_URL='/'
@@ -86,14 +86,17 @@ WSGI_APPLICATION = 'system.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME':'gestorre',
+        'NAME':'produccionre',
         'USER':'admin',
         'PASSWORD':'admin123',       
         'HOST':'34.135.91.8',
+
+        #'NAME':'gestorre',
         #'USER':'root',
         #'PASSWORD':'',
         #'HOST':'localhost',
-        #'PORT':'3306'
+        
+        'PORT':'3306'
 
     }
 }

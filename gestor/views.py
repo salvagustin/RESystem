@@ -18,6 +18,7 @@ from django.shortcuts import render
 from django.db import transaction
 from collections import defaultdict
 import json
+from django.core.serializers.json import DjangoJSONEncoder
 from .models import *
 from .forms import *
 from datetime import datetime, timedelta, date
@@ -29,11 +30,26 @@ from django.core.paginator import EmptyPage, PageNotAnInteger
 horayfecha = datetime.now()
 hoy = horayfecha.date()
 
+
 @login_required
 def inicio(request):
+    import json  # Agregar esta importación
+    
     hoy = date.today()
     inicio_semana = hoy - timedelta(days=hoy.weekday())  # lunes
     dias_semana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+    # Función para obtener el nombre legible del tipo de cosecha
+    def get_tipo_cosecha_display(codigo):
+        opciones = {
+            "S": "Saco",
+            "U": "Unidad", 
+            "MS": "Medio saco",
+            "C": "Caja",
+            "MC": "Media caja",
+            "Lb": "Libras"
+        }
+        return opciones.get(codigo, codigo)
 
     # Totales generales
     total_cultivos = Cultivo.objects.count()
@@ -50,7 +66,8 @@ def inicio(request):
     plantaciones = Plantacion.objects.filter(estado=0)
     cosechas = Cosecha.objects.filter(estado=0)
     clientes = Cliente.objects.filter(tipocliente='C')
-    # Cosechas de hoy agrupadas por categoría
+    
+    # Cosechas de hoy agrupadas por categoría (mantenemos el original)
     cosechas_hoy = DetalleCosecha.objects.filter(
         cosecha__fecha=hoy
     ).values('categoria').annotate(
@@ -72,23 +89,33 @@ def inicio(request):
         )['total'] or 0
         ventas_por_dia.append(float(total_dia))
 
-    # Cosechas detalladas hoy por cultivo
+    # Cosechas detalladas hoy por cultivo Y TIPO DE COSECHA
     cosechas_detalle = DetalleCosecha.objects.filter(
         cosecha__fecha=hoy
     ).select_related('cosecha__plantacion__cultivo')
     
-    cosechas_hoy_detalle = defaultdict(lambda: {'primera': 0, 'segunda': 0, 'tercera': 0})
+    cosechas_hoy_detalle = {}
+    
     for detalle in cosechas_detalle:
         cultivo = detalle.cosecha.plantacion.cultivo.nombre
-        cosechas_hoy_detalle[cultivo][detalle.categoria] += detalle.cantidad or 0
+        tipo_cosecha_display = get_tipo_cosecha_display(detalle.tipocosecha)
+        categoria = detalle.categoria
+        cantidad = detalle.cantidad or 0
+        
+        if cultivo not in cosechas_hoy_detalle:
+            cosechas_hoy_detalle[cultivo] = {}
+        
+        if tipo_cosecha_display not in cosechas_hoy_detalle[cultivo]:
+            cosechas_hoy_detalle[cultivo][tipo_cosecha_display] = {
+                'primera': 0, 'segunda': 0, 'tercera': 0
+            }
+        
+        cosechas_hoy_detalle[cultivo][tipo_cosecha_display][categoria] += cantidad
 
     # Cosechas por calidad por día POR CULTIVO (última semana)
-    cosechas_por_calidad_y_cultivo = defaultdict(lambda: {
-        'primera': [0] * 7,
-        'segunda': [0] * 7,
-        'tercera': [0] * 7
-    })
+    cosechas_por_calidad_cultivo_tipo = {}
     cultivos_nombres = set()
+    tipos_cosecha = set()
 
     for i in range(7):
         dia = inicio_semana + timedelta(days=i)
@@ -98,29 +125,85 @@ def inicio(request):
         
         for detalle in detalles_dia:
             cultivo = detalle.cosecha.plantacion.cultivo.nombre
+            tipo_cosecha_display = get_tipo_cosecha_display(detalle.tipocosecha)
             categoria = detalle.categoria
             cantidad = detalle.cantidad or 0
-            cosechas_por_calidad_y_cultivo[cultivo][categoria][i] += cantidad
+            
+            if cultivo not in cosechas_por_calidad_cultivo_tipo:
+                cosechas_por_calidad_cultivo_tipo[cultivo] = {}
+            
+            if tipo_cosecha_display not in cosechas_por_calidad_cultivo_tipo[cultivo]:
+                cosechas_por_calidad_cultivo_tipo[cultivo][tipo_cosecha_display] = {
+                    'primera': [0] * 7,
+                    'segunda': [0] * 7,
+                    'tercera': [0] * 7
+                }
+            
+            cosechas_por_calidad_cultivo_tipo[cultivo][tipo_cosecha_display][categoria][i] += cantidad
             cultivos_nombres.add(cultivo)
+            tipos_cosecha.add(tipo_cosecha_display)
 
-    # Compras del día (asumiendo que tienes un modelo similar para compras)
-    # Si no tienes compras, puedes quitar esto o dejarlo en 0
-    total_compras_hoy = 0  # Aquí puedes agregar la lógica para compras si la tienes
+    # Obtener cultivos que se cosecharon HOY (no toda la semana)
+    cultivos_hoy = set()
+    cosechas_detalle_hoy = DetalleCosecha.objects.filter(
+        cosecha__fecha=hoy
+    ).select_related('cosecha__plantacion__cultivo')
+    
+    for detalle in cosechas_detalle_hoy:
+        cultivos_hoy.add(detalle.cosecha.plantacion.cultivo.nombre)
+    
+    # Estructura consolidada por cultivo (suma todos los tipos de cosecha)
+    cosechas_por_calidad_y_cultivo = {}
+    
+    for cultivo in cultivos_nombres:
+        cosechas_por_calidad_y_cultivo[cultivo] = {
+            'primera': [0] * 7,
+            'segunda': [0] * 7,
+            'tercera': [0] * 7
+        }
+        
+        if cultivo in cosechas_por_calidad_cultivo_tipo:
+            for tipo, calidades in cosechas_por_calidad_cultivo_tipo[cultivo].items():
+                for categoria, dias in calidades.items():
+                    for i, cantidad in enumerate(dias):
+                        cosechas_por_calidad_y_cultivo[cultivo][categoria][i] += cantidad
+
+    # Solo crear datos de gráfico para cultivos que se cosecharon hoy
+    cosechas_por_calidad_cultivos_hoy = {}
+    for cultivo in cultivos_hoy:
+        if cultivo in cosechas_por_calidad_y_cultivo:
+            cosechas_por_calidad_cultivos_hoy[cultivo] = cosechas_por_calidad_y_cultivo[cultivo]
+
+    # Compras del día
+    total_compras_hoy = 0
+
+    # Convertir datos a JSON para JavaScript
+    dias_semana_json = json.dumps(dias_semana)
+    ventas_por_dia_json = json.dumps(ventas_por_dia)
+    calidad_por_cultivo_json = json.dumps(cosechas_por_calidad_cultivos_hoy)  # Solo cultivos de hoy
+    cultivos_hoy_json = json.dumps(sorted(list(cultivos_hoy)))  # Solo cultivos de hoy
 
     context = {
         'total_cultivos': total_cultivos,
         'total_plantaciones': total_plantaciones,
-        'total_ventas': total_ventas_hoy,  # Solo del día actual
+        'total_ventas': total_ventas_hoy,
         'total_compras': total_compras_hoy,
         'cosechas_hoy': resumen_hoy,
-        'dias_semana': dias_semana,
-        'ventas_por_dia': ventas_por_dia,
-        'cosechas_hoy_detalle': dict(cosechas_hoy_detalle),
+        'cosechas_hoy_detalle': cosechas_hoy_detalle,
         'clientes': clientes,
         'cosechas': cosechas,
-        'calidad_por_cultivo': dict(cosechas_por_calidad_y_cultivo),
-        'cultivos_nombres': sorted(cultivos_nombres),
         'plantaciones': plantaciones,
+        
+        # Datos para JavaScript (ya convertidos a JSON)
+        'dias_semana': dias_semana_json,
+        'ventas_por_dia': ventas_por_dia_json,
+        'calidad_por_cultivo': calidad_por_cultivo_json,
+        'cultivos_hoy': cultivos_hoy_json,  # Solo cultivos cosechados hoy (para JS)
+        'cultivos_hoy_lista': sorted(list(cultivos_hoy)),  # Para el template HTML
+        
+        # Datos adicionales para otros usos
+        'calidad_por_cultivo_tipo': cosechas_por_calidad_cultivo_tipo,
+        'tipos_cosecha': sorted(tipos_cosecha),
     }
     return render(request, 'index.html', context)
 
@@ -381,6 +464,7 @@ def crear_parcela(request):
         form = ParcelaForm(request.POST)
         if form.is_valid():
             form.save()
+            messages.success(request, "La parcela ha sido creada exitosamente.")
             return redirect('/parcelas/')
     else:
         form = ParcelaForm()
@@ -396,6 +480,7 @@ def editar_parcela(request, pk):
         form = ParcelaForm(request.POST, instance=parcela)
         if form.is_valid():
             form.save()
+            messages.success(request, f"La parcela '{parcela.nombre}' ha sido actualizada exitosamente.")
             return redirect('/parcelas')
     else:
         form = ParcelaForm(instance=parcela)
@@ -478,6 +563,7 @@ def crear_cultivo(request):
         form = CultivoForm(request.POST)
         if form.is_valid():
             form.save()
+            messages.success(request, "El cultivo ha sido creado exitosamente.")
             return redirect('/cultivos/')
     else:
         form = CultivoForm()
@@ -494,6 +580,7 @@ def editar_cultivo(request, idcultivo):
         form = CultivoForm(request.POST, instance=cultivo)
         if form.is_valid():
             form.save()
+            messages.success(request, f"El cultivo '{cultivo.nombre}' ha sido actualizado exitosamente.")
             return redirect('/cultivos')
     else:
         form = CultivoForm(instance=cultivo)
@@ -621,6 +708,7 @@ def crear_plantacion(request):
             plantacion = form.save(commit=False)
             plantacion.parcela = parcela  # ⬅️ Asignación forzada
             plantacion.save()
+            messages.success(request, f"La plantación en parcela '{parcela.nombre}' ha sido creada exitosamente.")
             return redirect('lista_plantaciones')
     else:
         form = PlantacionForm()
@@ -637,14 +725,16 @@ def editar_plantacion(request, idplantacion):
         messages.error(request, "No tienes permiso para editar plantaciones.")
         return redirect('inicio') 
     plantacion = get_object_or_404(Plantacion, pk=idplantacion)
+    parcela = Parcela.objects.get(idparcela=plantacion.parcela.idparcela)
     if request.method == 'POST':
         form = PlantacionForm(request.POST, instance=plantacion)
         if form.is_valid():
             form.save()
+            messages.success(request, f"La plantación en parcela '{plantacion.parcela.nombre}' ha sido actualizada exitosamente.")
             return redirect('/plantaciones/')
     else:
         form = PlantacionForm(instance=plantacion)
-    return render(request, 'Plantacion/form_plantacion.html', {'form': form})
+    return render(request, 'Plantacion/form_plantacion.html', {'form': form, 'parcela': parcela})
 
 # Eliminar una plantación
 @login_required
@@ -832,7 +922,7 @@ def crear_cosecha(request):
 
         if form.is_valid():
             cosecha = form.save()
-
+            messages.success(request, f"La cosecha #{cosecha.idcosecha} ha sido creada exitosamente.")
             # Guardar cada detalle como instancia de DetalleCosecha
             for corte in cortes:
                 DetalleCosecha.objects.create(
@@ -862,63 +952,66 @@ def editar_cosecha(request, idcosecha):
     if not request.user.has_perm('gestor.change_cosecha'):
         messages.error(request, "No tienes permiso para editar cosechas.")
         return redirect('inicio') 
+
     cosecha = get_object_or_404(Cosecha, pk=idcosecha)
+    detalles_existentes = DetalleCosecha.objects.filter(cosecha=cosecha)
 
-    # Guardamos los valores originales antes del form
-    original_primera = cosecha.primera
-    original_segunda = cosecha.segunda
-    original_tercera = cosecha.tercera
-    original_estado = cosecha.estado
+     # 🔹 Obtenemos la plantación asociada para mostrar en el template
+    plantacion = cosecha.plantacion
 
-    # Cantidades vendidas actuales
-    ventas = Venta.objects.filter(cosecha=cosecha).aggregate(
-        total_primera=Sum('primera'),
-        total_segunda=Sum('segunda'),
-        total_tercera=Sum('tercera')
-    )
-    vendida_primera = ventas['total_primera'] or 0
-    vendida_segunda = ventas['total_segunda'] or 0
-    vendida_tercera = ventas['total_tercera'] or 0
+    # Cantidades vendidas actuales desde DetalleVenta
+    detalle_ventas = DetalleVenta.objects.filter(cosecha=cosecha)
+    vendida_primera = detalle_ventas.filter(categoria='primera').aggregate(total=Sum('cantidad'))['total'] or 0
+    vendida_segunda = detalle_ventas.filter(categoria='segunda').aggregate(total=Sum('cantidad'))['total'] or 0
+    vendida_tercera = detalle_ventas.filter(categoria='tercera').aggregate(total=Sum('cantidad'))['total'] or 0
 
     if request.method == 'POST':
         form = CosechaForm(request.POST, instance=cosecha)
-        if form.is_valid():
-            nueva_primera = form.cleaned_data['primera']
-            nueva_segunda = form.cleaned_data['segunda']
-            nueva_tercera = form.cleaned_data['tercera']
+        cortes_json = request.POST.get('cortes_json', '[]')
+        try:
+            cortes = json.loads(cortes_json)
+        except json.JSONDecodeError:
+            cortes = []
 
-            # Validación: no permitir reducir por debajo de lo vendido
-            if (nueva_primera < vendida_primera or
-                nueva_segunda < vendida_segunda or
-                nueva_tercera < vendida_tercera):
-                form.add_error(None, "No puedes poner una cantidad menor a la ya vendida.")
-            else:
-                aumento = (
-                    nueva_primera > original_primera or
-                    nueva_segunda > original_segunda or
-                    nueva_tercera > original_tercera
+        if form.is_valid():
+            cosecha = form.save(commit=False)
+            cosecha.save()
+            messages.success(request, f"La cosecha #{cosecha.idcosecha} ha sido actualizada exitosamente.")
+
+            # Borrar los detalles viejos y crear los nuevos
+            DetalleCosecha.objects.filter(cosecha=cosecha).delete()
+            for corte in cortes:
+                DetalleCosecha.objects.create(
+                    cosecha=cosecha,
+                    categoria=corte['categoria'],
+                    tipocosecha=corte['tipocosecha'],
+                    cantidad=corte['cantidad']
                 )
 
-                cosecha = form.save(commit=False)
-
-                # ✅ Cambiar estado si estaba finalizado y hay aumento
-                if original_estado and aumento:
-                    cosecha.estado = False
-
-                cosecha.save()
-
-                if request.POST.get('ir_a_venta') == '1':
-                    return redirect(f"{reverse('crear_venta')}?cosecha_id={cosecha.idcosecha}")
-                return redirect('lista_cosechas')
+            if request.POST.get('ir_a_venta') == '1':
+                return redirect(f"{reverse('crear_venta')}?cosecha_id={cosecha.idcosecha}")
+            return redirect('lista_cosechas')
     else:
         form = CosechaForm(instance=cosecha)
 
+    # Convertimos los detalles existentes a JSON para JS
+    from django.core.serializers.json import DjangoJSONEncoder
+    detalles_json = json.dumps(list(detalles_existentes.values(
+        'categoria', 'tipocosecha', 'cantidad'
+    )), cls=DjangoJSONEncoder)
+
     return render(request, 'Cosecha/form_cosecha.html', {
         'form': form,
+        'plantacion': plantacion, 
         'vendida_primera': vendida_primera,
         'vendida_segunda': vendida_segunda,
         'vendida_tercera': vendida_tercera,
+        'detalles_existentes': detalles_existentes,
+        'detalles_json': detalles_json,  # 🔹 Para inicializar la tabla en JS
+        'categoria_choices': DetalleCosecha.CATEGORIAS,
+        'tipocosecha_choices': DetalleCosecha.OPCIONES,
     })
+
 
 # Eliminar una cosecha
 @login_required
@@ -1006,6 +1099,7 @@ def crear_cliente(request):
         form = ClienteForm(request.POST)
         if form.is_valid():
             form.save()
+            messages.success(request, "El cliente ha sido creado exitosamente.")
             return redirect('/clientes/')
     else:
         form = ClienteForm()
@@ -1022,6 +1116,7 @@ def editar_cliente(request, idcliente):
         form = ClienteForm(request.POST, instance=cliente)
         if form.is_valid():
             cliente = form.save()
+            messages.success(request, f"El cliente '{cliente.nombre}' ha sido actualizado exitosamente.")
             # Verifica si se envió la bandera para redirigir a otra vista (opcional)
             if request.POST.get('ir_a_detalle') == '1':
                 return redirect(f"{reverse('detalle_cliente')}?cliente_id={cliente.idcliente}")
@@ -1048,8 +1143,7 @@ def eliminar_cliente(request, idcliente):
     return redirect('/clientes')
 
 
-
-
+# VENTAS
 @login_required
 def obtener_detalles_venta(request, venta_id):
     try:
@@ -1158,7 +1252,6 @@ def lista_ventas(request):
     })
 
 # Disponibilidad para ventas
-@login_required
 def obtener_disponibilidad_por_cultivo():
     cosechas_activas = Cosecha.objects.filter(estado=False)
     disponibilidad = {}
@@ -1166,9 +1259,6 @@ def obtener_disponibilidad_por_cultivo():
     for cosecha in cosechas_activas:
         cultivo = str(cosecha.plantacion)  # esto será el nombre del cultivo
         detalles_cosecha = DetalleCosecha.objects.filter(cosecha=cosecha)
-
-        # Diccionario temporal para este cultivo
-        cultivo_temp = {}
 
         for detalle in detalles_cosecha:
             tipo = detalle.tipocosecha
@@ -1183,30 +1273,35 @@ def obtener_disponibilidad_por_cultivo():
 
             disponible = max(cantidad_total - vendidos, 0)
 
-            # Solo agregar si hay disponibilidad
+            # Solo procesar si hay disponibilidad
             if disponible > 0:
-                if tipo not in cultivo_temp:
-                    cultivo_temp[tipo] = {'primera': 0, 'segunda': 0, 'tercera': 0}
-                
-                cultivo_temp[tipo][categoria] += disponible
-
-        # Solo agregar el cultivo si tiene al menos un producto disponible
-        if cultivo_temp:
-            # Verificar si hay al menos una categoría con disponibilidad > 0
-            tiene_disponibilidad = False
-            for tipo_data in cultivo_temp.values():
-                if any(cantidad > 0 for cantidad in tipo_data.values()):
-                    tiene_disponibilidad = True
-                    break
-            
-            if tiene_disponibilidad:
+                # Inicializar el cultivo si no existe
                 if cultivo not in disponibilidad:
                     disponibilidad[cultivo] = {}
                 
-                # Solo agregar tipos que tengan disponibilidad
-                for tipo, categorias in cultivo_temp.items():
-                    if any(cantidad > 0 for cantidad in categorias.values()):
-                        disponibilidad[cultivo][tipo] = categorias
+                # Inicializar el tipo si no existe
+                if tipo not in disponibilidad[cultivo]:
+                    disponibilidad[cultivo][tipo] = {'primera': 0, 'segunda': 0, 'tercera': 0}
+                
+                # AQUÍ ESTÁ LA CORRECCIÓN: Sumar directamente al diccionario principal
+                disponibilidad[cultivo][tipo][categoria] += disponible
+
+    # Limpiar tipos sin disponibilidad
+    cultivos_a_eliminar = []
+    for cultivo, tipos in disponibilidad.items():
+        tipos_a_eliminar = []
+        for tipo, categorias in tipos.items():
+            if all(cantidad == 0 for cantidad in categorias.values()):
+                tipos_a_eliminar.append(tipo)
+        
+        for tipo in tipos_a_eliminar:
+            del disponibilidad[cultivo][tipo]
+        
+        if not disponibilidad[cultivo]:
+            cultivos_a_eliminar.append(cultivo)
+    
+    for cultivo in cultivos_a_eliminar:
+        del disponibilidad[cultivo]
 
     return disponibilidad
 
@@ -1234,6 +1329,7 @@ def crear_venta(request):
             venta.cliente = cliente
             venta.total = sum(float(prod['total']) for prod in productos)
             venta.save()
+            messages.success(request, "Venta registrada correctamente.")
 
             for producto in productos:
                 cultivo_id = producto['cultivo_id']
@@ -1338,7 +1434,7 @@ def crear_venta(request):
         ).distinct()
         tipo_cosecha_opciones = DetalleCosecha.OPCIONES
         cantidades = obtener_disponibilidad_por_cultivo()
-
+        print(cantidades)
         return render(request, 'Venta/form_venta.html', {
             'form': form,
             'cultivos': cultivos,
@@ -1545,6 +1641,7 @@ def toggle_estado_venta(request, idventa):
         venta = Venta.objects.get(pk=idventa)
         venta.estado = True
         venta.save()
+        messages.success(request, f"La venta #{venta.idventa} ha sido marcada como pagada.")
         return JsonResponse({'estado': venta.estado})
     except Venta.DoesNotExist:
         return JsonResponse({'error': 'Venta no encontrada'}, status=404)
@@ -1792,3 +1889,405 @@ def lista_ventasinformales(request):
         'fecha_fin': fecha_fin,
         'clientes': clientes,
     })
+
+
+#######EMPLEADOS#########
+# Mostrar lista de empleados
+@login_required
+def lista_empleados(request):
+    filtro = request.GET.get('filtro', 'nombre')
+    buscar = request.GET.get('buscar', '').strip().lower()
+
+    empleados = Empleado.objects.all().order_by('nombre')
+
+    if buscar:
+        if filtro == 'nombre':
+            empleados = empleados.filter(nombre__icontains=buscar)
+        elif filtro == 'telefono':
+            empleados = empleados.filter(telefono__icontains=buscar)
+        elif filtro == 'salario':
+            try:
+                salario_buscar = float(buscar)
+                empleados = empleados.filter(salario=salario_buscar)
+            except ValueError:
+                empleados = empleados.none()
+
+    # Preparar la lista enriquecida
+    empleados_info = []
+    for empleado in empleados:
+        # Aquí puedes agregar información adicional relacionada con el empleado
+        # Por ejemplo, si tienes modelos relacionados como AsignacionTrabajo, etc.
+        
+        empleados_info.append({
+            'empleado': empleado,
+            'estado_texto': 'Activo' if empleado.estado else 'Inactivo',
+            'salario_formateado': f"${empleado.salario:,.2f}"
+        })
+        
+    # Paginación manual
+    pagina = request.GET.get("page", 1)
+    try:
+        paginator = Paginator(empleados_info, 10)
+        empleados_paginados = paginator.page(pagina)
+    except:
+        raise Http404("Página no encontrada")
+
+    return render(request, 'Empleado/lista_empleados.html', {
+        'entity': empleados_paginados,
+        'paginator': paginator,
+        'filtro': filtro,
+        'buscar': request.GET.get('buscar', '')
+    })
+
+# Crear un nuevo empleado
+@login_required
+def crear_empleado(request):
+    if request.method == 'POST':
+        form = EmpleadoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "El empleado ha sido creado exitosamente.")
+            return redirect('/empleados/')
+    else:
+        form = EmpleadoForm()
+    return render(request, 'Empleado/form_empleado.html', {'form': form})
+
+# Editar un empleado existente
+@login_required
+def editar_empleado(request, idempleado):
+    if not request.user.has_perm('gestor.change_empleado'):
+        messages.error(request, "No tienes permiso para editar empleados.")
+        return redirect('inicio') 
+    empleado = get_object_or_404(Empleado, pk=idempleado)
+    if request.method == 'POST':
+        form = EmpleadoForm(request.POST, instance=empleado)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"El empleado '{empleado.nombre}' ha sido actualizado exitosamente.")
+            return redirect('/empleados')
+    else:
+        form = EmpleadoForm(instance=empleado)
+    return render(request, 'Empleado/form_empleado.html', {'form': form})
+
+# Eliminar un empleado
+@login_required
+def eliminar_empleado(request, idempleado):
+    if not request.user.has_perm('gestor.delete_empleado'):
+        messages.error(request, "No tienes permiso para eliminar empleados.")
+        return redirect('inicio') 
+    empleado = get_object_or_404(Empleado, pk=idempleado)
+    if request.method == 'POST':
+        # Verifica si el empleado tiene registros relacionados antes de eliminar
+        # Ajusta esto según tus modelos relacionados
+        # Por ejemplo, si tienes AsignacionTrabajo:
+        # if AsignacionTrabajo.objects.filter(empleado=empleado).exists():
+        #     messages.error(request, f"No se puede eliminar el empleado '{empleado.nombre}' porque tiene asignaciones de trabajo.")
+        # else:
+        empleado.delete()
+        messages.success(request, f"El empleado '{empleado.nombre}' ha sido eliminado exitosamente.")
+    return redirect('/empleados')
+
+# Vista adicional para cambiar estado del empleado (activar/desactivar)
+@login_required
+def cambiar_estado_empleado(request, idempleado):
+    if not request.user.has_perm('gestor.change_empleado'):
+        messages.error(request, "No tienes permiso para cambiar el estado de empleados.")
+        return redirect('inicio')
+    
+    empleado = get_object_or_404(Empleado, pk=idempleado)
+    empleado.estado = not empleado.estado
+    empleado.save()
+    
+    estado_texto = "activado" if empleado.estado else "desactivado"
+    messages.success(request, f"El empleado '{empleado.nombre}' ha sido {estado_texto} exitosamente.")
+    
+    return redirect('/empleados')
+
+
+#PLANILLAS  
+
+def obtener_semana_actual():
+    """Obtiene el domingo y sábado de la semana actual (domingo como primer día)"""
+    hoy = datetime.now().date()
+    dias_desde_domingo = (hoy.weekday() + 1) % 7  # Convertir para que domingo sea 0
+    domingo = hoy - timedelta(days=dias_desde_domingo)
+    sabado = domingo + timedelta(days=6)
+    return domingo, sabado
+
+def obtener_dias_semana(fecha_inicio):
+    """Genera las fechas de los 7 días de la semana empezando desde domingo"""
+    dias = []
+    for i in range(7):
+        dia = fecha_inicio + timedelta(days=i)
+        dias.append(dia)
+    return dias
+
+@login_required
+def lista_planilla_semanal(request):
+    filtro = request.GET.get('filtro', 'empleado')
+    buscar = request.GET.get('buscar', '').strip().lower()
+    semana_str = request.GET.get('semana', '')
+
+    if semana_str:
+        try:
+            anio, semana_num = semana_str.split('-W')
+            anio = int(anio)
+            semana_num = int(semana_num)
+            lunes = datetime.strptime(f'{anio}-W{semana_num}-1', "%G-W%V-%u").date()
+            domingo_inicio = lunes - timedelta(days=1)
+            sabado_fin = lunes + timedelta(days=5)
+        except ValueError:
+            raise Http404("Semana inválida")
+    else:
+        domingo_inicio, sabado_fin = obtener_semana_actual()
+
+    dias_semana = obtener_dias_semana(domingo_inicio)
+    nombres_dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+
+    empleados = Empleado.objects.filter(estado=True)
+    if buscar:
+        empleados = empleados.filter(nombre__icontains=buscar)
+
+    planillas_semana = Planilla.objects.filter(
+        fecha__range=(domingo_inicio, sabado_fin)
+    ).select_related('empleado')
+
+    planillas_dict = {
+        f"{p.empleado.idempleado}_{p.fecha}": p
+        for p in planillas_semana
+    }
+
+    empleados_data = []
+    for empleado in empleados:
+        info = {
+            'empleado': empleado,
+            'dias': [],
+            'total_semana': 0.0,
+            'total_extra_semana': 0.0
+        }
+
+        for i, dia in enumerate(dias_semana):
+            key = f"{empleado.idempleado}_{dia}"
+            planilla = planillas_dict.get(key)
+            
+            if planilla:
+                if planilla.jornada:
+                    pago_dia = float(empleado.salario)
+                else:
+                    pago_dia = 0.0
+                    
+                horas_extra = float(planilla.horasextra) if planilla.horasextra else 0.0
+                pago_extra_dia = float(planilla.pagoextra) if planilla.pagoextra else 0.0
+                
+                # Obtener observaciones si existe el campo
+                observaciones = ""
+                if hasattr(planilla, 'observaciones') and planilla.observaciones:
+                    observaciones = planilla.observaciones
+                    
+            else:
+                pago_dia = 0.0
+                horas_extra = 0.0
+                pago_extra_dia = 0.0
+                observaciones = ""
+
+            info['dias'].append({
+                'nombre_dia': nombres_dias[i],
+                'salario_dia': pago_dia,
+                'horas_extra': horas_extra,
+                'pago_extra': pago_extra_dia,
+                'observaciones': observaciones  # AGREGADO: Incluir observaciones
+            })
+
+            info['total_semana'] += pago_dia
+            info['total_extra_semana'] += pago_extra_dia
+
+        info['total_general'] = info['total_semana'] + info['total_extra_semana']
+        
+        # Convertir a JSON con las observaciones incluidas
+        info['dias_json'] = json.dumps(info['dias'], cls=DjangoJSONEncoder)
+
+        empleados_data.append(info)
+
+    pagina = request.GET.get("page", 1)
+    try:
+        paginator = Paginator(empleados_data, 10)
+        empleados_paginados = paginator.page(pagina)
+    except:
+        raise Http404("Página no encontrada")
+
+    return render(request, 'Planilla/lista_planilla.html', {
+        'empleados_data': empleados_paginados,
+        'nombres_dias': nombres_dias,
+        'paginator': paginator,
+        'filtro': filtro,
+        'buscar': request.GET.get('buscar', ''),
+        'semana': semana_str,
+        'fecha_inicio': domingo_inicio,
+        'fecha_fin': sabado_fin,
+    })
+
+@login_required
+def planilla_form_view(request):
+    """Vista para mostrar y procesar el formulario de planilla diaria"""
+    
+    if request.method == 'GET':
+        # Obtener la fecha del parámetro GET o usar la fecha actual
+        fecha_str = request.GET.get('fecha', datetime.now().date().strftime('%Y-%m-%d'))
+        
+        try:
+            fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except ValueError:
+            fecha_obj = datetime.now().date()
+        
+        # Obtener todos los empleados activos
+        empleados = Empleado.objects.filter(estado=True).order_by('nombre')
+        
+        # Verificar si ya existe planilla para esta fecha
+        planillas_existentes = Planilla.objects.filter(fecha=fecha_obj).select_related('empleado')
+        
+        # Crear diccionario para fácil acceso a las planillas existentes
+        planillas_dict = {planilla.empleado.idempleado: planilla for planilla in planillas_existentes}
+        
+        # Determinar si es edición
+        es_edicion = len(planillas_existentes) > 0
+        
+        context = {
+            'empleados': empleados,
+            'fecha_edicion': fecha_obj,
+            'planillas_dict': planillas_dict,
+            'es_edicion': es_edicion,
+            'fecha_str': fecha_str
+        }
+        
+        return render(request, 'Planilla/form_planilla.html', context)
+    
+    elif request.method == 'POST':
+        # Procesar el formulario (igual que antes)
+        return procesar_planilla_diaria(request)
+
+@login_required 
+def procesar_planilla_diaria(request):
+    """Procesa y guarda los datos de la planilla diaria (crear o editar)"""
+    
+    try:
+        fecha = request.POST.get('fecha')
+        if not fecha:
+            messages.error(request, 'La fecha es requerida.')
+            return redirect('agregarplanilla')
+        
+        # Convertir fecha string a objeto date
+        fecha_obj = datetime.strptime(fecha, '%Y-%m-%d').date()
+        
+        empleados_procesados = 0
+        empleados_con_datos = 0
+        empleados_actualizados = 0
+        empleados_creados = 0
+        
+        # Usar transacción para asegurar consistencia
+        with transaction.atomic():
+            
+            # Obtener todos los empleados activos
+            empleados = Empleado.objects.filter(estado=True)
+            
+            for empleado in empleados:
+                # Construir los nombres de los campos para este empleado
+                jornada_key = f'empleado_{empleado.idempleado}_jornada'
+                horas_key = f'empleado_{empleado.idempleado}_horasextra'
+                pago_key = f'empleado_{empleado.idempleado}_pagoextra'
+                obs_key = f'empleado_{empleado.idempleado}_observaciones'
+                
+                # Obtener los valores del POST
+                jornada = request.POST.get(jornada_key) == 'on'  # Checkbox
+                horas_extra = request.POST.get(horas_key, '0')
+                pago_extra = request.POST.get(pago_key, '0')
+                observaciones = request.POST.get(obs_key, '').strip()
+                
+                # Convertir a decimal
+                try:
+                    horas_extra = float(horas_extra) if horas_extra else 0
+                    pago_extra = float(pago_extra) if pago_extra else 0
+                except ValueError:
+                    horas_extra = 0
+                    pago_extra = 0
+                
+                # Verificar si ya existe una planilla para este empleado en esta fecha
+                try:
+                    planilla = Planilla.objects.get(empleado=empleado, fecha=fecha_obj)
+                    # Actualizar planilla existente
+                    planilla.jornada = jornada
+                    planilla.horasextra = horas_extra
+                    planilla.pagoextra = pago_extra
+                    if hasattr(planilla, 'observaciones'):
+                        planilla.observaciones = observaciones
+                    planilla.save()
+                    empleados_actualizados += 1
+                    
+                except Planilla.DoesNotExist:
+                    # Solo crear nueva planilla si hay datos relevantes
+                    if jornada or horas_extra > 0 or pago_extra > 0 or observaciones:
+                        planilla_data = {
+                            'empleado': empleado,
+                            'fecha': fecha_obj,
+                            'jornada': jornada,
+                            'horasextra': horas_extra,
+                            'pagoextra': pago_extra,
+                        }
+                        
+                        # Agregar observaciones solo si el campo existe
+                        if hasattr(Planilla, 'observaciones'):
+                            planilla_data['observaciones'] = observaciones
+                            
+                        Planilla.objects.create(**planilla_data)
+                        empleados_creados += 1
+                
+                empleados_procesados += 1
+                if jornada or horas_extra > 0 or pago_extra > 0 or observaciones:
+                    empleados_con_datos += 1
+        
+        # Mensaje de éxito personalizado
+        if empleados_actualizados > 0 and empleados_creados > 0:
+            messages.success(
+                request, 
+                f'Planilla procesada exitosamente. '
+                f'Se actualizaron {empleados_actualizados} registros y se crearon {empleados_creados} nuevos.'
+            )
+        elif empleados_actualizados > 0:
+            messages.success(
+                request, 
+                f'Planilla actualizada exitosamente. '
+                f'Se actualizaron {empleados_actualizados} registros.'
+            )
+        elif empleados_creados > 0:
+            messages.success(
+                request, 
+                f'Planilla creada exitosamente. '
+                f'Se crearon {empleados_creados} nuevos registros.'
+            )
+        else:
+            messages.warning(
+                request, 
+                'No se realizaron cambios. Asegúrate de marcar asistencias o agregar datos.'
+            )
+        
+        return redirect('lista_planilla')  # Redirigir a la lista de planillas
+        
+    except Exception as e:
+        messages.error(
+            request, 
+            f'Error al guardar la planilla: {str(e)}'
+        )
+        return redirect('agregarplanilla')
+
+# Nueva vista para crear planilla de una fecha específica
+@login_required
+def planilla_fecha_especifica(request, fecha_str):
+    """Vista para crear/editar planilla de una fecha específica"""
+    return redirect(f"{reverse('agregarplanilla')}?fecha={fecha_str}")
+
+# Vista para obtener planilla de hoy directamente
+@login_required
+def planilla_hoy(request):
+    """Vista para ir directamente a la planilla de hoy"""
+    hoy = datetime.now().date().strftime('%Y-%m-%d')
+    return redirect(f"{reverse('agregarplanilla')}?fecha={hoy}")
+

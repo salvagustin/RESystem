@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+
+{% block title %} | Empleados {% endblock %}
+
+{% block content %}
+{% load static %}
+<div class="container py-2">
+  <!-- Título -->
+  <div class="text-center mb-3">
+    <h2 class="fw-bold">Empleados</h2>
+  </div>
+
+  <!-- Acciones y Filtros -->
+  <div class="row gy-3 align-items-center mb-2">
+    <!-- Botones -->
+    <div class="col-12 col-md-4 d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
+      <a href="{% url 'crear_empleado' %}" class="btn btn-primary w-100 d-flex align-items-center justify-content-center">
+        <i class="bi bi-plus-circle fs-5 me-2"></i> <span>Nuevo empleado</span>
+      </a>
+
+      <a href="{% url 'lista_empleados' %}" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
+        <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
+      </a>
+    </div>
+
+    <!-- Formulario de búsqueda -->
+    <div class="col-12 col-md-8">
+      <form method="get" class="row g-2 justify-content-center">
+        <!-- Filtro -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <select class="form-select form-select-sm" name="filtro">
+            <option value="nombre" {% if filtro == "nombre" %}selected{% endif %}>Nombre</option>
+            <option value="telefono" {% if filtro == "telefono" %}selected{% endif %}>Teléfono</option>
+            <option value="salario" {% if filtro == "salario" %}selected{% endif %}>Salario</option>
+          </select>
+        </div>
+
+        <!-- Buscar -->
+        <div class="col-6 col-sm-4 col-md-4 col-lg-3">
+          <input required type="text" name="buscar" class="form-control form-control-sm" placeholder="Buscar..." value="{{ buscar }}">
+        </div>
+
+        <!-- Botón Buscar -->
+        <div class="col-12 col-sm-4 col-md-auto">
+          <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center">
+            <i class="bi bi-search fs-5 me-2"></i> <span>Buscar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    
+  </div>
+
+  <!-- Cards para móviles -->
+  <div class="d-md-none">
+    {% for item in entity %}
+    {% with empleado=item.empleado %}
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title fw-bold">#{{ empleado.idempleado }} - {{ empleado.nombre }}</h5>
+        <p class="mb-1"><strong>Teléfono:</strong> {{ empleado.telefono }}</p>
+        <p class="mb-1"><strong>Salario:</strong> {{ item.salario_formateado }}</p>
+        <p class="mb-2">
+          <strong>Estado:</strong> 
+          <span class="badge {% if empleado.estado %}bg-success{% else %}bg-danger{% endif %}">
+            {{ item.estado_texto }}
+          </span>
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <button 
+            type="button" 
+            class="btn btn-sm btn-info text-white"
+            data-bs-toggle="modal" 
+            data-bs-target="#modalEmpleado"
+            data-id="{{ empleado.idempleado }}"
+            data-nombre="{{ empleado.nombre }}"
+            data-telefono="{{ empleado.telefono }}"
+            data-salario="{{ empleado.salario }}"
+            data-salario-formateado="{{ item.salario_formateado }}"
+            data-estado="{{ empleado.estado }}"
+            data-estado-texto="{{ item.estado_texto }}">
+            <i class="bi bi-eye"></i> Detalles
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+    {% include "paginacion.html" %}
+  </div>
+
+  <!-- Tabla para escritorio -->
+  <div class="tbl_container d-none d-md-block">
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover text-center align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Teléfono</th>
+            <th>Salario</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in entity %}
+          {% with empleado=item.empleado %}
+          <tr>
+            <td>{{ empleado.idempleado }}</td>
+            <td>{{ empleado.nombre }}</td>
+            <td>{{ empleado.telefono }}</td>
+            <td>{{ item.salario_formateado }}</td>
+            <td>
+              <span class="badge {% if empleado.estado %}bg-success{% else %}bg-danger{% endif %}">
+                {{ item.estado_texto }}
+              </span>
+            </td>
+            <td>
+              <div class="d-flex flex-wrap justify-content-center gap-2">
+                <button 
+                  type="button" 
+                  class="btn btn-info btn-sm text-white"
+                  data-bs-toggle="modal" 
+                  data-bs-target="#modalEmpleado"
+                  data-id="{{ empleado.idempleado }}"
+                  data-nombre="{{ empleado.nombre }}"
+                  data-telefono="{{ empleado.telefono }}"
+                  data-salario="{{ empleado.salario }}"
+                  data-salario-formateado="{{ item.salario_formateado }}"
+                  data-estado="{{ empleado.estado }}"
+                  data-estado-texto="{{ item.estado_texto }}">
+                  <i class="bi bi-eye"></i> Detalles
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "paginacion.html" %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Detalles de Empleado -->
+<div class="modal fade" id="modalEmpleado" tabindex="-1" aria-labelledby="modalEmpleadoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <!-- Header -->
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalEmpleadoLabel">👤 Información del Empleado</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="container-fluid">
+          <div class="row g-3">
+            <!-- Columna izquierda -->
+            <div class="col-md-6">
+              <p><strong>🆔 ID:</strong> <span id="empleadoId"></span></p>
+              <p><strong>📛 Nombre:</strong> <span id="empleadoNombre"></span></p>
+              <p><strong>📞 Teléfono:</strong> <span id="empleadoTelefono"></span></p>
+            </div>
+
+            <!-- Columna derecha -->
+            <div class="col-md-6">
+              <p><strong>💵 Salario:</strong> <span id="empleadoSalario"></span></p>
+              <p>
+                <strong>🔄 Estado:</strong> 
+                <span id="empleadoEstadoBadge" class="badge"></span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <a id="btnEditarEmpleado" class="btn btn-outline-primary">
+          <i class="bi bi-pencil-square"></i> Editar
+        </a>
+        <button 
+          id="btnCambiarEstado"
+          class="btn btn-outline-warning"
+          data-bs-toggle="modal"
+          data-bs-target="#modalCambiarEstado"
+          data-bs-dismiss="modal">
+          <i class="bi bi-toggle-on"></i> <span id="textoEstado">Cambiar Estado</span>
+        </button>
+        <button 
+          class="btn btn-outline-danger"
+          data-bs-toggle="modal"
+          data-bs-target="#modalConfirmarEliminarEmpleado"
+          data-bs-dismiss="modal">
+          <i class="bi bi-trash"></i> Eliminar
+        </button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cambiar Estado -->
+<div class="modal fade" id="modalCambiarEstado" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+          <div class="modal-header bg-warning text-dark">
+              <h5 class="modal-title">¿Cambiar Estado?</h5>
+              <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+              <p>¿Estás seguro de cambiar el estado de este empleado?</p>
+          </div>
+          <div class="modal-footer">
+              <form id="formCambiarEstado" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-warning btn-sm">Sí, cambiar</button>
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+              </form>
+          </div>
+      </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modalConfirmarEliminarEmpleado" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title">¿Eliminar Empleado?</h5>
+              <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+              <p>¿Estás seguro de eliminar este empleado?</p>
+          </div>
+          <div class="modal-footer">
+              <form id="formEliminarEmpleado" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-sm">Sí, eliminar</button>
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+              </form>
+          </div>
+      </div>
+  </div>
+</div>
+{% endblock modals %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const modalEmpleado = document.getElementById('modalEmpleado');
+    if (modalEmpleado) {
+        modalEmpleado.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+    
+            const id = button.getAttribute('data-id');
+            const nombre = button.getAttribute('data-nombre');
+            const telefono = button.getAttribute('data-telefono');
+            const salario = button.getAttribute('data-salario');
+            const salarioFormateado = button.getAttribute('data-salario-formateado');
+            const estado = button.getAttribute('data-estado') === 'True';
+            const estadoTexto = button.getAttribute('data-estado-texto');
+
+            document.getElementById('empleadoId').textContent = id;
+            document.getElementById('empleadoNombre').textContent = nombre;
+            document.getElementById('empleadoTelefono').textContent = telefono;
+            document.getElementById('empleadoSalario').textContent = salarioFormateado;
+            
+            const estadoBadge = document.getElementById('empleadoEstadoBadge');
+            estadoBadge.textContent = estadoTexto;
+            estadoBadge.className = `badge ${estado ? 'bg-success' : 'bg-danger'}`;
+
+            // Actualizar texto del botón de cambiar estado
+            const textoEstado = document.getElementById('textoEstado');
+            textoEstado.textContent = estado ? 'Desactivar' : 'Activar';
+    
+            document.getElementById('btnEditarEmpleado').href = `/empleados/editar/${id}/`;
+            document.getElementById('formEliminarEmpleado').action = `/empleados/eliminar/${id}/`;
+            document.getElementById('formCambiarEstado').action = `/empleados/cambiar-estado/${id}/`;
+        });
+    }
+});   
+</script>
+
+{% endblock scripts %}

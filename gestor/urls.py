@@ -64,4 +64,16 @@ urlpatterns = [
     path('ventasinformales/', views.lista_ventasinformales, name='lista_ventasinformales'),
     path('entregasinformales/', views.lista_entregasinformales, name='lista_entregasinformales'),
 
+     # Empleados
+    path('empleados/', views.lista_empleados, name='lista_empleados'),
+    path('empleados/crear/', views.crear_empleado, name='crear_empleado'),
+    path('empleados/editar/<int:idempleado>/', views.editar_empleado, name='editar_empleado'),
+    path('empleados/eliminar/<int:idempleado>/', views.eliminar_empleado, name='eliminar_empleado'),
+    path('empleados/cambiar-estado/<int:idempleado>/', views.cambiar_estado_empleado, name='cambiar_estado_empleado'),
+
+    path('planilla/', views.lista_planilla_semanal, name='lista_planilla'),
+    path('agregarplanilla/', views.planilla_form_view, name='agregarplanilla'),
+    path('planilla/fecha/<str:fecha_str>/', views.planilla_fecha_especifica, name='planilla_fecha'),
+    path('planilla/hoy/', views.planilla_hoy, name='planilla_hoy'),
+    
 ]

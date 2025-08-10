@@ -92,7 +92,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const totalGeneral = document.getElementById('total-general');
   const agregarBtn = document.getElementById('agregar-corte');
 
+  // 🔹 Inicializamos con los detalles existentes si estamos editando
   let cortes = [];
+  {% if detalles_json %}
+  cortes = JSON.parse('{{ detalles_json|escapejs }}');
+  {% endif %}
 
   function getLabel(selectElement, value) {
     const option = [...selectElement.options].find(opt => opt.value === value);
@@ -104,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let totalCantidad = 0;
 
     cortes.forEach((corte, index) => {
-      totalCantidad += corte.cantidad;
+      totalCantidad += parseInt(corte.cantidad);
 
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-center';
@@ -122,6 +126,9 @@ document.addEventListener('DOMContentLoaded', function () {
     totalGeneral.textContent = `Total Cantidad: ${totalCantidad}`;
     cortesJson.value = JSON.stringify(cortes);
   }
+
+  // 🔹 Inicializamos la lista al cargar
+  actualizarLista();
 
   agregarBtn.addEventListener('click', function () {
     const cat = categoria.value;
@@ -161,5 +168,4 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
-
 {% endblock %}

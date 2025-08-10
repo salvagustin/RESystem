@@ -46,3 +46,10 @@ def json_script(value):
         return mark_safe(json.dumps(data))
     except Exception as e:
         return mark_safe('[]')  # En caso de error, retorna un array vacío
+
+@register.filter
+def index(sequence, position):
+    try:
+        return sequence[position]
+    except (IndexError, TypeError):
+        return ''

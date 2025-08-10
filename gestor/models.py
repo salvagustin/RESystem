@@ -130,14 +130,58 @@ class DetalleCompra(models.Model):
     compra = models.ForeignKey('Compra', on_delete=models.CASCADE)
     producto = models.CharField('Producto', max_length=300)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
-    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+    preciounitario = models.DecimalField(max_digits=10, decimal_places=2)
 
     def subtotal(self):
-        return self.cantidad * self.precio_unitario
+        return self.cantidad * self.preciounitario
 
     def __str__(self):
         return f"{self.producto} x {self.cantidad} en Compra #{self.compra.idcompra}"
 
+class Empleado(models.Model):
+   idempleado = models.AutoField(primary_key=True)
+   nombre = models.CharField('Nombre', max_length=300)
+   telefono = models.CharField('Teléfono', max_length=300)
+   estado = models.BooleanField('Estado', default=True)
+   salario = models.DecimalField('Salario', max_digits=10, decimal_places=2)
+   
+   def __str__(self):
+         return f"{self.nombre} - {self.telefono}"
+    
+class Planilla(models.Model):
+    idplanilla = models.AutoField(primary_key=True)
+    empleado = models.ForeignKey(Empleado, on_delete=models.CASCADE, verbose_name="Empleado")
+    fecha = models.DateField('Fecha de pago', auto_now_add=True)
+    jornada = models.BooleanField('Jornada', default=False)
+    horasextra = models.DecimalField('Horas extra', max_digits=5, decimal_places=2)
+    pagoextra = models.DecimalField('Pago extra', max_digits=10, decimal_places=2)
+    observaciones = models.TextField('Observaciones', blank=True, null=True)
 
+    class Meta:
+        # Evitar duplicados: un empleado no puede tener más de una planilla por día
+        unique_together = ['empleado', 'fecha']
+        ordering = ['-fecha', 'empleado__nombre']
     
+    def save(self, *args, **kwargs):
+        # Calcular automáticamente el pago extra basado en horas extra
+        if self.horasextra:
+            self.pagoextra = self.horasextra * 2  # $2 por hora extra
+        else:
+            self.pagoextra = 0
+        super().save(*args, **kwargs)
     
+    def __str__(self):
+        return f"{self.fecha} - {self.empleado.nombre}"
+    
+    @property
+    def pago_jornada(self):
+        """Retorna el pago de la jornada si trabajó ese día"""
+        return self.empleado.salario if self.jornada else 0
+    
+    @property
+    def total_dia(self):
+        """Retorna el total del día (jornada + extra)"""
+        return self.pago_jornada + self.pagoextra
+
+
+

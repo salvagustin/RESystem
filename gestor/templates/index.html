@@ -6,271 +6,454 @@
 
 {% block content %}
 
- {% if messages %}
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      {% for message in messages %}
-        Swal.fire({
-          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
-          title: "{{ message|escapejs }}",
-          timer: 3000,
-          showConfirmButton: false
-        });
-      {% endfor %}
-    });
-  </script>
-{% endif %}
-
-  <h1 class="welcome-title">¡Bienvenido! {{ user }}</h1>
+<h1 class="welcome-title">¡Bienvenido! {{ user }}</h1>
    
-  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
     <h2 class="fw-bold text-center text-md-start">Sistema de producción</h2>
     <div class="d-flex flex-column flex-sm-row gap-2">
-      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarCliente">
-          <i class="bi bi-plus-circle"></i> Venta
-      </button>
-      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPlantacion">
-          <i class="bi bi-plus-circle"></i> Corte
-      </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarCliente">
+            <i class="bi bi-plus-circle"></i> Venta
+        </button>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPlantacion">
+            <i class="bi bi-plus-circle"></i> Corte
+        </button>
     </div>
-  </div>
+</div>
 
-  <!-- Estadísticas -->
-  <h3 class="fw-bold mb-4">Resumen Diario</h3>
-  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 mb-4">
-    {% for cultivo, calidades in cosechas_hoy_detalle.items %}
-      <div class="col">
-        <div class="card h-100 shadow-sm border-success">
-          <div class="card-header bg-success text-white text-center fw-bold text-uppercase">
-            {{ cultivo }}
+<!-- Resumen Diario -->
+<h3 class="fw-bold mb-4">Resumen Diario</h3>
+
+<div class="row g-3">
+{% if cosechas_hoy_detalle %}
+  {% for cultivo, tipos in cosechas_hoy_detalle.items %}
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card shadow-sm border-success h-100">
+        <div class="card-header bg-success text-white text-center fw-bold text-uppercase py-2 small">
+          {{ cultivo }}
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered text-center mb-0 align-middle">
+              <thead class="table-success">
+                <tr class="small">
+                  <th>Tipo</th>
+                  <th><i class="bi bi-star-fill text-success"></i> P</th>
+                  <th><i class="bi bi-star-half text-info"></i> S</th>
+                  <th><i class="bi bi-star text-warning"></i> T</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for tipo, calidades in tipos.items %}
+                  <tr class="small">
+                    <td class="fw-bold text-capitalize">{{ tipo }}</td>
+                    <td>{{ calidades.primera|default:0 }}</td>
+                    <td>{{ calidades.segunda|default:0 }}</td>
+                    <td>{{ calidades.tercera|default:0 }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-          <div class="card-body p-3">
-            {% for calidad, cantidad in calidades.items %}
-              {% if cantidad > 0 %}
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="fw-bold text-capitalize">
-                    {% if calidad == 'primera' %}
-                      <span class="text-success">Primera</span>
-                    {% elif calidad == 'segunda' %}
-                      <span class="text-info">Segunda</span>
-                    {% elif calidad == 'tercera' %}
-                      <span class="text-warning">Tercera</span>
-                    {% endif %}
-                  </span>
-                  <span class="fw-bold">{{ cantidad }}</span>
-                </div>
-              {% endif %}
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-    {% endfor %}
-
-    <div class="col">
-      <div class="card h-100 text-white bg-primary text-center shadow-sm">
-        <div class="card-header fw-bold">Ventas</div>
-        <div class="card-body">
-          <p class="mb-1 text-uppercase">Del día</p>
-          <p class="fw-bold fs-4">${{ total_ventas }}</p>
         </div>
       </div>
     </div>
-
-    <div class="col">
-      <div class="card h-100 text-white bg-secondary text-center shadow-sm">
-        <div class="card-header fw-bold">Compras</div>
-        <div class="card-body">
-          <p class="mb-1 text-uppercase">Del día</p>
-          <p class="fw-bold fs-4">$100</p>
-        </div>
-      </div>
+  {% endfor %}
+{% else %}
+  <div class="col-12">
+    <div class="alert alert-info text-center">
+      <i class="bi bi-info-circle"></i> No hay cosechas registradas para hoy
     </div>
   </div>
+{% endif %}
 
-  <!-- Gráficos -->
-  <div class="row g-4 mb-4">
-    <div class="col-12 col-lg-6">
-      <div class="card shadow-sm">
-        <div class="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center">
-          <span>Cosechas por Calidad (semana)</span>
-          <select id="selectCultivo" class="form-select form-select-sm w-auto">
-            {% for cultivo in calidad_por_cultivo.keys %}
-              <option value="{{ cultivo }}">{{ cultivo }}</option>
-            {% endfor %}
-          </select>
+<div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100 text-white bg-primary text-center shadow-sm">
+        <div class="card-header fw-bold">
+            <i class="bi bi-cash-coin"></i> Ventas
         </div>
         <div class="card-body">
-          <canvas id="graficoCalidad"></canvas>
+            <p class="mb-1 text-uppercase">Del día</p>
+            <p class="fw-bold fs-4">${{ total_ventas }}</p>
         </div>
-      </div>
     </div>
-    <div class="col-12 col-lg-6">
-      <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white fw-bold">Ventas por Día (semana)</div>
+</div>
+
+<div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100 text-white bg-secondary text-center shadow-sm">
+        <div class="card-header fw-bold">
+            <i class="bi bi-cart-fill"></i> Compras
+        </div>
         <div class="card-body">
-          <canvas id="ventasSemanaChart"></canvas>
+            <p class="mb-1 text-uppercase">Del día</p>
+            <p class="fw-bold fs-4">${{ total_compras }}</p>
         </div>
-      </div>
     </div>
-  </div>
+</div>
 
+</div>
 
+<!-- Sección de gráficos -->
+<div class="row g-4 mb-4 mt-4">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center">
+                <span>Producción diaria</span>
+                <select id="selectCultivo" class="form-select form-select-sm" style="width: auto; background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white;">
+                    {% for cultivo in cultivos_hoy_lista %}
+                        <option value="{{ cultivo }}" style="color: black;">{{ cultivo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="card-body">
+                <canvas id="calidadChart" style="height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white fw-bold">Ventas diarias</div>
+            <div class="card-body">
+                <canvas id="ventasChart" style="height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
 
-<!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<!-- Scripts y datos para JavaScript -->
 <script>
-  // Variables globales para los gráficos
-  window.diasSemana = {{ dias_semana|safe }};
-  window.ventasPorDia = {{ ventas_por_dia|safe }};
-  window.calidadPorCultivo = {{ calidad_por_cultivo|safe }};
-  
-  console.log("Días semana:", window.diasSemana);
-  console.log("Ventas por día:", window.ventasPorDia);
-  console.log("Calidad por cultivo:", window.calidadPorCultivo);
+// Pasar datos de Django a JavaScript
+window.dashboardData = {
+    diasSemana: {{ dias_semana|safe }},
+    ventasPorDia: {{ ventas_por_dia|safe }},
+    calidadPorCultivo: {{ calidad_por_cultivo|safe }},
+    cultivosHoy: {{ cultivos_hoy|safe }}
+};
+
+console.log('📊 Datos recibidos del servidor:', window.dashboardData);
 </script>
 
-
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Manejador para el botón de corte
-    document.getElementById("btnIrFormularioCorte").addEventListener("click", function () {
-      const plantacionId = document.getElementById("selectPlantacion").value;
-      if (plantacionId) {
-        // Cerrar modal antes de navegar
-        const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarPlantacion'));
-        modal.hide();
-        
-        setTimeout(() => {
-          window.location.href = `/cosechas/crear/?plantacion_id=${plantacionId}`;
-        }, 300);
-      } else {
-        alert("Debes seleccionar una plantación.");
-      }
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    // Verificar que los datos estén disponibles
+    if (!window.dashboardData) {
+        console.error('❌ No se encontraron datos del dashboard');
+        return;
+    }
 
-   // Botón para ir al formulario de nueva venta
-    document.getElementById("btnIrFormulario").addEventListener("click", function () {
-        const clienteId = document.getElementById("selectCliente").value;
-        if (clienteId) {
-            window.location.href = `/ventas/crear/?cliente_id=${clienteId}`;
-        } else {
-            alert("Debes seleccionar un cliente.");
-        }
-    });
-// Botón para ir al formulario de nueva venta
-    document.getElementById("btnIrFormulario").addEventListener("click", function () {
-        const clienteId = document.getElementById("selectCliente").value;
-        if (clienteId) {
-            window.location.href = `/ventas/crear/?cliente_id=${clienteId}`;
-        } else {
-            alert("Debes seleccionar un cliente.");
-        }
-    });
+    const { diasSemana, ventasPorDia, calidadPorCultivo, cultivosHoy } = window.dashboardData;
 
-    
-        const ctx = document.getElementById('ventasSemanaChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: window.diasSemana,
-                datasets: [{
-                    label: 'Ventas',
-                    data: window.ventasPorDia,
-                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { beginAtZero: true }
-                }
+    // Función para detectar si estamos en modo oscuro
+    function getChartColors() {
+        const dark = document.body.classList.contains('dark-mode') || 
+                     document.documentElement.classList.contains('dark-mode') ||
+                     window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return {
+            text: dark ? '#ffffff' : '#333333',
+            grid: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            tooltipBg: dark ? '#2d2d2d' : '#ffffff',
+            tooltipText: dark ? '#ffffff' : '#000000'
+        };
+    }
+
+    const colors = getChartColors();
+
+    // CÓDIGO PARA BOTONES
+    const btnCorte = document.getElementById("btnIrFormularioCorte");
+    const btnVenta = document.getElementById("btnIrFormulario");
+
+    if (btnCorte) {
+        btnCorte.addEventListener("click", function () {
+            const plantacionId = document.getElementById("selectPlantacion")?.value;
+            if (plantacionId) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarPlantacion'));
+                if (modal) modal.hide();
+                setTimeout(() => {
+                    window.location.href = `/cosechas/crear/?plantacion_id=${plantacionId}`;
+                }, 300);
+            } else {
+                alert("Debes seleccionar una plantación.");
             }
         });
+    }
 
-
-        let cultivo = document.getElementById('selectCultivo').value;
-        // Función para calcular el total por día (suma de primera + segunda + tercera)
-        function calcularTotalPorDia(cultivo) {
-            const datos = window.calidadPorCultivo[cultivo];
-            const totalPorDia = [];
-            
-            for (let i = 0; i < 7; i++) {
-                const total = (datos.primera[i] || 0) + (datos.segunda[i] || 0) + (datos.tercera[i] || 0);
-                totalPorDia.push(total);
+    if (btnVenta) {
+        btnVenta.addEventListener("click", function () {
+            const clienteId = document.getElementById("selectCliente")?.value;
+            if (clienteId) {
+                window.location.href = `/ventas/crear/?cliente_id=${clienteId}`;
+            } else {
+                alert("Debes seleccionar un cliente.");
             }
-            
-            return totalPorDia;
-        }
+        });
+    }
 
-        const calidadChart = new Chart(document.getElementById('graficoCalidad'), {
+    // 1. GRÁFICO DE VENTAS
+    const ventasChartElement = document.getElementById('ventasChart');
+    if (ventasChartElement && diasSemana && ventasPorDia) {
+        const ventasChart = new Chart(ventasChartElement, {
             type: 'bar',
             data: {
-                labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'], // Días de la semana
+                labels: diasSemana,
                 datasets: [{
-                    label: `Total ${cultivo}`,
-                    data: calcularTotalPorDia(cultivo),
-                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    label: 'Ventas ($)',
+                    data: ventasPorDia,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
                     borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false
                 }]
             },
             options: {
                 responsive: true,
-                scales: {
-                    y: { 
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Cantidad Total'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Días de la Semana'
-                        }
-                    }
-                },
+                maintainAspectRatio: false,
                 plugins: {
+                    title: {
+                        display: true,
+                        text: 'Ventas por Día de la Semana',
+                        color: colors.text,
+                        font: { size: 16, weight: 'bold' },
+                        padding: { bottom: 20 }
+                    },
                     legend: {
-                        display: true
+                        display: true,
+                        labels: { 
+                            color: colors.text,
+                            font: { size: 12 }
+                        }
                     },
                     tooltip: {
+                        backgroundColor: colors.tooltipBg,
+                        titleColor: colors.tooltipText,
+                        bodyColor: colors.tooltipText,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1,
+                        cornerRadius: 8,
                         callbacks: {
-                            afterLabel: function(context) {
-                                const cultivo = document.getElementById('selectCultivo').value;
-                                const datos = window.calidadPorCultivo[cultivo];
-                                const dia = context.dataIndex;
-                                
-                                return [
-                                    `Primera: ${datos.primera[dia] || 0}`,
-                                    `Segunda: ${datos.segunda[dia] || 0}`,
-                                    `Tercera: ${datos.tercera[dia] || 0}`
-                                ];
+                            label: function(ctx) {
+                                return 'Ventas: $' + ctx.parsed.y.toLocaleString('es-ES', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                });
                             }
                         }
                     }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: colors.text,
+                            font: { size: 11 },
+                            callback: function(value) {
+                                return '$' + value.toLocaleString('es-ES');
+                            }
+                        },
+                        grid: { 
+                            color: colors.grid,
+                            drawBorder: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Ventas ($)',
+                            color: colors.text,
+                            font: { size: 12, weight: 'bold' }
+                        }
+                    },
+                    x: {
+                        ticks: { 
+                            color: colors.text,
+                            font: { size: 11 }
+                        },
+                        grid: { 
+                            display: false 
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                }
+            }
+        });
+    } else {
+        console.error('❌ No se pudo crear el gráfico de ventas - Elemento o datos faltantes');
+    }
+
+    // 2. GRÁFICO DE CALIDAD/PRODUCCIÓN
+    const calidadChartElement = document.getElementById('calidadChart');
+    const selectCultivo = document.getElementById('selectCultivo');
+    
+    if (calidadChartElement && selectCultivo && calidadPorCultivo && cultivosHoy.length > 0) {
+        let cultivoSeleccionado = cultivosHoy[0]; // Primer cultivo por defecto
+        selectCultivo.value = cultivoSeleccionado;
+        
+        function obtenerDatosCultivo(cultivo) {
+            const datos = calidadPorCultivo[cultivo];
+            if (!datos) {
+                console.warn(`⚠️ No hay datos para el cultivo: ${cultivo}`);
+                return {
+                    primera: [0,0,0,0,0,0,0],
+                    segunda: [0,0,0,0,0,0,0],
+                    tercera: [0,0,0,0,0,0,0]
+                };
+            }
+            return datos;
+        }
+
+        const calidadChart = new Chart(calidadChartElement, {
+            type: 'bar',
+            data: {
+                labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                datasets: [
+                    {
+                        label: 'Primera Calidad',
+                        data: obtenerDatosCultivo(cultivoSeleccionado).primera,
+                        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                        borderColor: 'rgba(34, 197, 94, 1)',
+                        borderWidth: 2,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Segunda Calidad',
+                        data: obtenerDatosCultivo(cultivoSeleccionado).segunda,
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 2,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Tercera Calidad',
+                        data: obtenerDatosCultivo(cultivoSeleccionado).tercera,
+                        backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                        borderColor: 'rgba(245, 158, 11, 1)',
+                        borderWidth: 2,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `Cosechas de ${cultivoSeleccionado} por Calidad`,
+                        color: colors.text,
+                        font: { size: 16, weight: 'bold' },
+                        padding: { bottom: 20 }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { 
+                            color: colors.text,
+                            font: { size: 12 },
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: colors.tooltipBg,
+                        titleColor: colors.tooltipText,
+                        bodyColor: colors.tooltipText,
+                        borderColor: 'rgba(34, 197, 94, 1)',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return tooltipItems[0].label;
+                            },
+                            label: function(ctx) {
+                                return `${ctx.dataset.label}: ${ctx.parsed.y} unidades`;
+                            },
+                            afterBody: function(tooltipItems) {
+                                let total = 0;
+                                tooltipItems.forEach(item => {
+                                    total += item.parsed.y;
+                                });
+                                return `Total del día: ${total} unidades`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        stacked: false,
+                        ticks: {
+                            color: colors.text,
+                            font: { size: 11 },
+                            callback: function(value) {
+                                return value + ' un.';
+                            }
+                        },
+                        grid: { 
+                            color: colors.grid,
+                            drawBorder: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Cantidad (unidades)',
+                            color: colors.text,
+                            font: { size: 12, weight: 'bold' }
+                        }
+                    },
+                    x: {
+                        stacked: false,
+                        ticks: { 
+                            color: colors.text,
+                            font: { size: 11 }
+                        },
+                        grid: { 
+                            display: false 
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
                 }
             }
         });
 
-        document.getElementById('selectCultivo').addEventListener('change', function() {
+        // Event listener para cambio de cultivo
+        selectCultivo.addEventListener('change', function() {
             const selected = this.value;
-            calidadChart.data.datasets[0].data = calcularTotalPorDia(selected);
-            calidadChart.data.datasets[0].label = `Total ${selected}`;
-            calidadChart.update();
+            const datosCultivo = obtenerDatosCultivo(selected);
+            
+            // Actualizar datos de los datasets
+            calidadChart.data.datasets[0].data = datosCultivo.primera;
+            calidadChart.data.datasets[1].data = datosCultivo.segunda;
+            calidadChart.data.datasets[2].data = datosCultivo.tercera;
+            
+            // Actualizar título
+            calidadChart.options.plugins.title.text = `Cosechas de ${selected} por Calidad`;
+            
+            // Aplicar cambios con animación
+            calidadChart.update('active');
+            
         });
 
-  });
+        console.log('✅ Gráfico de calidad creado');
+    } else {
+        console.error('❌ No se pudo crear el gráfico de calidad - Elemento o datos faltantes');
+        
+    }
+
+});
 </script>
 
 {% endblock %}
+
 {% block modals %}
-<!-- MODALES - Movidos fuera del main-content para evitar problemas de z-index -->
+<!-- MODALES -->
 <div class="modal fade" id="modalSeleccionarPlantacion" tabindex="-1" aria-labelledby="modalSeleccionarPlantacionLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -298,12 +481,10 @@
 <div class="modal fade" id="modalSeleccionarCliente" tabindex="-1" aria-labelledby="modalSeleccionarClienteLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-  
         <div class="modal-header">
           <h5 class="modal-title">Listado de Cliente</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-  
         <div class="modal-body">
           <select id="selectCliente" class="form-select">
             <option value="">Selecciona un cliente</option>
@@ -312,11 +493,9 @@
             {% endfor %}
           </select>
         </div>
-  
         <div class="modal-footer">
           <button id="btnIrFormulario" class="btn btn-success">Ir al formulario</button>
         </div>
-  
       </div>
     </div>
   </div>

@@ -76,7 +76,6 @@
             data-nombre="{{ parcela.nombre }}"
             data-tipo="{{ parcela.get_tipoparcela_display }}"
             data-estado="{{ parcela.estado }}"
-            data-cultivos="{{ item.cultivos|join:', ' }}"
             data-plantas="{{ item.total_plantas }}"
             data-cosechas="{{ item.total_cosechas }}"
             data-vendido="{{ item.total_vendido }}">
@@ -136,7 +135,6 @@
                     data-nombre="{{ parcela.nombre }}"
                     data-tipo="{{ parcela.get_tipoparcela_display }}"
                     data-estado="{{ parcela.estado }}"
-                    data-cultivos="{{ item.cultivos }}"
                     data-plantas="{{ item.total_plantas }}"
                     data-cosechas="{{ item.total_cosechas }}"
                     data-vendido="{{ item.total_vendido|floatformat:2 }}">
@@ -180,12 +178,11 @@
             <div class="col-md-6">
               <p><strong>🆔 Número:</strong> <span id="parcelaId"></span></p>
               <p><strong>📛 Nombre:</strong> <span id="parcelaNombre"></span></p>
-              <p><strong>🌱 Cultivos:</strong> <span id="parcelaCultivos"></span></p>
+              <p><strong>📦 Tipo:</strong> <span id="parcelaTipo"></span></p>
             </div>
 
             <!-- Columna derecha -->
             <div class="col-md-6">
-              <p><strong>📦 Tipo:</strong> <span id="parcelaTipo"></span></p>
               <p><strong>🔁 Estado:</strong> <span id="parcelaEstado"></span></p>
               <p><strong>🧮 Plantas:</strong> <span id="parcelaPlantas"></span></p>
               <p><strong>🧺 Cosechas:</strong> <span id="parcelaCosechas"></span></p>
@@ -249,7 +246,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const nombre = button.getAttribute('data-nombre');
             const tipo = button.getAttribute('data-tipo');
             const estado = button.getAttribute('data-estado');
-            const cultivos = button.getAttribute('data-cultivos');
             const plantas = button.getAttribute('data-plantas');
             const cosechas = button.getAttribute('data-cosechas');
             const vendido = button.getAttribute('data-vendido');
@@ -265,7 +261,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('parcelaTipo').textContent = tipo;
             document.getElementById('parcelaEstado').textContent = estadoTexto;
             document.getElementById('parcelaEstado').textContent = estadoTexto;
-            document.getElementById('parcelaCultivos').textContent = cultivos ? cultivos : 'Ninguno';
             document.getElementById('parcelaPlantas').textContent = plantas ? plantas : '0';
             document.getElementById('parcelaCosechas').textContent = cosechas ? cosechas : '0';
             document.getElementById('parcelaVendido').textContent = vendido ? vendido : '0';
@@ -277,19 +272,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-{% if messages %}
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      {% for message in messages %}
-        Swal.fire({
-          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
-          title: "{{ message|escapejs }}",
-          timer: 3000,
-          showConfirmButton: false
-        });
-      {% endfor %}
-    });
-  </script>
-{% endif %}
 {% endblock scripts %}
 

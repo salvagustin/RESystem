@@ -13,70 +13,270 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     
  <style>
-    /* Modo oscuro para modales */
-body.dark-mode .modal-content {
-  background-color: #2c2f3e;
-  color: #f5f5f5;
+    /* MODO OSCURO PARA PRODUCTOS Y DISPONIBILIDADES */
+
+/* Tarjetas principales */
+body.dark-mode .productos-card,
+body.dark-mode .disponibilidad-card {
+    background-color: #2c2f3e !important;
+    border-color: #444 !important;
 }
 
-body.dark-mode .modal-header,
-body.dark-mode .modal-footer {
-  background-color: #1f2230;
-  border-color: #444;
+/* Headers de las tarjetas */
+body.dark-mode .productos-card .card-header,
+body.dark-mode .disponibilidad-card .card-header {
+    background-color: #27ae60 !important;
+    color: #fff !important;
+    border-bottom-color: #444 !important;
 }
 
-body.dark-mode .modal-header .btn-close {
-  filter: invert(1);
+/* Cuerpos de las tarjetas */
+body.dark-mode .productos-card .card-body,
+body.dark-mode .disponibilidad-card .card-body {
+    background-color: #2c2f3e !important;
+    color: #f5f5f5 !important;
 }
 
-body.dark-mode .modal-body {
-  background-color: #2c2f3e;
-  color: #f5f5f5;
+/* Lista de productos */
+body.dark-mode #productos-lista {
+    background-color: transparent;
 }
 
+body.dark-mode #productos-lista .list-group-item {
+    background-color: #262938;
+    color: #f5f5f5;
+    border-color: #444;
+    transition: background-color 0.2s ease;
+}
+
+body.dark-mode #productos-lista .list-group-item:hover {
+    background-color: #3c3f4e;
+}
+
+/* Total general */
+body.dark-mode #total-general {
+    color: #f5f5f5 !important;
+    background-color: #262938;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #444;
+}
+
+/* Sección de cultivos */
+body.dark-mode .cultivo-section {
+    border-bottom-color: #444 !important;
+}
+
+body.dark-mode .cultivo-title {
+    color: #74b9ff !important;
+}
+
+/* Items de tipo de cosecha */
+body.dark-mode .tipo-cosecha-item {
+    background-color: #262938 !important;
+    color: #f5f5f5 !important;
+    border-color: #444 !important;
+    transition: all 0.2s ease;
+}
+
+body.dark-mode .tipo-cosecha-item:hover {
+    background-color: #2d3142 !important;
+    border-color: #555 !important;
+}
+
+body.dark-mode .tipo-cosecha-name {
+    color: #f5f5f5 !important;
+}
+
+body.dark-mode .tipo-cosecha-data {
+    color: #ccc !important;
+}
+
+body.dark-mode .tipo-cosecha-data strong {
+    color: #e8e8e8 !important;
+}
+
+/* Mensaje de no disponibilidad */
+body.dark-mode .no-disponibilidad {
+    color: #aaa !important;
+    text-align: center;
+    font-style: italic;
+}
+
+/* Sombras en modo oscuro */
+body.dark-mode .shadow {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Scrollbar personalizado para disponibilidad */
+body.dark-mode #disponibilidad-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+body.dark-mode #disponibilidad-body::-webkit-scrollbar-track {
+    background: #1e1e2f;
+    border-radius: 4px;
+}
+
+body.dark-mode #disponibilidad-body::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+body.dark-mode #disponibilidad-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Compatibilidad con clases Bootstrap existentes */
+body.dark-mode .card.bg-light {
+    background-color: #2c2f3e !important;
+}
+
+body.dark-mode .bg-white {
+    background-color: #262938 !important;
+}
+
+body.dark-mode .text-dark {
+    color: #f5f5f5 !important;
+}
+
+body.dark-mode .text-muted {
+    color: #ccc !important;
+}
+#toggleDarkMode {
+    border: 2px solid #2c3e50;
+    color: #2c3e50;
+    background: transparent;
+    transition: all 0.3s ease;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+#toggleDarkMode:hover {
+    background: #2c3e50;
+    color: white;
+}
+
+/* MODO OSCURO - Botón cambia a blanco */
+body.dark-mode #toggleDarkMode {
+    border: 2px solid #f5f5f5 !important;
+    color: #f5f5f5 !important;
+    background: transparent !important;
+}
+
+body.dark-mode #toggleDarkMode:hover {
+    background: #f5f5f5 !important;
+    color: #2c3e50 !important;
+}
+
+    /* MODO OSCURO PARA LISTAS DE CORTES */
+body.dark-mode .list-group {
+    background-color: #2c2f3e;
+    border: 1px solid #444;
+}
+
+body.dark-mode .list-group-item {
+    background-color: #2c2f3e;
+    color: #f5f5f5;
+    border-color: #444;
+}
+
+body.dark-mode .list-group-item:hover {
+    background-color: #3c3f4e;
+}
+
+      /* GENERAL: Colores base para modo oscuro */
+body.dark-mode {
+    background-color: #1e1e2f;
+    color: #f5f5f5;
+}
+
+/* Texto general */
+body.dark-mode p,
+body.dark-mode small,
+body.dark-mode span,
+body.dark-mode label,
+body.dark-mode li,
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6 {
+    color: #f5f5f5;
+}
+
+body.dark-mode small {
+    color: #ccc;
+}
+
+/* Formularios */
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+    background-color: #2c2f3e;
+    color: #f5f5f5;
+    border: 1px solid #555;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #aaa;
+}
+
+body.dark-mode input:focus,
+body.dark-mode select:focus,
+body.dark-mode textarea:focus {
+    border-color: #9b59b6;
+    box-shadow: 0 0 0 0.2rem rgba(155, 89, 182, 0.25);
+}
+
+body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+/* Botones */
 body.dark-mode .btn-outline-primary,
 body.dark-mode .btn-outline-danger {
-  color: #f5f5f5;
-  border-color: #888;
+    color: #f5f5f5;
+    border-color: #888;
 }
 
 body.dark-mode .btn-outline-primary:hover,
 body.dark-mode .btn-outline-danger:hover {
-  background-color: #444;
-  border-color: #aaa;
+    background-color: #444;
+    border-color: #aaa;
 }
 
 body.dark-mode .btn-secondary {
-  background-color: #3a3a3a;
-  color: #f5f5f5;
-  border-color: #555;
+    background-color: #3a3a3a;
+    color: #f5f5f5;
+    border-color: #555;
 }
 
-    /* MODO OSCURO */
-body.dark-mode {
-    background: #1e1e2f;
+/* Modales */
+body.dark-mode .modal-content,
+body.dark-mode .modal-body {
+    background-color: #2c2f3e;
     color: #f5f5f5;
 }
 
-body.dark-mode .header,
-body.dark-mode .sidebar,
-body.dark-mode .content-card,
-body.dark-mode .footer {
-    background: rgba(30, 30, 47, 0.9);
-    color: #f5f5f5;
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+    background-color: #1f2230;
+    border-color: #444;
 }
 
-body.dark-mode .menu-link {
-    color: #f5f5f5;
+body.dark-mode .modal-header .btn-close {
+    filter: invert(1);
 }
 
-body.dark-mode .menu-link:hover,
-body.dark-mode .menu-link.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border-left-color: #9b59b6;
-}
-
+/* Cartas */
 body.dark-mode .card {
     background-color: #2c2f3e;
     border-color: #444;
@@ -88,74 +288,210 @@ body.dark-mode .card-header {
     color: #f5f5f5;
 }
 
-
-
-/* Asegura color de texto en botones */
-body.dark-mode .btn {
+/* Sidebar, header, footer */
+body.dark-mode .header,
+body.dark-mode .sidebar,
+body.dark-mode .content-card,
+body.dark-mode .footer {
+    background: rgba(30, 30, 47, 0.9);
     color: #f5f5f5;
-    border-color: #ccc;
 }
-/* Asegura texto claro en badges o etiquetas */
-body.dark-mode .badge {
+
+/* Enlaces de menú */
+body.dark-mode .menu-link {
     color: #f5f5f5;
+}
+
+body.dark-mode .menu-link:hover,
+body.dark-mode .menu-link.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-left-color: #9b59b6;
+}
+
+/* Tablas */
+body.dark-mode table,
+body.dark-mode table th,
+body.dark-mode table td {
+    background-color: #2c2f3e;
+    color: #f5f5f5;
+    border-color: #444;
+}
+
+body.dark-mode table thead {
+    background-color: #1f2230;
+}
+
+body.dark-mode table tr:hover {
     background-color: #3c3f4e;
 }
-/* Select y option */
-body.dark-mode select,
-body.dark-mode option {
-    background-color: #2c2f3e;
-    color: #f5f5f5;
+
+body.dark-mode table tbody tr:nth-child(even) {
+    background-color: #292c3b;
 }
-/* Asegura texto blanco en gráficos o títulos */
-body.dark-mode h1,
-body.dark-mode h2,
-body.dark-mode h3,
-body.dark-mode h4,
-body.dark-mode h5,
-body.dark-mode h6,
-body.dark-mode p,
-body.dark-mode label,
-body.dark-mode span,
-body.dark-mode th,
-body.dark-mode td {
+
+body.dark-mode .text-muted {
+    color: #aaa !important;
+}
+/* Estilo global para todos los Swal en modo oscuro */
+/* SWEETALERT2 DARK MODE */
+body.dark-mode .swal2-popup {
+    background-color: #2c2f3e !important;
+    color: #f5f5f5 !important;
+    border: 1px solid #444;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+body.dark-mode .swal2-title {
     color: #f5f5f5 !important;
 }
-/* Estilo de inputs */
-body.dark-mode input,
-body.dark-mode textarea {
-    background-color: #2c2f3e;
-    color: #f5f5f5;
-    border-color: #555;
+
+body.dark-mode .swal2-html-container {
+    color: #ccc !important;
 }
 
-/* Asegura contraste en los botones azules y verdes */
-body.dark-mode .btn-primary {
-    background-color: #007bff;
+body.dark-mode .swal2-confirm {
+    background-color: #9b59b6 !important;
+    color: #fff !important;
+}
+
+body.dark-mode .swal2-cancel {
+    background-color: #555 !important;
+    color: #fff !important;
+}
+
+body.dark-mode .swal2-icon {
+    background-color: transparent !important;
+}
+
+body.dark-mode .swal2-icon.swal2-success {
+    border-color: #4CAF50 !important;
+    color: #4CAF50 !important;
+}
+
+body.dark-mode .swal2-icon.swal2-success [class^="swal2-success-line"] {
+    background-color: #4CAF50 !important;
+}
+
+body.dark-mode .swal2-icon.swal2-success .swal2-success-ring {
+    border: 4px solid rgba(76, 175, 80, 0.3) !important;
+}
+
+body.dark-mode .swal2-icon.swal2-error {
+    border-color: #e74c3c !important;
+    color: #e74c3c !important;
+}
+
+body.dark-mode .swal2-icon.swal2-warning {
+    border-color: #f1c40f !important;
+    color: #f1c40f !important;
+}
+
+body.dark-mode .swal2-icon.swal2-info {
+    border-color: #3498db !important;
+    color: #3498db !important;
+}
+
+body.dark-mode .categories {
+    background-color: #2c2f3e;
+    color: #f5f5f5;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+body.dark-mode .categories h2 {
+    color: #f5f5f5;
+}
+
+body.dark-mode .categories-list > div {
+    background-color: #3a3a4a;
+    color: #f5f5f5;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+}
+body.dark-mode .alert.alert-info {
+    background-color: #2d3a4a !important;
+    color: #cfd8dc !important;
+    border: 1px solid #455a64;
+}
+
+body.dark-mode .alert.alert-info h5,
+body.dark-mode .alert.alert-info li,
+body.dark-mode .alert.alert-info strong {
+    color: #f5f5f5 !important;
+}
+/* MODO OSCURO PARA LAS TARJETAS MÓVILES */
+body.dark-mode .mobile-cards .day-card {
+    background-color: #2c2f3e;
+    color: #f5f5f5;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+body.dark-mode .mobile-cards .day-header {
+    background-color: #1f2230;
+    color: #f5f5f5;
+    font-weight: bold;
+    padding: 0.5rem;
+    border-bottom: 1px solid #444;
+    border-radius: 6px 6px 0 0;
+    margin-bottom: 0.5rem;
+}
+
+body.dark-mode .mobile-cards .time-slot {
+    background-color: #262938;
+    border: 1px solid #3c3f4e;
+    border-radius: 6px;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+body.dark-mode .mobile-cards .time-label {
+    color: #ccc;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+body.dark-mode .mobile-cards .available-badge {
+    background-color: #2ecc71;
     color: #fff;
-    border-color: #007bff;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
 }
 
-body.dark-mode .btn-success {
-    background-color: #28a745;
+body.dark-mode .mobile-cards .appointment-btn {
+    background-color: #9b59b6;
     color: #fff;
-    border-color: #28a745;
+    border: none;
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
 }
 
-/* Tooltip o popover si los usas */
-body.dark-mode .tooltip,
-body.dark-mode .popover {
+body.dark-mode .mobile-cards .appointment-btn:hover {
+    background-color: #8e44ad;
+}
+/* Tarjetas en modo oscuro */
+body.dark-mode .card {
     background-color: #2c2f3e;
     color: #f5f5f5;
+    border: 1px solid #444;
+}
+
+body.dark-mode .card-header {
+    background-color: #3c3f4e !important;
+    color: #f5f5f5 !important;
 }
 
 
 
 
-body.dark-mode .form-select {
-    background-color: #2c2f3e;
-    color: #f5f5f5;
-    border-color: #555;
-}
 
     * {
         margin: 0;
@@ -570,6 +906,7 @@ body.dark-mode .form-select {
             <li><a href="{% url 'lista_cultivos' %}" class="menu-link">Cultivos</a></li>
             <li><a href="{% url 'lista_plantaciones' %}" class="menu-link">Plantación</a></li>
             <li><a href="{% url 'lista_clientes' %}" class="menu-link">Clientes</a></li>
+            <li><a href="{% url 'lista_empleados' %}" class="menu-link">Empleados</a></li>
         </ul>
     </li>
 
@@ -644,7 +981,7 @@ body.dark-mode .form-select {
     </li>
 
     <li class="menu-item">
-        <a href="#" class="menu-link">
+        <a href="{% url 'lista_planilla' %}" class="menu-link">
             <i class="bi bi-file-spreadsheet"></i>
             Planillas
         </a>
@@ -886,32 +1223,117 @@ body.dark-mode .form-select {
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const savedTheme = localStorage.getItem('theme');
 
-        // Aplica el tema guardado o el del sistema
+        // Aplica el tema guardado o del sistema
         if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
             document.body.classList.add('dark-mode');
         } else {
             document.body.classList.remove('dark-mode');
         }
 
-        // Listener de botón
+        // Esta función actualizará los colores de todos los gráficos
+        function updateChartsTheme() {
+            const colors = getChartColors();
+
+            [chart1, chart2, chart3, chart4, chart5].forEach(chart => {
+                if (!chart) return;
+
+                // Actualiza colores comunes
+                if (chart.options.plugins.title)
+                    chart.options.plugins.title.color = colors.text;
+
+                if (chart.options.plugins.legend?.labels)
+                    chart.options.plugins.legend.labels.color = colors.text;
+
+                if (chart.options.plugins.tooltip) {
+                    chart.options.plugins.tooltip.backgroundColor = colors.tooltipBg;
+                    chart.options.plugins.tooltip.titleColor = colors.tooltipText;
+                    chart.options.plugins.tooltip.bodyColor = colors.tooltipText;
+                }
+
+                if (chart.options.scales) {
+                    Object.keys(chart.options.scales).forEach(axis => {
+                        if (chart.options.scales[axis].ticks)
+                            chart.options.scales[axis].ticks.color = colors.text;
+
+                        if (chart.options.scales[axis].grid)
+                            chart.options.scales[axis].grid.color = axis === 'x' ? 'transparent' : colors.grid;
+                    });
+                }
+
+                chart.update();
+            });
+        }
+
+        // Botón de alternar tema
         if (toggleButton) {
             toggleButton.addEventListener("click", () => {
-                document.body.classList.toggle("dark-mode");
-                const newTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+                const darkNow = document.body.classList.toggle("dark-mode");
+                const newTheme = darkNow ? 'dark' : 'light';
                 localStorage.setItem('theme', newTheme);
+                updateChartsTheme(); // <- 🔄 Actualiza gráficos al cambiar tema
             });
         } else {
             console.warn('Botón de modo oscuro no encontrado en el DOM');
         }
 
+        // Inicializa los gráficos ya en el tema correcto
+        setTimeout(updateChartsTheme, 300); // Espera a que los charts se hayan creado
+
     });
     </script>
 
-
-
-
+     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <script>
+    function darkModeSwal({ icon = 'info', title = '', timer = 3000 }) {
+    const isDark = document.body.classList.contains('dark-mode');
 
+    const swalColors = {
+        success: '#4CAF50',
+        error: '#F44336',
+        warning: '#FFC107',
+        info: '#03A9F4'
+    };
+
+    let iconHtml = '';
+
+    if (icon === 'success') {
+        iconHtml = `
+        <svg width="80" height="80" viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="65" cy="65" r="60" fill="none" stroke="${swalColors.success}" stroke-width="10"/>
+          <path fill="none" stroke="${swalColors.success}" stroke-width="10" d="M40 70 l15 15 l35 -35"/>
+        </svg>`;
+    }
+
+    Swal.fire({
+        title: title,
+        background: isDark ? '#2c2f3e' : '#fff',
+        color: isDark ? '#f5f5f5' : '#333',
+        html: icon === 'success' ? iconHtml : '',
+        icon: icon !== 'success' ? icon : undefined,
+        iconColor: icon !== 'success' ? swalColors[icon] : undefined,
+        timer: timer,
+        showConfirmButton: false,
+        customClass: {
+            popup: isDark ? 'swal2-dark' : ''
+        }
+    });
+}
+    </script>
+
+    {% if messages %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+        {% for message in messages %}
+            darkModeSwal({
+                    icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% else %}info{% endif %}",
+                    title: "{{ message|escapejs }}",
+                    timer: 3000
+                });
+        {% endfor %}
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

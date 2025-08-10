@@ -1,0 +1,406 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load custom_filters %}
+
+{% block title %} | Planilla Diaria {% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold">Planilla Diaria</h2>
+        <p class="text-muted">Registra la asistencia, horas extra y pagos adicionales</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-check me-2"></i>
+                        {% if es_edicion %}
+                            <span class="badge bg-warning me-2">EDITANDO</span>
+                        {% endif %}
+                        Fecha: <span id="fecha-actual"></span>
+                    </h5>
+                </div>
+                
+                <div class="card-body">
+                    <form method="post" id="planilla-form">
+                        {% csrf_token %}
+                        
+                        <!-- Campo oculto para la fecha -->
+                        <input type="hidden" name="fecha" id="fecha-input">
+                        
+                        <!-- Tabla de empleados -->
+                        <div class="table-responsive">
+                            <table class="table table-hover table-bordered">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 25%">Empleado</th>
+                                        <th style="width: 15%">Asistencia</th>
+                                        <th style="width: 20%">Horas Extra</th>
+                                        <th style="width: 25%">Observaciones/Notas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Se llenará dinámicamente con empleados -->
+                                    {% for empleado in empleados %}
+                                    <tr class="empleado-row" data-empleado-id="{{ empleado.idempleado }}">
+                                        <td class="align-middle">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                                    {{ empleado.nombre|first|upper }}
+                                                </div>
+                                                <div>
+                                                    <strong>{{ empleado.nombre }}</strong>
+                                                    <br>
+                                                    <small class="text-muted">{{ empleado.telefono }}</small>
+                                                </div>
+                                            </div>
+                                            <!-- Campo oculto para el ID del empleado -->
+                                            <input type="hidden" name="empleado_{{ empleado.idempleado }}_id" value="{{ empleado.idempleado }}">
+                                        </td>
+                                                                            
+                                        
+                                        <td class="align-middle">
+                                            <div class="form-check form-switch d-flex justify-content-center">
+                                                <input class="form-check-input asistencia-check" 
+                                                       type="checkbox" 
+                                                       name="empleado_{{ empleado.idempleado }}_jornada" 
+                                                       id="jornada_{{ empleado.idempleado }}"
+                                                       data-salario="{{ empleado.salario }}"
+                                                       {% if planillas_dict %}
+                                                           {% with planilla=planillas_dict|get_item:empleado.idempleado %}
+                                                               {% if planilla.jornada %}checked{% endif %}
+                                                           {% endwith %}
+                                                       {% endif %}>
+                                                <label class="form-check-label ms-2" for="jornada_{{ empleado.idempleado }}">
+                                                    <span class="presente-text {% if planillas_dict %}{% with planilla=planillas_dict|get_item:empleado.idempleado %}{% if not planilla.jornada %}d-none{% endif %}{% endwith %}{% else %}d-none{% endif %} text-success fw-bold">Presente</span>
+                                                    <span class="ausente-text {% if planillas_dict %}{% with planilla=planillas_dict|get_item:empleado.idempleado %}{% if planilla.jornada %}d-none{% endif %}{% endwith %}{% endif %} text-muted">Ausente</span>
+                                                </label>
+                                            </div>
+                                        </td>
+                                        
+                                        <td class="align-middle">
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <label class="form-label small">Horas</label>
+                                                    <input type="number" 
+                                                           class="form-control form-control-sm horas-extra" 
+                                                           name="empleado_{{ empleado.idempleado }}_horasextra"
+                                                           step="0.5" 
+                                                           min="0" 
+                                                           max="12"
+                                                           placeholder="0.0"
+                                                           {% if planillas_dict %}
+                                                               {% with planilla=planillas_dict|get_item:empleado.idempleado %}
+                                                                   {% if planilla %}value="{{ planilla.horasextra }}"{% endif %}
+                                                               {% endwith %}
+                                                           {% endif %}>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small">Pago Extra ($)</label>
+                                                    <input type="number" 
+                                                           class="form-control form-control-sm pago-extra" 
+                                                           name="empleado_{{ empleado.idempleado }}_pagoextra"
+                                                           step="0.01" 
+                                                           min="0"
+                                                           placeholder="0.00"
+                                                           {% if planillas_dict %}
+                                                               {% with planilla=planillas_dict|get_item:empleado.idempleado %}
+                                                                   {% if planilla %}value="{{ planilla.pagoextra }}"{% endif %}
+                                                               {% endwith %}
+                                                           {% endif %}>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        
+                                        <td class="align-middle">
+                                            <textarea class="form-control form-control-sm" 
+                                                      name="empleado_{{ empleado.idempleado }}_observaciones"
+                                                      rows="2" 
+                                                      placeholder="Notas adicionales...">{% if planillas_dict %}{% with planilla=planillas_dict|get_item:empleado.idempleado %}{% if planilla and planilla.observaciones %}{{ planilla.observaciones }}{% endif %}{% endwith %}{% endif %}</textarea>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Resumen totales -->
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Resumen del Día</h6>
+                                        <div class="row text-center">
+                                            <div class="col-md-3">
+                                                <div class="border-end">
+                                                    <h4 class="text-primary mb-1" id="total-presentes">0</h4>
+                                                    <small class="text-muted">Empleados Presentes</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="border-end">
+                                                    <h4 class="text-success mb-1" id="total-jornadas">$0.00</h4>
+                                                    <small class="text-muted">Total Jornadas</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="border-end">
+                                                    <h4 class="text-warning mb-1" id="total-extras">$0.00</h4>
+                                                    <small class="text-muted">Total Extras</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <h4 class="text-dark mb-1" id="gran-total">$0.00</h4>
+                                                <small class="text-muted">Gran Total</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botones de acción -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <div>
+                                <button type="button" class="btn btn-outline-primary" id="marcar-todos">
+                                    <i class="fas fa-check-double me-1"></i>
+                                    Marcar Todos Presentes
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="limpiar-todos">
+                                    <i class="fas fa-eraser me-1"></i>
+                                    Limpiar Todo
+                                </button>
+                            </div>
+                            <div>
+                                <a href="{% url 'lista_planilla' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>
+                                    Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>
+                                    {% if es_edicion %}Actualizar Planilla{% else %}Guardar Planilla{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos personalizados -->
+<style>
+.avatar-sm {
+    width: 35px;
+    height: 35px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Colores de switches */
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+/* Cabecera de tabla */
+.table th {
+    background-color: #2c3e50;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+/* Hover filas */
+.empleado-row {
+    transition: background-color 0.2s ease;
+}
+.empleado-row:hover {
+    background-color: #f8f9fa;
+}
+
+/* Efecto focus en inputs */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Gradiente del header */
+.card-header {
+    background: linear-gradient(45deg, #0d6efd, #6610f2) !important;
+}
+
+/* Adaptaciones móviles */
+@media (max-width: 992px) {
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    .avatar-sm {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* La tabla se convierte en tarjetas */
+    table thead {
+        display: none;
+    }
+    table tbody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        background: #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    table tbody td {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border: none !important;
+    }
+    table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #6c757d;
+    }
+    .form-check.form-switch {
+        justify-content: flex-end;
+    }
+}
+</style>
+
+
+<!-- Scripts JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Establecer fecha - usar fecha del contexto si está disponible, sino fecha actual
+    {% if fecha_str %}
+        const fechaFormateada = new Date('{{ fecha_str }}').toLocaleDateString('es-ES', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            weekday: 'long',
+            timeZone: 'America/El_Salvador'
+        });
+
+        const fechaInput = new Date('{{ fecha_str }}').toLocaleString('en-US', { timeZone: 'America/El_Salvador' });
+        const fechaInputISO = new Date(fechaInput).toISOString().split('T')[0];
+        
+        document.getElementById('fecha-actual').textContent = fechaFormateada;
+        document.getElementById('fecha-input').value = fechaInputISO;
+    {% else %}
+        const hoy = new Date();
+        const fechaFormateada = hoy.toLocaleDateString('es-ES', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            weekday: 'long',
+            timeZone: 'America/El_Salvador'
+        });
+
+        const fechaInput = new Date(hoy.toLocaleString('en-US', { timeZone: 'America/El_Salvador' }))
+            .toISOString().split('T')[0];
+        
+        document.getElementById('fecha-actual').textContent = fechaFormateada;
+        document.getElementById('fecha-input').value = fechaInput;
+    {% endif %}
+
+    console.log(fechaFormateada);
+
+    // Manejar cambios en asistencia
+    document.querySelectorAll('.asistencia-check').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            const row = this.closest('tr');
+            const presenteText = row.querySelector('.presente-text');
+            const ausenteText = row.querySelector('.ausente-text');
+            
+            if (this.checked) {
+                presenteText.classList.remove('d-none');
+                ausenteText.classList.add('d-none');
+            } else {
+                presenteText.classList.add('d-none');
+                ausenteText.classList.remove('d-none');
+            }
+            
+            calcularTotales();
+        });
+    });
+    
+    // Manejar cambios en horas extra y pago extra
+    document.querySelectorAll('.horas-extra, .pago-extra').forEach(function(input) {
+        input.addEventListener('input', function() {
+            calcularTotales();
+        });
+    });
+    
+    // Marcar todos presentes
+    document.getElementById('marcar-todos').addEventListener('click', function() {
+        document.querySelectorAll('.asistencia-check').forEach(function(checkbox) {
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event('change'));
+        });
+    });
+    
+    // Limpiar todo
+    document.getElementById('limpiar-todos').addEventListener('click', function() {
+        if (confirm('¿Estás seguro de que quieres limpiar todos los datos?')) {
+            document.querySelectorAll('.asistencia-check').forEach(function(checkbox) {
+                checkbox.checked = false;
+                checkbox.dispatchEvent(new Event('change'));
+            });
+            
+            document.querySelectorAll('.horas-extra, .pago-extra').forEach(function(input) {
+                input.value = '';
+                input.dispatchEvent(new Event('input'));
+            });
+            
+            document.querySelectorAll('textarea').forEach(function(textarea) {
+                textarea.value = '';
+            });
+        }
+    });
+    
+    // Función para calcular totales
+    function calcularTotales() {
+        let totalPresentes = 0;
+        let totalJornadas = 0;
+        let totalExtras = 0;
+        
+        document.querySelectorAll('.empleado-row').forEach(function(row) {
+            const checkbox = row.querySelector('.asistencia-check');
+            const pagoExtra = parseFloat(row.querySelector('.pago-extra').value) || 0;
+            const salario = parseFloat(checkbox.dataset.salario) || 0;
+            
+            if (checkbox.checked) {
+                totalPresentes++;
+                totalJornadas += salario;
+            }
+            
+            totalExtras += pagoExtra;
+        });
+        
+        const granTotal = totalJornadas + totalExtras;
+        
+        document.getElementById('total-presentes').textContent = totalPresentes;
+        document.getElementById('total-jornadas').textContent = '$' + totalJornadas.toFixed(2);
+        document.getElementById('total-extras').textContent = '$' + totalExtras.toFixed(2);
+        document.getElementById('gran-total').textContent = '$' + granTotal.toFixed(2);
+    }
+    
+    // Calcular totales iniciales
+    calcularTotales();
+});
+</script>
+
+{% endblock %}

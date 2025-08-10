@@ -86,6 +86,56 @@ DetalleVentaFormSet = inlineformset_factory(
 )
 
 
+
+class EmpleadoForm(forms.ModelForm):
+    class Meta:
+        model = Empleado
+        fields = ['nombre', 'telefono', 'estado', 'salario']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingrese el nombre del empleado'
+            }),
+            'telefono': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingrese el número de teléfono'
+            }),
+            'estado': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'salario': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingrese el salario',
+                'step': '0.01',
+                'min': '0'
+            })
+        }
+        labels = {
+            'nombre': 'Nombre',
+            'telefono': 'Teléfono',
+            'estado': 'Activo',
+            'salario': 'Salario'
+        }
+    
+    def clean_salario(self):
+        salario = self.cleaned_data.get('salario')
+        if salario and salario < 0:
+            raise forms.ValidationError("El salario no puede ser negativo.")
+        return salario
+    
+    def clean_telefono(self):
+        telefono = self.cleaned_data.get('telefono')
+        if telefono and len(telefono.strip()) < 8:
+            raise forms.ValidationError("El número de teléfono debe tener al menos 8 caracteres.")
+        return telefono
+
+
+
+
+
+
+
+
 class DetalleVentaSimpleForm(forms.Form):
     cultivo = forms.ModelChoiceField(
         queryset=Plantacion.objects.all(),
@@ -101,7 +151,6 @@ class DetalleVentaSimpleForm(forms.Form):
 
 DetalleVentaSimpleFormSet = formset_factory(
 DetalleVentaSimpleForm, extra=1, can_delete=True)
-
 
 class ProductoForm(forms.Form):
     cultivo = forms.ModelChoiceField(queryset=Plantacion.objects.all(), label='Cultivo')

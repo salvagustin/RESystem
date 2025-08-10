@@ -397,7 +397,8 @@ document.addEventListener('DOMContentLoaded', function () {
     
       // Configurar botones
       document.getElementById('btnEditarCosecha').href = `/cosechas/editar/${id}/`;
-      
+      document.getElementById('formEliminarCosecha').action = `/cosechas/eliminar/${id}/`;
+
       
       // Verificar disponibilidad y actualizar botones
       checkDisponibilidadYActualizarBoton(estado);
@@ -455,19 +456,6 @@ document.addEventListener('DOMContentLoaded', function () {
   window.DETALLE_POR_COSECHA = {{ detalle_por_cosecha|safe }};
 </script>
 
-{% if messages %}
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      {% for message in messages %}
-        Swal.fire({
-          icon: "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}",
-          title: "{{ message|escapejs }}",
-          timer: 3000,
-          showConfirmButton: false
-        });
-      {% endfor %}
-    });
-  </script>
-{% endif %}
+
 {% endblock scripts %}
 

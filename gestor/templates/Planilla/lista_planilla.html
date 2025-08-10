@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %} | Plantaciones {% endblock %}
+
+{% block content %}
+{% load static %}
+
+<div class="container py-2">
+    <!-- lista_planilla_semanal.html -->
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h2>Planilla Semanal</h2>
+                <p class="text-muted mb-4">
+                    Semana del {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}
+                </p>
+
+                <!-- Acciones y Filtros -->
+                <div class="row gy-3 align-items-center mb-2">
+                    <!-- Formulario de búsqueda -->
+                    <div class="col-12 col-md-8">
+                        <form method="get" class="row g-2 justify-content-center" id="formBusqueda">
+                            <!-- Buscar -->
+                            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                                <input type="text" name="buscar" class="form-control form-control-sm"
+                                    placeholder="Buscar..." value="{{ buscar }}">
+                            </div>
+
+                            <!-- Fecha semana -->
+                            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                                <input type="week" name="semana" class="form-control form-control-sm"
+                                    value="{{ semana }}" title="Desde">
+                            </div>
+
+                            <!-- Botón Buscar -->
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <a href="{% url 'lista_planilla' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                                <a href="{% url 'agregarplanilla' %}" class="btn btn-success">
+                                    <i class="fas fa-plus"></i> Asistencia
+                                </a>
+                            </div>
+                        </form>
+                        
+                    </div>
+                </div>
+
+                <!-- Tabla para escritorio -->
+                <div class="tbl_container d-none d-md-block">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover text-center align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Empleado</th>
+                                        {% for nombre_dia in nombres_dias %}
+                                        <th>{{ nombre_dia }}</th>
+                                        {% endfor %}
+                                        <th>Extra</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for empleado_data in empleados_data %}
+                                    <tr>
+                                        <td>{{ empleado_data.empleado.nombre }}</td>
+
+                                        {% for dia_info in empleado_data.dias %}
+                                        <td>
+                                            {% if dia_info.salario_dia > 0 %}
+                                                ${{ dia_info.salario_dia|floatformat:2 }}
+                                            {% else %}
+                                                <span class="text-muted">$00.00</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+
+                                        <td>
+                                            <a href="#"
+                                                class="btn btn-sm btn-outline-info"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modalPlanilla"
+                                                data-empleado="{{ empleado_data.empleado.nombre }}"
+                                                data-dias='{{ empleado_data.dias_json|safe }}'
+                                                data-total="{{ empleado_data.total_general|floatformat:2 }}">
+                                                ${{ empleado_data.total_extra_semana|floatformat:2 }}
+                                            </a>
+                                        </td>
+                                        <td><strong>${{ empleado_data.total_general|floatformat:2 }}</strong></td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="10" class="text-center">No hay empleados que coincidan con los criterios de búsqueda.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        
+
+                        {% if empleados_data.has_other_pages %}
+                            {% include "paginacion.html" %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Vista tipo cards para móviles -->
+                <div class="d-md-none">
+                    {% for empleado_data in empleados_data %}
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold">{{ empleado_data.empleado.nombre }}</h5>
+                            
+                            <div class="mb-2">
+                                {% for dia_info in empleado_data.dias %}
+                                    <p class="mb-1">
+                                        <strong>{{ nombres_dias|index:forloop.counter0 }}:</strong>
+                                        {% if dia_info.salario_dia > 0 %}
+                                            ${{ dia_info.salario_dia|floatformat:2 }}
+                                        {% else %}
+                                            <span class="text-muted">$00.00</span>
+                                        {% endif %}
+                                    </p>
+                                {% endfor %}
+                            </div>
+
+                            <p class="mb-1"><strong>Extra:</strong> ${{ empleado_data.total_extra_semana|floatformat:2 }}</p>
+                            <p class="mb-1"><strong>Total:</strong> ${{ empleado_data.total_general|floatformat:2 }}</p>
+
+                            <button 
+                                class="btn btn-sm btn-info text-white"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPlanilla"
+                                data-empleado="{{ empleado_data.empleado.nombre }}"
+                                data-dias='{{ empleado_data.dias_json|safe }}'
+                                data-total="{{ empleado_data.total_general|floatformat:2 }}">
+                                <i class="bi bi-eye"></i> Detalles
+                            </button>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="alert alert-warning">No hay empleados que coincidan con los criterios de búsqueda.</div>
+                    {% endfor %}
+
+                    {% if empleados_data.has_other_pages %}
+                        {% include "paginacion.html" %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Detalles de Planilla -->
+<div class="modal fade" id="modalPlanilla" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user me-2"></i>
+                    Detalle de <span id="detalleEmpleado"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th><i class="fas fa-calendar-day me-1"></i>Día</th>
+                                <th class="text-center"><i class="fas fa-clock me-1"></i>Horas Extra</th>
+                                <th class="text-center"><i class="fas fa-dollar-sign me-1"></i>Pago Extra</th>
+                                <th><i class="fas fa-comment me-1"></i>Observaciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalleDias"></tbody>
+                    </table>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6 offset-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="card-title mb-1">Total General</h6>
+                                <h4 class="text-primary mb-0" id="detalleTotal"></h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos para el modal en modo oscuro */
+[data-bs-theme="dark"] .modal-content {
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .table {
+    --bs-table-bg: transparent;
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.05);
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .table-secondary {
+    --bs-table-bg: rgba(108, 117, 125, 0.2);
+}
+
+[data-bs-theme="dark"] .card.bg-light {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Mejorar la visualización de filas vacías */
+.sin-datos {
+    color: #6c757d;
+    font-style: italic;
+}
+
+.badge-extra {
+    background: linear-gradient(45deg, #28a745, #20c997);
+}
+</style>
+{% endblock modals %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('modalPlanilla');
+        modal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const empleado = button.getAttribute('data-empleado');
+            const diasRaw = button.getAttribute('data-dias');
+            const total = button.getAttribute('data-total');
+
+            // Debug: mostrar el JSON crudo en consola
+            console.log('JSON crudo:', diasRaw);
+
+            let dias;
+            try {
+                // Intentar parsear el JSON
+                dias = JSON.parse(diasRaw);
+            } catch (error) {
+                console.error('Error al parsear JSON:', error);
+                console.log('Contenido problemático:', diasRaw);
+                alert('Error al cargar los datos del empleado');
+                return;
+            }
+
+            document.getElementById('detalleEmpleado').textContent = empleado;
+            document.getElementById('detalleTotal').textContent = "$" + parseFloat(total).toFixed(2);
+
+            const tbody = document.getElementById('detalleDias');
+            tbody.innerHTML = '';
+
+            dias.forEach((d, index) => {
+                const tr = document.createElement('tr');
+                
+                // Determinar si hay datos para este día
+                const tieneHoras = d.horas_extra > 0;
+                const tienePago = d.pago_extra > 0;
+                const tieneObs = d.observaciones && d.observaciones.trim() !== '';
+                
+                const horasTexto = tieneHoras ? 
+                    `<span class="badge bg-warning">${d.horas_extra} hrs</span>` : 
+                    '<span class="sin-datos">Sin horas extra</span>';
+                    
+                const pagoTexto = tienePago ? 
+                    `<span class="fw-bold text-success">$${parseFloat(d.pago_extra).toFixed(2)}</span>` : 
+                    '<span class="sin-datos">$0.00</span>';
+                    
+                const obsTexto = tieneObs ? 
+                    `<small>${d.observaciones}</small>` : 
+                    '<span class="sin-datos">Sin observaciones</span>';
+                
+                tr.innerHTML = `
+                    <td>
+                        <strong>${d.nombre_dia}</strong>
+                        ${d.salario_dia > 0 ? '<br><small class="text-success">✓ Trabajó</small>' : '<br><small class="text-muted">✗ No trabajó</small>'}
+                    </td>
+                    <td class="text-center">${horasTexto}</td>
+                    <td class="text-center">${pagoTexto}</td>
+                    <td>${obsTexto}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+
+        // Validación del formulario de búsqueda (opcional - puedes quitarla si no la quieres)
+        document.getElementById('formBusqueda').addEventListener('submit', function (event) {
+            const buscar = document.querySelector('input[name="buscar"]').value.trim();
+            const semana = document.querySelector('input[name="semana"]').value.trim();
+            
+            // Permitir búsquedas vacías para mostrar todos los resultados
+            if (!buscar && !semana) {
+                event.preventDefault();
+               alert("Debes escribir algo para buscar.");
+            }
+        });
+    });
+</script>
+{% endblock scripts %}
