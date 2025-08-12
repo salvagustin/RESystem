@@ -86,7 +86,8 @@
                                                 data-bs-target="#modalPlanilla"
                                                 data-empleado="{{ empleado_data.empleado.nombre }}"
                                                 data-dias='{{ empleado_data.dias_json|safe }}'
-                                                data-total="{{ empleado_data.total_general|floatformat:2 }}">
+                                                data-total="{{ empleado_data.total_general|floatformat:2 }}"
+                                                data-observaciones="{{ empleado_data.observaciones }}">
                                                 ${{ empleado_data.total_extra_semana|floatformat:2 }}
                                             </a>
                                         </td>

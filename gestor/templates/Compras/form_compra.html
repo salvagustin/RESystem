@@ -5,51 +5,356 @@
 
 {% block content %}
 <div class="container py-4">
+    <!-- Título -->
     <div class="text-center mb-4">
         <h2 class="fw-bold">
-            {% if form.instance.pk %} Editar Corte {% else %} Nuevo Corte {% endif %}
+            {% if compra %}
+                <i class="bi bi-pencil-square text-primary"></i> Editar Compra #{{ compra.idcompra }}
+            {% else %}
+                <i class="bi bi-plus-circle text-success"></i> Nueva Compra
+            {% endif %}
         </h2>
     </div>
 
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
+    <!-- Información del Proveedor (si está seleccionado) -->
+    {% if proveedor %}
+    <div class="alert alert-info mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h5 class="mb-1"><i class="bi bi-building"></i> Proveedor Seleccionado:</h5>
+                <p class="mb-0 fw-bold">{{ proveedor.idcliente }} - {{ proveedor.nombre }}</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <a href="{% if compra %}/compras/editar/{{ compra.idcompra }}/{% else %}/compras/crear/{% endif %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-repeat"></i> Cambiar Proveedor
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
-                        <!-- Mostrar nombre de la parcela relacionada con la plantación 
-                        {% if plantacion %}
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Parcela: {{ plantacion.parcela.nombre }} {{ plantacion.cultivo.nombre}}</label>
-                                
-                            </div>
+    <div class="row">
+        <!-- Formulario Principal -->
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-clipboard-data"></i> Información de la Compra</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formCompra" method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Tipo de Compra -->
+                        <div class="mb-3">
+                            <label for="id_tipocompra" class="form-label fw-bold">
+                                <i class="bi bi-credit-card"></i> Tipo de Compra
+                            </label>
+                            {{ form.tipocompra }}
+                        </div>
+
+                        <!-- Selección de Proveedor (solo si no hay uno seleccionado) -->
+                        {% if not proveedor %}
+                        <div class="mb-3">
+                            <label for="selectProveedor" class="form-label fw-bold">
+                                <i class="bi bi-building"></i> Proveedor
+                            </label>
+                            <select id="selectProveedor" name="proveedor_id" class="form-select" required>
+                                <option value="">Selecciona un proveedor</option>
+                                {% for prov in proveedores %}
+                                    <option value="{{ prov.idcliente }}">{{ prov.idcliente }} - {{ prov.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% else %}
+                            <input type="hidden" name="proveedor_id" value="{{ proveedor.idcliente }}">
                         {% endif %}
 
-                        {{ form|crispy }}-->
+                        <!-- Campo oculto para JSON de productos -->
+                        <input type="hidden" id="productosJson" name="productos_json" value="">
+                    </form>
+                </div>
+            </div>
+        </div>
 
-                        <div class="d-flex justify-content-between mt-3">
-                            <a href="{% url 'lista_cosechas' %}" class="btn btn-secondary">Cancelar</a>
-                            {% if form.instance.pk %}
-
-                            {% else %}
-                            <a href="#" class="btn btn-success" id="btnVender">Vender</a>
-                            {% endif %}
-                            <button type="submit" class="btn btn-primary">
-                                {% if form.instance.pk %} Actualizar {% else %} Guardar {% endif %}
-                            </button>
+        <!-- Panel de Productos -->
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-box-seam"></i> Agregar Productos</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formProducto">
+                        <!-- Producto -->
+                        <div class="mb-3">
+                            <label for="producto" class="form-label fw-bold">Producto</label>
+                            <input type="text" id="producto" class="form-control" placeholder="Nombre del producto" maxlength="300" required>
                         </div>
-                        <input type="hidden" name="ir_a_venta" id="ir_a_venta" value="0">
+
+                        <!-- Cantidad -->
+                        <div class="mb-3">
+                            <label for="cantidad" class="form-label fw-bold">Cantidad</label>
+                            <input type="number" id="cantidad" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+                        </div>
+
+                        <!-- Precio Unitario -->
+                        <div class="mb-3">
+                            <label for="preciounitario" class="form-label fw-bold">Precio Unitario</label>
+                            <input type="number" id="preciounitario" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+                        </div>
+
+                        <!-- Tipo de Detalle -->
+                        <div class="mb-3">
+                            <label for="tipodetalle" class="form-label fw-bold">Tipo Detalle</label>
+                            <select id="tipodetalle" class="form-select" required>
+                                <option value="">Seleccionar...</option>
+                                {% for codigo, nombre in opciones_detalle %}
+                                    <option value="{{ codigo }}">{{ nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="button" id="btnAgregarProducto" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-circle"></i> Agregar Producto
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Lista de Productos Agregados -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-list-check"></i> Productos Agregados</h5>
+                    <span id="contadorProductos" class="badge bg-light text-dark">0 productos</span>
+                </div>
+                <div class="card-body">
+                    <div id="contenedorProductos">
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1"></i>
+                            <p class="mt-2">No hay productos agregados</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de productos (se muestra cuando hay productos) -->
+                    <div id="tablaProductos" class="d-none">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio Unit.</th>
+                                        <th>Tipo</th>
+                                        <th>Subtotal</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="listaProductos">
+                                    <!-- Productos se insertan aquí -->
+                                </tbody>
+                                <tfoot class="table-success">
+                                    <tr>
+                                        <td colspan="4" class="text-end fw-bold">TOTAL:</td>
+                                        <td id="totalGeneral" class="fw-bold">$0.00</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <button type="button" id="btnGuardarCompra" class="btn btn-success btn-lg me-3" disabled>
+                <i class="bi bi-check-circle"></i> 
+                {% if compra %}Actualizar{% else %}Guardar{% endif %} Compra
+            </button>
+            <a href="/compras/" class="btn btn-secondary btn-lg">
+                <i class="bi bi-arrow-left"></i> Cancelar
+            </a>
+        </div>
+    </div>
 </div>
-<script>
-    document.getElementById('btnVender').addEventListener('click', function() {
-        document.getElementById('ir_a_venta').value = '1';
-        document.querySelector('form').submit();
-    });
-</script>
 {% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let productos = [];
+    let contadorProductos = 0;
+
+    // Elementos del DOM
+    const formProducto = document.getElementById('formProducto');
+    const btnAgregarProducto = document.getElementById('btnAgregarProducto');
+    const btnGuardarCompra = document.getElementById('btnGuardarCompra');
+    const contenedorProductos = document.getElementById('contenedorProductos');
+    const tablaProductos = document.getElementById('tablaProductos');
+    const listaProductos = document.getElementById('listaProductos');
+    const totalGeneral = document.getElementById('totalGeneral');
+    const contadorProductosSpan = document.getElementById('contadorProductos');
+    const productosJsonInput = document.getElementById('productosJson');
+
+    // Cargar productos existentes si estamos editando
+    {% if compra and detalles_json %}
+        productos = {{ detalles_json|safe }};
+        actualizarInterfaz();
+    {% endif %}
+
+    // Agregar producto
+    btnAgregarProducto.addEventListener('click', function() {
+        const producto = document.getElementById('producto').value.trim();
+        const cantidad = parseFloat(document.getElementById('cantidad').value);
+        const preciounitario = parseFloat(document.getElementById('preciounitario').value);
+        const tipodetalle = document.getElementById('tipodetalle').value;
+
+        // Validaciones
+        if (!producto) {
+            alert('Debes ingresar el nombre del producto');
+            return;
+        }
+        if (!cantidad || cantidad <= 0) {
+            alert('Debes ingresar una cantidad válida');
+            return;
+        }
+        if (!preciounitario || preciounitario <= 0) {
+            alert('Debes ingresar un precio unitario válido');
+            return;
+        }
+        if (!tipodetalle) {
+            alert('Debes seleccionar el tipo de detalle');
+            return;
+        }
+
+        // Crear objeto producto
+        const nuevoProducto = {
+            producto: producto,
+            cantidad: cantidad,
+            preciounitario: preciounitario,
+            tipodetalle: tipodetalle,
+            subtotal: cantidad * preciounitario
+        };
+
+        // Agregar a la lista
+        productos.push(nuevoProducto);
+        
+        // Actualizar interfaz
+        actualizarInterfaz();
+
+        // Limpiar formulario
+        formProducto.reset();
+    });
+
+    // Función para actualizar la interfaz
+    function actualizarInterfaz() {
+        contadorProductos = productos.length;
+        contadorProductosSpan.textContent = `${contadorProductos} producto${contadorProductos !== 1 ? 's' : ''}`;
+
+        if (contadorProductos === 0) {
+            contenedorProductos.style.display = 'block';
+            tablaProductos.classList.add('d-none');
+            btnGuardarCompra.disabled = true;
+        } else {
+            contenedorProductos.style.display = 'none';
+            tablaProductos.classList.remove('d-none');
+            btnGuardarCompra.disabled = false;
+            renderizarProductos();
+        }
+
+        // Actualizar JSON oculto
+        productosJsonInput.value = JSON.stringify(productos);
+    }
+
+    // Función para renderizar productos en la tabla
+    function renderizarProductos() {
+        listaProductos.innerHTML = '';
+        let total = 0;
+
+        productos.forEach((producto, index) => {
+            const tipoTexto = producto.tipodetalle === 'C' ? 'Casa' : 'Empresa';
+            const fila = `
+                <tr>
+                    <td>${producto.producto}</td>
+                    <td>${producto.cantidad}</td>
+                    <td>$${producto.preciounitario.toFixed(2)}</td>
+                    <td>${tipoTexto}</td>
+                    <td>$${producto.subtotal.toFixed(2)}</td>
+                    <td>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarProducto(${index})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            listaProductos.innerHTML += fila;
+            total += producto.subtotal;
+        });
+
+        totalGeneral.textContent = `$${total.toFixed(2)}`;
+    }
+
+    // Función global para eliminar producto
+    window.eliminarProducto = function(index) {
+        if (confirm('¿Estás seguro de eliminar este producto?')) {
+            productos.splice(index, 1);
+            actualizarInterfaz();
+        }
+    };
+
+    // Guardar compra
+    btnGuardarCompra.addEventListener('click', function() {
+        if (productos.length === 0) {
+            alert('Debes agregar al menos un producto');
+            return;
+        }
+
+        const tipocompra = document.getElementById('id_tipocompra').value;
+        if (!tipocompra) {
+            alert('Debes seleccionar el tipo de compra');
+            return;
+        }
+
+        {% if not proveedor %}
+        const proveedorId = document.getElementById('selectProveedor').value;
+        if (!proveedorId) {
+            alert('Debes seleccionar un proveedor');
+            return;
+        }
+        {% endif %}
+
+        // Confirmar y enviar
+        if (confirm('¿Confirmas {% if compra %}la actualización de{% else %}el registro de{% endif %} esta compra?')) {
+            document.getElementById('formCompra').submit();
+        }
+    });
+
+    // Validaciones en tiempo real
+    document.getElementById('cantidad').addEventListener('input', function() {
+        actualizarSubtotal();
+    });
+
+    document.getElementById('preciounitario').addEventListener('input', function() {
+        actualizarSubtotal();
+    });
+
+    function actualizarSubtotal() {
+        const cantidad = parseFloat(document.getElementById('cantidad').value) || 0;
+        const precio = parseFloat(document.getElementById('preciounitario').value) || 0;
+        const subtotal = cantidad * precio;
+        
+        // Podrías mostrar el subtotal en tiempo real si quisieras
+        // Por ahora solo se calcula al agregar
+    }
+
+    // Inicializar interfaz
+    actualizarInterfaz();
+});
+</script>
+{% endblock scripts %}

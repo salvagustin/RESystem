@@ -132,34 +132,101 @@ class EmpleadoForm(forms.ModelForm):
 
 
 
+class CompraForm(forms.ModelForm):
+    class Meta:
+        model = Compra
+        fields = ['tipocompra']
+        widgets = {
+            'tipocompra': forms.Select(attrs={
+                'class': 'form-control',
+                'required': True
+            }),
+        }
+        labels = {
+            'tipocompra': 'Tipo de Compra',
+        }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Personalizar opciones del select
+        self.fields['tipocompra'].choices = Compra.opciones if hasattr(Compra, 'opciones') else [("C", "Contado"), ("D", "Credito")]
 
+class DetalleCompraForm(forms.ModelForm):
+    class Meta:
+        model = DetalleCompra
+        fields = ['producto', 'cantidad', 'preciounitario', 'tipodetalle']
+        widgets = {
+            'producto': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre del producto',
+                'maxlength': 300
+            }),
+            'cantidad': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0.01',
+                'placeholder': '0.00'
+            }),
+            'preciounitario': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0.01',
+                'placeholder': '0.00'
+            }),
+            'tipodetalle': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+        }
+        labels = {
+            'producto': 'Producto',
+            'cantidad': 'Cantidad',
+            'preciounitario': 'Precio Unitario',
+            'tipodetalle': 'Tipo de Detalle',
+        }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Personalizar opciones del select
+        self.fields['tipodetalle'].choices = DetalleCompra.opciones if hasattr(DetalleCompra, 'opciones') else [("C", "Casa"), ("E", "Empresa")]
 
-class DetalleVentaSimpleForm(forms.Form):
-    cultivo = forms.ModelChoiceField(
-        queryset=Plantacion.objects.all(),
-        label='Cultivo / Plantación',
+class FiltroCompraForm(forms.Form):
+    FILTRO_CHOICES = [
+        ('proveedor', 'Proveedor'),
+        ('producto', 'Producto'),
+        ('tipocompra', 'Tipo Compra'),
+        ('estado', 'Estado'),
+        ('tipodetalle', 'Tipo Detalle'),
+    ]
+    
+    filtro = forms.ChoiceField(
+        choices=FILTRO_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        initial='proveedor'
     )
-    categoria = forms.ChoiceField(choices=[
-        ('primera', 'Primera'),
-        ('segunda', 'Segunda'),
-        ('tercera', 'Tercera'),
-    ])
-    cantidad = forms.IntegerField(min_value=1, label='Cantidad')
-   #tipocosecha = forms.ChoiceField(choices=Cosecha.OPCIONES, label='Presentación')
-
-DetalleVentaSimpleFormSet = formset_factory(
-DetalleVentaSimpleForm, extra=1, can_delete=True)
-
-class ProductoForm(forms.Form):
-    cultivo = forms.ModelChoiceField(queryset=Plantacion.objects.all(), label='Cultivo')
-    categoria = forms.ChoiceField(choices=[
-        ('primera', 'Primera'),
-        ('segunda', 'Segunda'),
-        ('tercera', 'Tercera'),
-    ])
-    cantidad = forms.IntegerField(min_value=1)
-    #tipocosecha = forms.ChoiceField(choices=Cosecha.OPCIONES, label='Presentación')
-
-ProductoFormSet = formset_factory(ProductoForm, extra=1, can_delete=True)
+    
+    buscar = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Buscar...'
+        })
+    )
+    
+    fecha_inicio = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )
+    
+    fecha_fin = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )

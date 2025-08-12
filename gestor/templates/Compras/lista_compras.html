@@ -1,81 +1,465 @@
 {% extends 'base.html' %}
-
+{% load custom_filters %}
 {% block title %} | Compras {% endblock %}
-
 {% block content %}
-{% load static %}
-
 <div class="container py-2">
-  
-  <!-- Título -->
-  <div class="text-center mb-3">
-    <h2 class="fw-bold">Plantaciones</h2>
-  </div>
+    <!-- Título -->
+    <div class="text-center mb-3">
+        <h2 class="fw-bold">Compras</h2>
+    </div>
 
-<!-- Acciones y Filtros -->
-  <div class="row gy-3 align-items-center mb-2">
-    <!-- Botones -->
-    <div class="col-12 col-md-4 d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
-       <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#modalSeleccionarParcela">
-                <i class="bi bi-plus-circle fs-5 me-2"></i> <span>Nueva plantacion</span>
+    <!-- Acciones y Filtros -->
+    <div class="row gy-3 align-items-center mb-2">
+        <!-- Botones -->
+        <div class="col-12 col-md-4 d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
+            <!-- Botón Nueva Compra -->
+            <button class="btn btn-success w-100 d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#modalSeleccionarProveedor">
+                <i class="bi bi-plus-circle fs-5 me-2"></i> <span>Nueva Compra</span>
             </button>
 
-      <a href="{% url 'lista_plantaciones' %}" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
-        <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
-      </a>
+            <!-- Botón Restablecer -->
+            <a href="/compras/" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
+            </a>
+        </div>
+
+        <!-- Formulario de búsqueda -->
+        <div class="col-12 col-md-8">
+            <form method="get" class="row g-2 justify-content-center" id="formBusqueda">
+                <!-- Filtro -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <select class="form-select form-select-sm" name="filtro">
+                        <option value="proveedor" {% if filtro == "proveedor" %}selected{% endif %}>Proveedor</option>
+                        <option value="producto" {% if filtro == "producto" %}selected{% endif %}>Producto</option>
+                        <option value="tipocompra" {% if filtro == "tipocompra" %}selected{% endif %}>Tipo compra</option>
+                        <option value="estado" {% if filtro == "estado" %}selected{% endif %}>Estado</option>
+                        <option value="tipodetalle" {% if filtro == "tipodetalle" %}selected{% endif %}>Tipo detalle</option>
+                    </select>
+                </div>
+
+                <!-- Buscar -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <input type="text" name="buscar" class="form-control form-control-sm" placeholder="Buscar..." value="{{ buscar }}">
+                </div>
+
+                <!-- Fecha Inicio -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}" title="Desde">
+                </div>
+
+                <!-- Fecha Fin -->
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}" title="Hasta">
+                </div>
+
+                <!-- Botón Buscar -->
+                <div class="col-12 col-sm-4 col-md-auto">
+                    <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-search fs-5 me-2"></i> <span>Buscar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <!-- Formulario de búsqueda -->
-    <div class="col-12 col-md-8">
-      <form method="get" class="row g-2 justify-content-center" id="formBusqueda">
-        <!-- Filtro -->
-        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-          <select class="form-select form-select-sm" name="filtro">
-            <option value="parcela" {% if filtro == "parcela" %}selected{% endif %}>Parcela</option>
-            <option value="cultivo" {% if filtro == "cultivo" %}selected{% endif %}>Cultivo</option>
-            <option value="estado" {% if filtro == "estado" %}selected{% endif %}>Estado</option>
-          </select>
-        </div>
+    <!-- Cards para móviles -->
+     <div class="d-md-none">
+      {% for compra in entity %}
+      <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title fw-bold">#{{ compra.idcompra }} - {{ compra.cliente.nombre }}</h5>
+          <p class="mb-1"><strong>Fecha:</strong> {{ compra.fecha }}</p>
+          <p class="mb-1"><strong>Total:</strong> ${{ compra.total }}</p>
+          <p class="mb-1">
+            <strong>Estado:</strong>
+            {% if compra.estado %}
+              <span class="badge bg-success">Pagado</span>
+            {% else %}
+              <span class="badge bg-danger">Pendiente</span>
+            {% endif %}
+          </p>
+          <p class="mb-2"><strong>Tipo de compra:</strong> {{ compra.get_tipocompra_display }}</p>
 
-        <!-- Buscar -->
-        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-          <input type="text" name="buscar" class="form-control form-control-sm" placeholder="Buscar..." value="{{ buscar }}">
+          <div class="d-flex flex-wrap gap-2">
+            <button 
+              type="button"
+              class="btn btn-info btn-sm text-white"
+              data-bs-toggle="modal"
+              data-bs-target="#modalCompra"
+              data-id="{{ compra.idcompra }}"
+              data-proveedor="{{ compra.cliente.nombre }}"
+              data-fecha="{{ compra.fecha }}"
+              data-estado="{{ compra.estado }}"
+              data-tipocompra="{{ compra.get_tipocompra_display }}"
+              data-total="{{ compra.total }}">
+              <i class="bi bi-eye"></i> Detalles
+            </button>
+          </div>
         </div>
-
-        <!-- Fecha Inicio -->
-        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-          <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}" title="Desde">
-        </div>
-
-        <!-- Fecha Fin -->
-        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-          <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}" title="Hasta">
-        </div>
-
-        <!-- Botón Buscar -->
-        <div class="col-12 col-sm-4 col-md-auto">
-          <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center">
-            <i class="bi bi-search fs-5 me-2"></i> <span>Buscar</span>
-          </button>
-        </div>
-      </form>
+      </div>
+      {% empty %}
+      <div class="text-center">No hay compras registradas.</div>
+      {% endfor %}
     </div>
+
+    <!-- Tabla para escritorio -->
+    <div class="d-none d-md-block">
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Numero</th>
+              <th>Proveedor</th>
+              <th>Fecha</th>
+              <th>Total</th>
+              <th>Estado</th>
+              <th>Tipo de compra</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for compra in entity %}
+            <tr>
+              <td>{{ compra.idcompra }}</td>
+              <td>{{ compra.cliente.nombre }}</td>
+              <td>{{ compra.fecha }}</td>
+              <td>${{ compra.total }}</td>
+              <td id="estado-{{ compra.idcompra }}">
+                {% if compra.estado %}
+                  <span class="badge bg-success">Pagado</span>
+                {% else %}
+                  <span class="badge bg-danger">Pendiente</span>
+                {% endif %}
+              </td>
+              <td>{{ compra.get_tipocompra_display }}</td>
+              <td>
+                <button id="btn-detalles"
+                  type="button"
+                  class="btn btn-info btn-sm text-white"
+                  data-bs-toggle="modal"
+                  data-bs-target="#modalCompra"
+                  data-id="{{ compra.idcompra }}"
+                  data-proveedor="{{ compra.cliente.nombre }}"
+                  data-fecha="{{ compra.fecha }}"
+                  data-estado="{{ compra.estado }}"
+                  data-tipocompra="{{ compra.get_tipocompra_display }}"
+                  data-total="{{ compra.total }}">
+                  <i class="bi bi-eye"></i> Detalles
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7">No hay compras registradas.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% include "paginacion.html" %}
 </div>
-
-
-
-</div> 
 {% endblock %}
-
-
 
 {% block modals %}
+<!-- Modal Seleccionar Proveedor -->
+<div class="modal fade" id="modalSeleccionarProveedor" tabindex="-1" aria-labelledby="modalSeleccionarProveedorLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+  
+        <div class="modal-header">
+          <h5 class="modal-title">Listado de Proveedores</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+  
+        <div class="modal-body">
+          <select id="selectProveedor" class="form-select">
+            <option value="">Selecciona un proveedor</option>
+            {% for proveedor in proveedores %}
+              <option value="{{ proveedor.idcliente }}">{{ proveedor.idcliente}}-{{ proveedor.nombre }} </option>
+            {% endfor %}
+          </select>
+        </div>
+  
+        <div class="modal-footer">
+          <button id="btnIrFormulario" class="btn btn-success">Ir al formulario</button>
+        </div>
+  
+      </div>
+    </div>
+  </div>
 
-{% endblock %}
+<!-- Modal Detalles Compra -->
+<div class="modal fade" id="modalCompra" tabindex="-1" aria-labelledby="modalCompraLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
 
+      <!-- Header -->
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="modalCompraLabel">📦 Detalles de la Compra</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
 
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="container-fluid">
+          <div class="row g-3">
+            <!-- Columna izquierda -->
+            <div class="col-md-6">
+              <p><strong>🔢 Número:</strong> <span id="compraId"></span></p>
+              <p><strong>🏪 Proveedor:</strong> <span id="compraProveedor"></span></p>
+              <p><strong>📅 Fecha:</strong> <span id="compraFecha"></span></p>
+              <p><strong>📦 Tipo de compra:</strong> <span id="compraTipocompra"></span></p>
+            </div>
+
+            <!-- Columna derecha -->
+            <div class="col-md-6">
+              <p><strong>🔁 Estado:</strong> <span id="compraEstado"></span></p>
+              <p><strong>💰 Total:</strong> <span id="compraTotal" class="fw-bold text-success fs-5"></span></p>
+            </div>
+          </div>
+
+          <!-- Detalles de los productos de la compra -->
+          <div class="mt-4">
+            <h5>🛒 Productos en la Compra:</h5>
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover table-sm align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unitario</th>
+                    <th>Tipo Detalle</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody id="detalleCompraProductos">
+                  <!-- Se insertan dinámicamente desde JavaScript -->
+                </tbody>
+                <tfoot class="table-dark">
+                  <tr>
+                    <td colspan="4" class="text-end fw-bold">TOTAL:</td>
+                    <td id="totalFooter" class="fw-bold">$0.00</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button id="btnToggleEstadoCompra" class="btn btn-outline-secondary">
+          Cambiar Estado
+        </button>
+        <a id="btnEditarCompra" class="btn btn-outline-primary">
+          <i class="bi bi-pencil-square"></i> Editar
+        </a>
+        <button 
+          class="btn btn-outline-danger"
+          data-bs-toggle="modal"
+          data-bs-target="#modalConfirmarEliminarCompra"
+          data-bs-dismiss="modal">
+          <i class="bi bi-trash"></i> Eliminar
+        </button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modalConfirmarEliminarCompra" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">¿Eliminar Compra?</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de eliminar esta compra?</p>
+            </div>
+            <div class="modal-footer">
+                <form id="formEliminarCompra" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Sí, eliminar</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock modals %}
 
 {% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modalCompra = document.getElementById('modalCompra');
+    let CompraIdActual = null;
 
+    if (modalCompra) {
+        modalCompra.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+
+            const id = button.getAttribute('data-id');
+            const proveedor = button.getAttribute('data-proveedor');
+            const tipocompra = button.getAttribute('data-tipocompra');
+            const fecha = button.getAttribute('data-fecha');
+            const estado = button.getAttribute('data-estado');
+            const total = button.getAttribute('data-total');
+
+            // Actualizar información básica del modal
+            document.getElementById('compraId').textContent = id;
+            document.getElementById('compraProveedor').textContent = proveedor;
+            document.getElementById('compraTipocompra').textContent = tipocompra;
+            document.getElementById('compraFecha').textContent = fecha;
+            document.getElementById('compraEstado').innerHTML = estado === 'True' 
+                ? '<span class="badge bg-success">Pagado</span>' 
+                : '<span class="badge bg-danger">Pendiente</span>';
+            document.getElementById('compraTotal').textContent = `$${parseFloat(total).toFixed(2)}`;
+
+            // Deshabilitar botón si ya está pagado
+            const btnToggle = document.getElementById('btnToggleEstadoCompra');
+            btnToggle.disabled = (estado === 'True');
+
+            // Actualizar enlaces y formularios
+            document.getElementById('btnEditarCompra').href = `/compras/editar/${id}/`;
+            document.getElementById('formEliminarCompra').action = `/compras/eliminar/${id}/`;
+
+            CompraIdActual = id;
+
+            // Cargar detalles de la compra via AJAX
+            cargarDetallesCompra(id);
+        });
+
+        // Función para cargar detalles de la compra
+        function cargarDetallesCompra(compraId) {
+            fetch(`/compras/detalles/${compraId}/`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("Error al obtener detalles");
+                return response.json();
+            })
+            .then(data => {
+                const tbody = document.getElementById('detalleCompraProductos');
+                const totalFooter = document.getElementById('totalFooter');
+                
+                tbody.innerHTML = '';
+
+                if (data.detalles && data.detalles.length > 0) {
+                    data.detalles.forEach(detalle => {
+                        const tipoDetalleTexto = detalle.tipodetalle === 'C' ? 'Casa' : 'Empresa';
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${detalle.producto}</td>
+                                <td>${detalle.cantidad}</td>
+                                <td>$${parseFloat(detalle.preciounitario).toFixed(2)}</td>
+                                <td>${tipoDetalleTexto}</td>
+                                <td>$${parseFloat(detalle.subtotal).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    const total = data.total || 0;
+                    totalFooter.textContent = `$${parseFloat(total).toFixed(2)}`;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center">No hay detalles disponibles</td></tr>';
+                    totalFooter.textContent = '$0.00';
+                }
+            })
+            .catch(error => {
+                console.error('Error al cargar detalles:', error);
+                const tbody = document.getElementById('detalleCompraProductos');
+                const totalFooter = document.getElementById('totalFooter');
+                
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar los detalles</td></tr>';
+                totalFooter.textContent = '$0.00';
+            });
+        }
+
+        // Acción para marcar como pagada (solo False -> True)
+        document.getElementById('btnToggleEstadoCompra').addEventListener('click', () => {
+            if (!CompraIdActual) return;
+
+            fetch(`/compras/toggle_estado/${CompraIdActual}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Accept': 'application/json'
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.estado !== undefined) {
+                    // Actualizar badge en el modal
+                    document.getElementById('compraEstado').innerHTML = data.estado 
+                        ? '<span class="badge bg-success">Pagado</span>' 
+                        : '<span class="badge bg-danger">Pendiente</span>';
+
+                    // Desactivar botón si ya está pagada
+                    if (data.estado) {
+                        document.getElementById('btnToggleEstadoCompra').disabled = true;
+
+                        // Actualizar también el estado en la tabla principal
+                        const celdaEstado = document.getElementById(`estado-${CompraIdActual}`);
+                        if (celdaEstado) {
+                            celdaEstado.innerHTML = '<span class="badge bg-success">Pagado</span>';
+                        }
+                    }
+                } else {
+                    alert("Error al actualizar estado");
+                }
+            })
+            .catch(() => alert("Fallo en la solicitud al servidor"));
+        });
+    }
+
+    // Validación del formulario de búsqueda
+    document.getElementById('formBusqueda').addEventListener('submit', function (event) {
+        const buscar = document.querySelector('input[name="buscar"]').value.trim();
+        const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
+        const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
+
+        if (!buscar && (!fechaInicio || !fechaFin)) {
+            event.preventDefault();
+            alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
+        }
+    });
+
+    // Botón para ir al formulario de nueva compra
+    document.getElementById("btnIrFormulario").addEventListener("click", function () {
+        const proveedorId = document.getElementById("selectProveedor").value;
+        if (proveedorId) {
+            window.location.href = `/compras/crear/?proveedor_id=${proveedorId}`;
+        } else {
+            alert("Debes seleccionar un proveedor.");
+        }
+    });
+});
+
+// Función para obtener el token CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
 
 {% endblock scripts %}

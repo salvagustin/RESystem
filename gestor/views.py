@@ -39,6 +39,9 @@ def inicio(request):
     inicio_semana = hoy - timedelta(days=hoy.weekday())  # lunes
     dias_semana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
+    # Obtener proveedores (clientes con tipo 'P' si existe esa distinción)
+    proveedores = Cliente.objects.filter(tipocliente='P').order_by('nombre') if hasattr(Cliente, 'tipocliente') else Cliente.objects.all().order_by('nombre')
+
     # Función para obtener el nombre legible del tipo de cosecha
     def get_tipo_cosecha_display(codigo):
         opciones = {
@@ -60,6 +63,18 @@ def inicio(request):
         venta__fecha=hoy
     ).aggregate(
         total=Sum(F('subtotal'))
+    )['total'] or 0
+
+     # Compras del día
+    total_compras_hoy = DetalleCompra.objects.filter(
+    compra__fecha=hoy
+    ).aggregate(
+        total=Sum(
+            ExpressionWrapper(
+                F('cantidad') * F('preciounitario'),
+                output_field=DecimalField()
+            )
+        )
     )['total'] or 0
 
     # Plantaciones y cosechas disponibles
@@ -174,8 +189,8 @@ def inicio(request):
         if cultivo in cosechas_por_calidad_y_cultivo:
             cosechas_por_calidad_cultivos_hoy[cultivo] = cosechas_por_calidad_y_cultivo[cultivo]
 
-    # Compras del día
-    total_compras_hoy = 0
+   
+   
 
     # Convertir datos a JSON para JavaScript
     dias_semana_json = json.dumps(dias_semana)
@@ -193,6 +208,7 @@ def inicio(request):
         'clientes': clientes,
         'cosechas': cosechas,
         'plantaciones': plantaciones,
+        'proveedores':proveedores,
         
         # Datos para JavaScript (ya convertidos a JSON)
         'dias_semana': dias_semana_json,
@@ -602,7 +618,7 @@ def eliminar_cultivo(request, idcultivo):
     return redirect('/cultivos')
 
 
-
+############   PLANTACIONES  ####################
 # Mostrar lista de plantaciones
 @login_required
 def lista_plantaciones(request):
@@ -753,7 +769,7 @@ def eliminar_plantacion(request, idplantacion):
 
 
 
-
+############   COSECHAS  ####################
 # Mostrar lista de cocechas
 @login_required
 def lista_cosechas(request):
@@ -1046,7 +1062,7 @@ def cerrar_cosecha(request, id):
     return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
 
 
-
+############   CLIENTES  ####################
 
 # Mostrar lista de clientes
 @login_required
@@ -1068,6 +1084,11 @@ def lista_clientes(request):
                 clientes = clientes.filter(tipocliente='C')
             elif buscar in ['proveedor', 'p']:
                 clientes = clientes.filter(tipocliente='P')
+        elif filtro == 'tipomercado':
+            if buscar in ['formal', 'f']:
+                clientes = clientes.filter(tipomercado='F')
+            elif buscar in ['informal', 'i']:
+                clientes = clientes.filter(tipomercado='I')
 
     # Anotar cantidad total vendida por cliente
     clientes = clientes.annotate(
@@ -1143,7 +1164,7 @@ def eliminar_cliente(request, idcliente):
     return redirect('/clientes')
 
 
-# VENTAS
+############   VENTAS  ####################
 @login_required
 def obtener_detalles_venta(request, venta_id):
     try:
@@ -1434,7 +1455,7 @@ def crear_venta(request):
         ).distinct()
         tipo_cosecha_opciones = DetalleCosecha.OPCIONES
         cantidades = obtener_disponibilidad_por_cultivo()
-        print(cantidades)
+        
         return render(request, 'Venta/form_venta.html', {
             'form': form,
             'cultivos': cultivos,
@@ -1641,7 +1662,7 @@ def toggle_estado_venta(request, idventa):
         venta = Venta.objects.get(pk=idventa)
         venta.estado = True
         venta.save()
-        messages.success(request, f"La venta #{venta.idventa} ha sido marcada como pagada.")
+        
         return JsonResponse({'estado': venta.estado})
     except Venta.DoesNotExist:
         return JsonResponse({'error': 'Venta no encontrada'}, status=404)
@@ -1695,8 +1716,74 @@ def lista_clientesformales(request):
 # Mostrar lista de entregas formales
 @login_required
 def lista_entregasformales(request):
+    filtro = request.GET.get('filtro', 'cliente').lower()
+    buscar = request.GET.get('buscar', '').strip().lower()
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
 
-    return render(request, 'MercadoFormal/entregasformales.html' )
+    clientes = Cliente.objects.filter(tipocliente='C').order_by('nombre')
+
+    ventas = Venta.objects.select_related('cliente').prefetch_related(
+    'detalleventa_set__cosecha__plantacion__parcela',
+    'detalleventa_set__cosecha__plantacion__cultivo'
+    ).filter(
+        cliente__tipomercado='F',  # 'F' = Formal según tu modelo
+        estado=False  # Solo ventas no pagadas
+    ).order_by('-idventa')
+
+    # Filtro por texto
+    if buscar:
+        if filtro == 'parcela':
+            ventas = ventas.filter(detalleventa__cosecha__plantacion__parcela__nombre__icontains=buscar)
+        elif filtro in ['producto', 'cultivo']:
+            ventas = ventas.filter(detalleventa__cosecha__plantacion__cultivo__nombre__icontains=buscar)
+        elif filtro == 'cliente':
+            ventas = ventas.filter(cliente__nombre__icontains=buscar)
+        elif filtro == 'tipoventa':
+            tipo_map = {'contado': 'C', 'crédito': 'D', 'credito': 'D'}
+            tipo = tipo_map.get(buscar)
+            if tipo:
+                ventas = ventas.filter(tipoventa=tipo)
+        elif filtro == 'estado':
+            if buscar in ['pagado', 'true', '1', 'sí', 'si']:
+                ventas = ventas.filter(estado=True)
+            elif buscar in ['pendiente', 'false', '0', 'no']:
+                ventas = ventas.filter(estado=False)
+
+    # Filtro por fechas
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            ventas = ventas.filter(fecha__gte=fecha_inicio_obj)
+        except ValueError:
+            pass
+
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            ventas = ventas.filter(fecha__lte=fecha_fin_obj)
+        except ValueError:
+            pass
+
+    # Paginación
+    pagina = request.GET.get("page", 1)
+    paginator = Paginator(ventas, 10)
+    try:
+        ventas_paginadas = paginator.page(pagina)
+    except PageNotAnInteger:
+        ventas_paginadas = paginator.page(1)
+    except EmptyPage:
+        ventas_paginadas = paginator.page(paginator.num_pages)
+
+    return render(request, 'MercadoFormal/entregasformales.html', {
+        'entity': ventas_paginadas,
+        'paginator': paginator,
+        'filtro': filtro,
+        'buscar': buscar,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'clientes': clientes,
+    })
 
 # Mostrar lista de ventas formales
 @login_required
@@ -1712,7 +1799,8 @@ def lista_ventasformales(request):
     'detalleventa_set__cosecha__plantacion__parcela',
     'detalleventa_set__cosecha__plantacion__cultivo'
     ).filter(
-        cliente__tipomercado='F'  # 'F' = Formal según tu modelo
+        cliente__tipomercado='F',  # 'F' = Formal según tu modelo
+        estado=True  # Solo ventas pagadas
     ).order_by('-idventa')
 
     # Filtro por texto
@@ -1769,7 +1857,81 @@ def lista_ventasformales(request):
         'clientes': clientes,
     })
 
+# Mostrar lista de compras formales
+@login_required
+def lista_comprasformales(request):
+    filtro = request.GET.get('filtro', 'cliente').lower()
+    buscar = request.GET.get('buscar', '').strip().lower()
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
 
+    # Obtener proveedores (clientes con tipo 'P' si existe esa distinción)
+    proveedores = Cliente.objects.filter(tipocliente='P', tipomercado='F').order_by('nombre') if hasattr(Cliente, 'tipocliente') else Cliente.objects.all().order_by('nombre')
+    print(proveedores)
+    compras = Compra.objects.select_related('cliente').prefetch_related(
+        'detallecompra_set'
+    ).filter(cliente__tipomercado='F').order_by('-idcompra')
+
+    # Filtro por texto
+    if buscar:
+        if filtro == 'proveedor':
+            compras = compras.filter(cliente__nombre__icontains=buscar)
+        elif filtro == 'producto':
+            compras = compras.filter(detallecompra__producto__icontains=buscar)
+        elif filtro == 'tipocompra':
+            tipo_map = {'contado': 'C', 'crédito': 'D', 'credito': 'D'}
+            tipo = tipo_map.get(buscar)
+            if tipo:
+                compras = compras.filter(tipocompra=tipo)
+        elif filtro == 'estado':
+            if buscar in ['activo', 'true', '1', 'sí', 'si']:
+                compras = compras.filter(estado=True)
+            elif buscar in ['inactivo', 'false', '0', 'no']:
+                compras = compras.filter(estado=False)
+        elif filtro == 'tipodetalle':
+            tipo_map = {'casa': 'C', 'empresa': 'E'}
+            tipo = tipo_map.get(buscar)
+            if tipo:
+                compras = compras.filter(detallecompra__tipodetalle=tipo)
+
+    # Filtro por fechas
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            compras = compras.filter(fecha__gte=fecha_inicio_obj)
+        except ValueError:
+            pass
+
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            compras = compras.filter(fecha__lte=fecha_fin_obj)
+        except ValueError:
+            pass
+
+    # Paginación
+    pagina = request.GET.get("page", 1)
+    paginator = Paginator(compras, 10)
+    try:
+        compras_paginadas = paginator.page(pagina)
+    except PageNotAnInteger:
+        compras_paginadas = paginator.page(1)
+    except EmptyPage:
+        compras_paginadas = paginator.page(paginator.num_pages)
+
+    return render(request, 'MercadoFormal/comprasformales.html', {
+        'entity': compras_paginadas,
+        'paginator': paginator,
+        'filtro': filtro,
+        'buscar': buscar,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'proveedores': proveedores,
+    })
+
+
+
+    
 ############   MERCADO INFORMAL ####################
 
 # Mostrar lista de cliente formales
@@ -1816,8 +1978,74 @@ def lista_clientesinformales(request):
 # Mostrar lista de entregas formales
 @login_required
 def lista_entregasinformales(request):
+    filtro = request.GET.get('filtro', 'cliente').lower()
+    buscar = request.GET.get('buscar', '').strip().lower()
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
 
-    return render(request, 'MercadoInformal/entregasinformales.html' )
+    clientes = Cliente.objects.filter(tipocliente='C').order_by('nombre')
+
+    ventas = Venta.objects.select_related('cliente').prefetch_related(
+    'detalleventa_set__cosecha__plantacion__parcela',
+    'detalleventa_set__cosecha__plantacion__cultivo'
+    ).filter(
+        cliente__tipomercado='I',
+        estado=False  
+    ).order_by('-idventa')
+
+    # Filtro por texto
+    if buscar:
+        if filtro == 'parcela':
+            ventas = ventas.filter(detalleventa__cosecha__plantacion__parcela__nombre__icontains=buscar)
+        elif filtro in ['producto', 'cultivo']:
+            ventas = ventas.filter(detalleventa__cosecha__plantacion__cultivo__nombre__icontains=buscar)
+        elif filtro == 'cliente':
+            ventas = ventas.filter(cliente__nombre__icontains=buscar)
+        elif filtro == 'tipoventa':
+            tipo_map = {'contado': 'C', 'crédito': 'D', 'credito': 'D'}
+            tipo = tipo_map.get(buscar)
+            if tipo:
+                ventas = ventas.filter(tipoventa=tipo)
+        elif filtro == 'estado':
+            if buscar in ['pagado', 'true', '1', 'sí', 'si']:
+                ventas = ventas.filter(estado=True)
+            elif buscar in ['pendiente', 'false', '0', 'no']:
+                ventas = ventas.filter(estado=False)
+
+    # Filtro por fechas
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            ventas = ventas.filter(fecha__gte=fecha_inicio_obj)
+        except ValueError:
+            pass
+
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            ventas = ventas.filter(fecha__lte=fecha_fin_obj)
+        except ValueError:
+            pass
+
+    # Paginación
+    pagina = request.GET.get("page", 1)
+    paginator = Paginator(ventas, 10)
+    try:
+        ventas_paginadas = paginator.page(pagina)
+    except PageNotAnInteger:
+        ventas_paginadas = paginator.page(1)
+    except EmptyPage:
+        ventas_paginadas = paginator.page(paginator.num_pages)
+
+    return render(request, 'MercadoInformal/entregasinformales.html', {
+        'entity': ventas_paginadas,
+        'paginator': paginator,
+        'filtro': filtro,
+        'buscar': buscar,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'clientes': clientes,
+    })
 
 # Mostrar lista de ventas informales
 @login_required
@@ -1833,7 +2061,8 @@ def lista_ventasinformales(request):
     'detalleventa_set__cosecha__plantacion__parcela',
     'detalleventa_set__cosecha__plantacion__cultivo'
     ).filter(
-        cliente__tipomercado='I'  # 'F' = Formal según tu modelo
+        cliente__tipomercado='I', 
+        estado=True
     ).order_by('-idventa')
 
     # Filtro por texto
@@ -1890,8 +2119,82 @@ def lista_ventasinformales(request):
         'clientes': clientes,
     })
 
+# Mostrar lista de compras informales
+@login_required
+def lista_comprasinformales(request):
+    filtro = request.GET.get('filtro', 'cliente').lower()
+    buscar = request.GET.get('buscar', '').strip().lower()
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
 
-#######EMPLEADOS#########
+    # Obtener proveedores (clientes con tipo 'P' si existe esa distinción)
+    proveedores = Cliente.objects.filter(tipocliente='P', tipomercado='I').order_by('nombre') if hasattr(Cliente, 'tipocliente') else Cliente.objects.all().order_by('nombre')
+
+    compras = Compra.objects.select_related('cliente').prefetch_related(
+        'detallecompra_set'
+    ).filter(cliente__tipomercado='I').order_by('-idcompra')
+
+    # Filtro por texto
+    if buscar:
+        if filtro == 'proveedor':
+            compras = compras.filter(cliente__nombre__icontains=buscar)
+        elif filtro == 'producto':
+            compras = compras.filter(detallecompra__producto__icontains=buscar)
+        elif filtro == 'tipocompra':
+            tipo_map = {'contado': 'C', 'crédito': 'D', 'credito': 'D'}
+            tipo = tipo_map.get(buscar)
+            if tipo:
+                compras = compras.filter(tipocompra=tipo)
+        elif filtro == 'estado':
+            if buscar in ['activo', 'true', '1', 'sí', 'si']:
+                compras = compras.filter(estado=True)
+            elif buscar in ['inactivo', 'false', '0', 'no']:
+                compras = compras.filter(estado=False)
+        elif filtro == 'tipodetalle':
+            tipo_map = {'casa': 'C', 'empresa': 'E'}
+            tipo = tipo_map.get(buscar)
+            if tipo:
+                compras = compras.filter(detallecompra__tipodetalle=tipo)
+
+    # Filtro por fechas
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            compras = compras.filter(fecha__gte=fecha_inicio_obj)
+        except ValueError:
+            pass
+
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            compras = compras.filter(fecha__lte=fecha_fin_obj)
+        except ValueError:
+            pass
+
+    # Paginación
+    pagina = request.GET.get("page", 1)
+    paginator = Paginator(compras, 10)
+    try:
+        compras_paginadas = paginator.page(pagina)
+    except PageNotAnInteger:
+        compras_paginadas = paginator.page(1)
+    except EmptyPage:
+        compras_paginadas = paginator.page(paginator.num_pages)
+
+    return render(request, 'MercadoInformal/comprasinformales.html', {
+        'entity': compras_paginadas,
+        'paginator': paginator,
+        'filtro': filtro,
+        'buscar': buscar,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'proveedores': proveedores,
+    })
+
+
+
+
+############   EMPLEADOS  ####################
 # Mostrar lista de empleados
 @login_required
 def lista_empleados(request):
@@ -2004,7 +2307,7 @@ def cambiar_estado_empleado(request, idempleado):
     return redirect('/empleados')
 
 
-#PLANILLAS  
+############   PLANILLAS  ####################
 
 def obtener_semana_actual():
     """Obtiene el domingo y sábado de la semana actual (domingo como primer día)"""
@@ -2290,4 +2593,341 @@ def planilla_hoy(request):
     """Vista para ir directamente a la planilla de hoy"""
     hoy = datetime.now().date().strftime('%Y-%m-%d')
     return redirect(f"{reverse('agregarplanilla')}?fecha={hoy}")
+
+
+############   COMPRAS  ####################
+
+
+# Mostrar lista de compras
+@login_required
+def lista_compras(request):
+    filtro = request.GET.get('filtro', 'cliente').lower()
+    buscar = request.GET.get('buscar', '').strip().lower()
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+
+    # Obtener proveedores (clientes con tipo 'P' si existe esa distinción)
+    proveedores = Cliente.objects.filter(tipocliente='P').order_by('nombre') if hasattr(Cliente, 'tipocliente') else Cliente.objects.all().order_by('nombre')
+
+    compras = Compra.objects.select_related('cliente').prefetch_related(
+        'detallecompra_set'
+    ).order_by('-idcompra')
+
+    # Filtro por texto
+    if buscar:
+        if filtro == 'proveedor':
+            compras = compras.filter(cliente__nombre__icontains=buscar)
+        elif filtro == 'producto':
+            compras = compras.filter(detallecompra__producto__icontains=buscar)
+        elif filtro == 'tipocompra':
+            tipo_map = {'contado': 'C', 'crédito': 'D', 'credito': 'D'}
+            tipo = tipo_map.get(buscar)
+            if tipo:
+                compras = compras.filter(tipocompra=tipo)
+        elif filtro == 'estado':
+            if buscar in ['activo', 'true', '1', 'sí', 'si']:
+                compras = compras.filter(estado=True)
+            elif buscar in ['inactivo', 'false', '0', 'no']:
+                compras = compras.filter(estado=False)
+        elif filtro == 'tipodetalle':
+            tipo_map = {'casa': 'C', 'empresa': 'E'}
+            tipo = tipo_map.get(buscar)
+            if tipo:
+                compras = compras.filter(detallecompra__tipodetalle=tipo)
+
+    # Filtro por fechas
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            compras = compras.filter(fecha__gte=fecha_inicio_obj)
+        except ValueError:
+            pass
+
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            compras = compras.filter(fecha__lte=fecha_fin_obj)
+        except ValueError:
+            pass
+
+    # Paginación
+    pagina = request.GET.get("page", 1)
+    paginator = Paginator(compras, 10)
+    try:
+        compras_paginadas = paginator.page(pagina)
+    except PageNotAnInteger:
+        compras_paginadas = paginator.page(1)
+    except EmptyPage:
+        compras_paginadas = paginator.page(paginator.num_pages)
+
+    return render(request, 'Compras/lista_compras.html', {
+        'entity': compras_paginadas,
+        'paginator': paginator,
+        'filtro': filtro,
+        'buscar': buscar,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'proveedores': proveedores,
+    })
+
+# Crear nueva compra
+@login_required
+def crear_compra(request):
+    proveedor_id = request.POST.get('proveedor_id') or request.GET.get('proveedor_id')
+    proveedor = get_object_or_404(Cliente, idcliente=proveedor_id) if proveedor_id else None
+
+    if request.method == 'POST':
+        form = CompraForm(request.POST)
+        productos_data = request.POST.get('productos_json')
+
+        if not proveedor_id:
+            messages.error(request, "ID de proveedor no proporcionado.")
+            return redirect('lista_compras')
+
+        if form.is_valid() and productos_data:
+            productos = json.loads(productos_data)
+
+            if not productos:
+                messages.error(request, "No hay productos para registrar.")
+                return redirect('lista_compras')
+
+            compra = form.save(commit=False)
+            compra.cliente = proveedor
+            compra.total = sum(float(prod['subtotal']) for prod in productos)
+            compra.save()
+
+            # Crear detalles de compra
+            for producto in productos:
+                DetalleCompra.objects.create(
+                    compra=compra,
+                    producto=producto['producto'],
+                    cantidad=float(producto['cantidad']),
+                    preciounitario=float(producto['preciounitario']),
+                    tipodetalle=producto['tipodetalle']
+                )
+
+            messages.success(request, "Compra registrada correctamente.")
+            return redirect('lista_compras')
+
+        messages.error(request, "Formulario inválido o faltan productos.")
+
+    else:
+        form = CompraForm()
+
+    # Obtener proveedores para el formulario
+    proveedores = Cliente.objects.filter(tipocliente='P').order_by('nombre') if hasattr(Cliente, 'tipocliente') else Cliente.objects.all().order_by('nombre')
+    
+    opciones_tipo = Compra.opciones if hasattr(Compra, 'opciones') else [("C", "Contado"), ("D", "Credito")]
+    opciones_detalle = DetalleCompra.opciones if hasattr(DetalleCompra, 'opciones') else [("C", "Casa"), ("E", "Empresa")]
+
+    return render(request, 'Compras/form_compra.html', {
+        'form': form,
+        'proveedores': proveedores,
+        'opciones_tipo': opciones_tipo,
+        'opciones_detalle': opciones_detalle,
+        'proveedor': proveedor,
+    })
+
+# Editar compra
+@login_required
+def editar_compra(request, idcompra):
+    if not request.user.has_perm('gestor.change_compra'):
+        messages.error(request, "No tienes permiso para editar compras.")
+        return redirect('inicio')
+    
+    compra = get_object_or_404(Compra, pk=idcompra)
+    detalles = DetalleCompra.objects.filter(compra=compra)
+
+    if request.method == 'POST':
+        form = CompraForm(request.POST, instance=compra)
+        productos_data = request.POST.get('productos_json')
+
+        if form.is_valid() and productos_data:
+            productos = json.loads(productos_data)
+
+            if not productos:
+                messages.error(request, "No hay productos para actualizar.")
+                return render(request, 'Compras/form_compra.html', {
+                    'form': form,
+                    'compra': compra,
+                    'detalles': detalles,
+                })
+
+            # Actualizar la compra
+            compra = form.save(commit=False)
+            compra.total = sum(float(prod['subtotal']) for prod in productos)
+            compra.save()
+
+            # Eliminar detalles anteriores y crear nuevos
+            DetalleCompra.objects.filter(compra=compra).delete()
+            
+            for producto in productos:
+                DetalleCompra.objects.create(
+                    compra=compra,
+                    producto=producto['producto'],
+                    cantidad=float(producto['cantidad']),
+                    preciounitario=float(producto['preciounitario']),
+                    tipodetalle=producto['tipodetalle']
+                )
+
+            messages.success(request, "Compra actualizada correctamente.")
+            return redirect('lista_compras')
+
+        messages.error(request, "Error al actualizar la compra.")
+
+    else:
+        form = CompraForm(instance=compra)
+
+    proveedores = Cliente.objects.filter(tipocliente='P').order_by('nombre') if hasattr(Cliente, 'tipocliente') else Cliente.objects.all().order_by('nombre')
+    opciones_tipo = Compra.opciones if hasattr(Compra, 'opciones') else [("C", "Contado"), ("D", "Credito")]
+    opciones_detalle = DetalleCompra.opciones if hasattr(DetalleCompra, 'opciones') else [("C", "Casa"), ("E", "Empresa")]
+
+    # Convertir detalles a formato JSON para el frontend
+    detalles_json = []
+    for detalle in detalles:
+        detalles_json.append({
+            'producto': detalle.producto,
+            'cantidad': float(detalle.cantidad),
+            'preciounitario': float(detalle.preciounitario),
+            'tipodetalle': detalle.tipodetalle,
+            'subtotal': float(detalle.subtotal())
+        })
+
+    return render(request, 'Compras/form_compra.html', {
+        'form': form,
+        'proveedores': proveedores,
+        'opciones_tipo': opciones_tipo,
+        'opciones_detalle': opciones_detalle,
+        'compra': compra,
+        'detalles': detalles,
+        'detalles_json': json.dumps(detalles_json),
+    })
+
+# Eliminar compra
+@login_required
+def eliminar_compra(request, idcompra):
+    if not request.user.has_perm('gestor.delete_compra'):
+        messages.error(request, "No tienes permiso para eliminar compras.")
+        return redirect('inicio')
+    
+    compra = get_object_or_404(Compra, pk=idcompra)
+    
+    if request.method == 'POST':
+        # Primero eliminar los detalles (por si hay restricciones FK)
+        DetalleCompra.objects.filter(compra=compra).delete()
+        compra.delete()
+        messages.success(request, f"La compra #{idcompra} fue eliminada exitosamente.")
+        return redirect('lista_compras')
+    
+    return render(request, 'Compras/confirmar_eliminar.html', {
+        'compra': compra,
+        'detalles': DetalleCompra.objects.filter(compra=compra)
+    })
+
+# Cambiar estado de compra
+@require_POST
+def toggle_estado_compra(request, idcompra):
+    if not request.user.has_perm('gestor.change_compra'):
+        messages.error(request, "No tienes permiso para cambiar el estado de compras.")
+        return redirect('inicio')
+    
+    try:
+        compra = Compra.objects.get(pk=idcompra)
+        
+        if not compra.estado:  # Solo marcar como pagada si está pendiente
+            compra.estado = True
+            compra.save()
+            
+        
+
+        return JsonResponse({'estado': compra.estado})
+    except Compra.DoesNotExist:
+        return JsonResponse({'error': 'Compra no encontrada'}, status=404)
+
+# Ver detalles de una compra específica
+@login_required
+def ver_compra(request, idcompra):
+    compra = get_object_or_404(Compra, pk=idcompra)
+    detalles = DetalleCompra.objects.filter(compra=compra)
+    
+    return render(request, 'Compras/ver_compra.html', {
+        'compra': compra,
+        'detalles': detalles,
+    })
+
+# Reporte de compras por proveedor
+@login_required
+def reporte_compras_proveedor(request):
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    proveedor_id = request.GET.get('proveedor_id', '')
+    
+    compras = Compra.objects.select_related('cliente')
+    
+    # Filtros
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            compras = compras.filter(fecha__gte=fecha_inicio_obj)
+        except ValueError:
+            pass
+    
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            compras = compras.filter(fecha__lte=fecha_fin_obj)
+        except ValueError:
+            pass
+    
+    if proveedor_id:
+        compras = compras.filter(cliente_id=proveedor_id)
+    
+    # Resumen por proveedor
+    reporte = compras.values(
+        'cliente__nombre'
+    ).annotate(
+        total_compras=Sum('total'),
+        cantidad_compras=models.Count('idcompra')
+    ).order_by('cliente__nombre')
+    
+    proveedores = Cliente.objects.filter(tipocliente='P').order_by('nombre') if hasattr(Cliente, 'tipocliente') else Cliente.objects.all().order_by('nombre')
+    
+    return render(request, 'Compras/reporte_compras.html', {
+        'reporte': reporte,
+        'proveedores': proveedores,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'proveedor_id': proveedor_id,
+    })
+
+
+@login_required
+def detalles_compra_ajax(request, compra_id):
+    """
+    Vista para obtener los detalles de una compra específica via AJAX
+    """
+    if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'error': 'Solicitud no válida'}, status=400)
+    
+    try:
+        compra = get_object_or_404(Compra, pk=compra_id)
+        detalles = DetalleCompra.objects.filter(compra=compra)
+        
+        detalles_data = []
+        for detalle in detalles:
+            detalles_data.append({
+                'producto': detalle.producto,
+                'cantidad': float(detalle.cantidad),
+                'preciounitario': float(detalle.preciounitario),
+                'tipodetalle': detalle.tipodetalle,
+                'subtotal': float(detalle.subtotal())
+            })
+        
+        return JsonResponse({
+            'detalles': detalles_data,
+            'total': float(compra.total)
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 

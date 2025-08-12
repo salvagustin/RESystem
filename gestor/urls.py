@@ -58,11 +58,13 @@ urlpatterns = [
     path('clientesformales/', views.lista_clientesformales, name='lista_clientesformales'),
     path('ventasformales/', views.lista_ventasformales, name='lista_ventasformales'),
     path('entregasformales/', views.lista_entregasformales, name='lista_entregasformales'),
+    path('comprasformales/', views.lista_comprasformales, name='lista_comprasformales'),
 
      # Mercado Informal
     path('clientesinformales/', views.lista_clientesinformales, name='lista_clientesinformales'),
     path('ventasinformales/', views.lista_ventasinformales, name='lista_ventasinformales'),
     path('entregasinformales/', views.lista_entregasinformales, name='lista_entregasinformales'),
+    path('comprasinformales/', views.lista_comprasinformales, name='lista_comprasinformales'),
 
      # Empleados
     path('empleados/', views.lista_empleados, name='lista_empleados'),
@@ -71,9 +73,25 @@ urlpatterns = [
     path('empleados/eliminar/<int:idempleado>/', views.eliminar_empleado, name='eliminar_empleado'),
     path('empleados/cambiar-estado/<int:idempleado>/', views.cambiar_estado_empleado, name='cambiar_estado_empleado'),
 
+    # Planillas
     path('planilla/', views.lista_planilla_semanal, name='lista_planilla'),
     path('agregarplanilla/', views.planilla_form_view, name='agregarplanilla'),
     path('planilla/fecha/<str:fecha_str>/', views.planilla_fecha_especifica, name='planilla_fecha'),
     path('planilla/hoy/', views.planilla_hoy, name='planilla_hoy'),
+
+    # Compras
+    path('compras/', views.lista_compras, name='lista_compras'),
+    path('compras/crear/', views.crear_compra, name='crear_compra'),
+    path('compras/editar/<int:idcompra>/', views.editar_compra, name='editar_compra'),
+    path('compras/eliminar/<int:idcompra>/', views.eliminar_compra, name='eliminar_compra'),
+    path('compras/detalles/<int:compra_id>/', views.detalles_compra_ajax, name='detalles_compra_ajax'),
     
+    # AJAX y funciones adicionales
+    path('detalles/<int:idcompra>/', views.detalles_compra_ajax, name='detalles_compra_ajax'),
+    path('compras/toggle_estado/<int:idcompra>/', views.toggle_estado_compra, name='toggle_estado_compra'),
+    path('ver/<int:idcompra>/', views.ver_compra, name='ver_compra'),
+    
+    # Reportes
+    path('reporte/', views.reporte_compras_proveedor, name='reporte_compras_proveedor'),
+
 ]

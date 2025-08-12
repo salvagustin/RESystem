@@ -121,7 +121,12 @@ class Compra(models.Model):
     opciones = (("C", "Contado"), ("D", "Credito"))
     tipocompra = models.CharField('Tipo compra', max_length=1, choices=opciones, blank=False, null=False)
     total = models.DecimalField('Total', max_digits=10, decimal_places=2)
-    estado = models.BooleanField('Estado', default=True)
+    estado = models.BooleanField('Estado', default=False)
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            self.estado = True if self.tipocompra == 'C' else False
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Compra #{self.idcompra} - {self.fecha}"
@@ -131,6 +136,8 @@ class DetalleCompra(models.Model):
     producto = models.CharField('Producto', max_length=300)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     preciounitario = models.DecimalField(max_digits=10, decimal_places=2)
+    opciones = (("C", "Casa"), ("E", "Empresa"))
+    tipodetalle = models.CharField('Tipo detalle', max_length=1, choices=opciones, blank=False, null=False)
 
     def subtotal(self):
         return self.cantidad * self.preciounitario

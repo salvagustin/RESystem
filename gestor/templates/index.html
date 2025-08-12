@@ -17,6 +17,12 @@
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPlantacion">
             <i class="bi bi-plus-circle"></i> Corte
         </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarProveedor">
+            <i class="bi bi-plus-circle"></i> Compra
+        </button>
+        <a href="{% url 'agregarplanilla' %}" class="btn btn-success">
+                                    <i class="fas fa-plus"></i> Asistencia
+                                </a>
     </div>
 </div>
 
@@ -187,6 +193,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    // Botón para ir al formulario de nueva compra
+    document.getElementById("btnIrFormulario").addEventListener("click", function () {
+        const proveedorId = document.getElementById("selectProveedor").value;
+        if (proveedorId) {
+            window.location.href = `/compras/crear/?proveedor_id=${proveedorId}`;
+        } else {
+            alert("Debes seleccionar un proveedor.");
+        }
+    }); 
 
     // 1. GRÁFICO DE VENTAS
     const ventasChartElement = document.getElementById('ventasChart');
@@ -477,7 +492,34 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
-<!-- Modal Seleccionar Cliente -->
+<!-- Modal Seleccionar Proveedor -->
+<div class="modal fade" id="modalSeleccionarProveedor" tabindex="-1" aria-labelledby="modalSeleccionarProveedorLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+  
+        <div class="modal-header">
+          <h5 class="modal-title">Listado de Proveedores</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+  
+        <div class="modal-body">
+          <select id="selectProveedor" class="form-select">
+            <option value="">Selecciona un proveedor</option>
+            {% for proveedor in proveedores %}
+              <option value="{{ proveedor.idcliente }}">{{ proveedor.idcliente}}-{{ proveedor.nombre }} </option>
+            {% endfor %}
+          </select>
+        </div>
+  
+        <div class="modal-footer">
+          <button id="btnIrFormulario" class="btn btn-success">Ir al formulario</button>
+        </div>
+  
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Seleccionar Cliente -->
 <div class="modal fade" id="modalSeleccionarCliente" tabindex="-1" aria-labelledby="modalSeleccionarClienteLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">

@@ -33,6 +33,7 @@
                         <option value="nombre" {% if filtro == "nombre" %}selected{% endif %}>Nombre</option>
                         <option value="telefono" {% if filtro == "telefono" %}selected{% endif %}>Teléfono</option>
                         <option value="tipo" {% if filtro == "tipo" %}selected{% endif %}>Tipo</option>
+                        <option value="tipomercado" {% if filtro == "tipomercado" %}selected{% endif %}>Mercado</option>
                     </select>
                 </div>
 
@@ -59,6 +60,12 @@
         <div class="card-body">
         <h5 class="card-title fw-bold">#{{ cliente.idcliente }} - {{ cliente.nombre }}</h5>
         <p class="mb-1"><strong>Teléfono:</strong> {{ cliente.telefono }}</p>
+        <p class="mb-1"><strong>Mercado:</strong> 
+            {% if cliente.tipomercado == 'F' %}
+            Formal
+            {% else %}
+            Informal
+            {% endif %}</p>
         <p class="mb-1">
             <strong>Tipo Cliente:</strong>
             {% if cliente.tipocliente == 'C' %}
@@ -77,7 +84,8 @@
             data-nombre="{{ cliente.nombre }}"
             data-telefono="{{ cliente.telefono }}"
             data-totalvendido="{{ cliente.total_cantidad_vendida|default:"0"  }}"
-            data-tipocliente="{{ cliente.get_tipocliente_display }}">
+            data-tipocliente="{{ cliente.get_tipocliente_display }}"
+            data-tipomercado="{{ cliente.get_tipomercado_display }}">
             <i class="bi bi-eye"></i> Detalles
             </button>
         </div>
@@ -99,6 +107,7 @@
             <th>Nombre</th>
             <th>Teléfono</th>
             <th>Tipo Cliente</th>
+            <th>Mercado</th>
             <th>Acciones</th>
             </tr>
         </thead>
@@ -116,6 +125,12 @@
                 {% endif %}
             </td>
             <td>
+                {% if cliente.tipomercado == 'F' %}
+                Formal
+                {% else %}
+                Informal
+                {% endif %}
+            <td>
                 <div class="d-flex flex-wrap justify-content-center gap-2">
                 <button 
                     type="button" 
@@ -126,7 +141,8 @@
                     data-nombre="{{ cliente.nombre }}"
                     data-telefono="{{ cliente.telefono }}"
                     data-totalvendido="{{ cliente.total_cantidad_vendida|default:"0"  }}"
-                    data-tipocliente="{{ cliente.get_tipocliente_display }}">
+                    data-tipocliente="{{ cliente.get_tipocliente_display }}"
+                    data-tipomercado="{{ cliente.get_tipomercado_display }}">
                     <i class="bi bi-eye"></i> Detalles
                 </button>
                 </div>
@@ -166,6 +182,7 @@
             <div class="col-md-6">
               <p><strong>🆔 Número:</strong> <span id="clienteId"></span></p>
               <p><strong>📛 Nombre:</strong> <span id="clienteNombre"></span></p>
+                <p><strong>📍 Mercado:</strong> <span id="clienteTipoMercado"></span></p>
             </div>
             <div class="col-md-6">
               <p><strong>📞 Teléfono:</strong> <span id="clienteTelefono"></span></p>
@@ -237,6 +254,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const telefono = button.getAttribute('data-telefono');
             const tipo = button.getAttribute('data-tipocliente');
             const totalVendido = button.getAttribute('data-totalvendido');
+            const tipoMercado = button.getAttribute('data-tipomercado');
 
             // Insertar en el modal
             document.getElementById('clienteId').textContent = id;
@@ -244,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('clienteTelefono').textContent = telefono;
             document.getElementById('clienteTipo').textContent = tipo;
             document.getElementById('clienteTotalVendido').textContent = totalVendido;
+            document.getElementById('clienteTipoMercado').textContent = tipoMercado;
 
             // Set links
             document.getElementById('btnEditarCliente').href = `/clientes/editar/${id}/`;

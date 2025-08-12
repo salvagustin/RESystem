@@ -325,6 +325,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? '<span class="badge bg-success">Pagado</span>' 
                 : '<span class="badge bg-danger">Pendiente</span>';
 
+            // Deshabilitar botón si ya está pagada
+            const btnToggle = document.getElementById('btnToggleEstadoVenta');
+            btnToggle.disabled = (estado === 'True');
+
             // Actualizar enlaces y formularios
             document.getElementById('btnEditarVenta').href = `/ventas/editar/${id}/`;
             document.getElementById('formEliminarVenta').action = `/ventas/eliminar/${id}/`;
@@ -336,63 +340,61 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Función para cargar detalles de la venta
-        // Función para cargar detalles de la venta
-function cargarDetallesVenta(ventaId) {
-    fetch(`/ventas/detalles/${ventaId}/`, {
-        method: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => {
-        if (!response.ok) throw new Error("Error al obtener detalles");
-        return response.json();
-    })
-    .then(data => {
-        const tbody = document.getElementById('detalleVentaProductos');
-        const totalFooter = document.getElementById('totalFooter');
-        const ventaTotal = document.getElementById('ventaTotal');
-        
-        tbody.innerHTML = '';
+        function cargarDetallesVenta(ventaId) {
+            fetch(`/ventas/detalles/${ventaId}/`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("Error al obtener detalles");
+                return response.json();
+            })
+            .then(data => {
+                const tbody = document.getElementById('detalleVentaProductos');
+                const totalFooter = document.getElementById('totalFooter');
+                const ventaTotal = document.getElementById('ventaTotal');
+                
+                tbody.innerHTML = '';
 
-        if (data.detalles && data.detalles.length > 0) {
-            // Mostrar cada detalle
-            data.detalles.forEach(detalle => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${detalle.cultivo}</td>
-                        <td>${detalle.parcela}</td>
-                        <td>${detalle.cantidad}</td>
-                        <td>${detalle.categoria}</td>
-                        <td>${detalle.tipocosecha || 'N/A'}</td>
-                        <td>$${detalle.subtotal.toFixed(2)}</td>
-                    </tr>
-                `;
+                if (data.detalles && data.detalles.length > 0) {
+                    data.detalles.forEach(detalle => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${detalle.cultivo}</td>
+                                <td>${detalle.parcela}</td>
+                                <td>${detalle.cantidad}</td>
+                                <td>${detalle.categoria}</td>
+                                <td>${detalle.tipocosecha || 'N/A'}</td>
+                                <td>$${detalle.subtotal.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    const total = data.total || 0;
+                    totalFooter.textContent = `$${total.toFixed(2)}`;
+                    ventaTotal.textContent = `$${total.toFixed(2)}`;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay detalles disponibles</td></tr>';
+                    totalFooter.textContent = '$0.00';
+                    ventaTotal.textContent = '$0.00';
+                }
+            })
+            .catch(error => {
+                console.error('Error al cargar detalles:', error);
+                const tbody = document.getElementById('detalleVentaProductos');
+                const totalFooter = document.getElementById('totalFooter');
+                const ventaTotal = document.getElementById('ventaTotal');
+                
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar los detalles</td></tr>';
+                totalFooter.textContent = '$0.00';
+                ventaTotal.textContent = '$0.00';
             });
-            
-            // Mostrar el total
-            const total = data.total || 0;
-            totalFooter.textContent = `$${total.toFixed(2)}`;
-            ventaTotal.textContent = `$${total.toFixed(2)}`;
-        } else {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay detalles disponibles</td></tr>';
-            totalFooter.textContent = '$0.00';
-            ventaTotal.textContent = '$0.00';
         }
-    })
-    .catch(error => {
-        console.error('Error al cargar detalles:', error);
-        const tbody = document.getElementById('detalleVentaProductos');
-        const totalFooter = document.getElementById('totalFooter');
-        const ventaTotal = document.getElementById('ventaTotal');
-        
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar los detalles</td></tr>';
-        totalFooter.textContent = '$0.00';
-        ventaTotal.textContent = '$0.00';
-    });
-}
-        // Acción para cambiar estado (Finalizar)
+
+        // Acción para marcar como pagada (solo False → True)
         document.getElementById('btnToggleEstadoVenta').addEventListener('click', () => {
             if (!VentaIdActual) return;
 
@@ -406,7 +408,20 @@ function cargarDetallesVenta(ventaId) {
             .then(res => res.json())
             .then(data => {
                 if (data.estado !== undefined) {
-                    location.reload();
+                    document.getElementById('ventaEstado').innerHTML = data.estado 
+                        ? '<span class="badge bg-success">Pagado</span>' 
+                        : '<span class="badge bg-danger">Pendiente</span>';
+
+                    if (data.estado) {
+                        // Desactivar botón
+                        document.getElementById('btnToggleEstadoVenta').disabled = true;
+
+                        // Actualizar también en la tabla principal
+                        const celdaEstado = document.getElementById(`estado-${VentaIdActual}`);
+                        if (celdaEstado) {
+                            celdaEstado.innerHTML = '<span class="badge bg-success">Pagado</span>';
+                        }
+                    }
                 } else {
                     alert("Error al actualizar estado");
                 }
@@ -454,7 +469,6 @@ function getCookie(name) {
     return cookieValue;
 }
 </script>
-
 
 
 {% endblock scripts %}
