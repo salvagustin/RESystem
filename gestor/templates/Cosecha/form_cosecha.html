@@ -57,7 +57,7 @@
             <input type="hidden" name="cortes_json" id="cortes_json">
 
             <button type="button" class="btn btn-success" id="agregar-corte">Agregar</button>
-            <button type="submit" class="btn btn-primary">Guardar</button>            
+            <button type="submit" class="btn btn-primary" id="guardar-btn" disabled>Guardar</button>            
             <a href="{% url 'lista_cosechas' %}" class="btn btn-secondary">Cancelar</a>
           </form>
         </div>
@@ -92,6 +92,10 @@ document.addEventListener('DOMContentLoaded', function () {
   const totalGeneral = document.getElementById('total-general');
   const agregarBtn = document.getElementById('agregar-corte');
 
+  function actualizarEstadoBotonGuardar() {
+    const guardarBtn = document.getElementById('guardar-btn');
+    guardarBtn.disabled = cortes.length === 0;
+  }
   // 🔹 Inicializamos con los detalles existentes si estamos editando
   let cortes = [];
   {% if detalles_json %}
@@ -129,6 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // 🔹 Inicializamos la lista al cargar
   actualizarLista();
+  actualizarEstadoBotonGuardar();
 
   agregarBtn.addEventListener('click', function () {
     const cat = categoria.value;
@@ -153,6 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     actualizarLista();
+    actualizarEstadoBotonGuardar();
 
     categoria.selectedIndex = 0;
     tipocosecha.selectedIndex = 0;
@@ -164,6 +170,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const index = e.target.closest('.eliminar-corte').getAttribute('data-index');
       cortes.splice(index, 1);
       actualizarLista();
+      actualizarEstadoBotonGuardar();
     }
   });
 });

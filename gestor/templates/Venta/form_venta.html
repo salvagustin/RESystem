@@ -67,7 +67,7 @@
             <input type="hidden" name="productos_json" id="productos_json">
 
             <button type="button" class="btn btn-success" id="agregar-producto">Agregar</button>
-            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="submit" class="btn btn-primary" id="guardar-btn" disabled>Vender</button>
             <a href="{% url 'lista_ventas' %}" class="btn btn-secondary">Cancelar</a>
           </form>
         </div>
@@ -296,6 +296,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     productos.push(producto);
     productosInput.value = JSON.stringify(productos);
+    actualizarEstadoBotonGuardar();
 
     const li = document.createElement('li');
     li.classList.add('list-group-item');
@@ -315,6 +316,7 @@ document.addEventListener('DOMContentLoaded', function () {
       li.remove();
       actualizarTotalGeneral();
       restaurarDisponibilidad(producto);
+      actualizarEstadoBotonGuardar(); 
     });
 
     actualizarDisponibilidad(producto);
@@ -385,7 +387,10 @@ document.addEventListener('DOMContentLoaded', function () {
     lineaCategoria.innerHTML = `<strong>${capitalize(producto.categoria)}:</strong> ${cantidadActual + producto.cantidad}`;
   }
 }
-
+function actualizarEstadoBotonGuardar() {
+  const guardarBtn = document.getElementById('guardar-btn');
+  guardarBtn.disabled = productos.length === 0;
+}
 
 });
 
