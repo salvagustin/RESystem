@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // CÓDIGO PARA BOTONES
     const btnCorte = document.getElementById("btnIrFormularioCorte");
-    const btnVenta = document.getElementById("btnIrFormulario");
+    //const btnVenta = document.getElementById("btnIrFormularioVenta");
 
     if (btnCorte) {
         btnCorte.addEventListener("click", function () {
@@ -183,6 +183,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Botón de venta
+    const btnVenta = document.getElementById("btnIrFormularioVenta");
     if (btnVenta) {
         btnVenta.addEventListener("click", function () {
             const clienteId = document.getElementById("selectCliente")?.value;
@@ -190,6 +192,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = `/ventas/crear/?cliente_id=${clienteId}`;
             } else {
                 alert("Debes seleccionar un cliente.");
+            }
+        });
+    }
+
+    // Botón de compra
+    const btnCompra = document.getElementById("btnIrFormularioCompra");
+    if (btnCompra) {
+        btnCompra.addEventListener("click", function () {
+            const proveedorId = document.getElementById("selectProveedor")?.value;
+            if (proveedorId) {
+                window.location.href = `/compras/crear/?proveedor_id=${proveedorId}`;
+            } else {
+                alert("Debes seleccionar un proveedor.");
             }
         });
     }
@@ -512,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
   
         <div class="modal-footer">
-          <button id="btnIrFormulario" class="btn btn-success">Ir al formulario</button>
+          <button id="btnIrFormularioCompra" class="btn btn-success">Ir al formulario</button>
         </div>
   
       </div>
@@ -536,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function() {
           </select>
         </div>
         <div class="modal-footer">
-          <button id="btnIrFormulario" class="btn btn-success">Ir al formulario</button>
+          <button id="btnIrFormularioVenta" class="btn btn-success">Ir al formulario</button>
         </div>
       </div>
     </div>
