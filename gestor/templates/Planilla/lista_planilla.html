@@ -12,9 +12,32 @@
         <div class="row">
             <div class="col-12">
                 <h2>Planilla Semanal</h2>
-                <p class="text-muted mb-4">
-                    Semana del {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}
-                </p>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                <!-- Fecha alineada a la izquierda -->
+                <div class="text-muted fw-semibold">
+                    📅 Semana del {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}
+                </div>
+
+                <!-- Totales alineados a la derecha -->
+                <div class="d-flex flex-wrap gap-3 text-end">
+                    <span class="badge bg-primary p-2">
+                        👥 Empleados: {{ empleados_data|length }}
+                    </span>
+                    <span class="badge bg-success p-2">
+                        🗓 Jornadas: {{ total_jornadas_general }}
+                    </span>
+                    <span class="badge bg-info text-dark p-2">
+                        ⏱ Horas extra ($): {{ total_horas_extra_general }}
+                    </span>
+                    <span class="badge bg-warning text-dark p-2">
+                        💰 Pagos extra: {{ total_pagos_extra_general }}
+                    </span>
+                    <span class="badge bg-danger p-2">
+                        💵 Total pago: {{ total_pago_general }}
+                    </span>
+                </div>
+            </div>
+
 
                 <!-- Acciones y Filtros -->
                 <div class="row gy-3 align-items-center mb-2">
@@ -34,16 +57,20 @@
                             </div>
 
                             <!-- Botón Buscar -->
-                            <div class="col-md-3 d-flex align-items-end">
+                            <div class="col-md-2 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary me-2">
                                     <i class="fas fa-search"></i> Buscar
                                 </button>
-                                <a href="{% url 'lista_planilla' %}" class="btn btn-secondary">
+                                <a href="{% url 'lista_planilla' %}" class="btn btn-secondary ms-2">
                                     <i class="fas fa-times"></i> Limpiar
                                 </a>
-                                <a href="{% url 'agregarplanilla' %}" class="btn btn-success">
+                                <a href="{% url 'agregarplanilla' %}" class="btn btn-success ms-2">
                                     <i class="fas fa-plus"></i> Asistencia
                                 </a>
+                                <a class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#modalEditarFecha">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+
                             </div>
                         </form>
                         
@@ -52,9 +79,9 @@
 
                 <!-- Tabla para escritorio -->
                 <div class="tbl_container d-none d-md-block">
-                        <div class="table-responsive">
+                        <div class="table-wrapper" style="max-height: 500px; overflow-y: auto;">
                             <table class="table table-bordered table-hover text-center align-middle">
-                                <thead class="table-dark">
+                                <thead class="table-dark" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
                                         <th>Empleado</th>
                                         {% for nombre_dia in nombres_dias %}
@@ -85,6 +112,7 @@
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#modalPlanilla"
                                                 data-empleado="{{ empleado_data.empleado.nombre }}"
+                                                data-sueldo="{{ empleado_data.empleado.salario|floatformat:2 }}"
                                                 data-dias='{{ empleado_data.dias_json|safe }}'
                                                 data-total="{{ empleado_data.total_general|floatformat:2 }}"
                                                 data-observaciones="{{ empleado_data.observaciones }}">
@@ -100,11 +128,7 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
-                        
-
-                        {% if empleados_data.has_other_pages %}
-                            {% include "paginacion.html" %}
-                        {% endif %}
+                    
                     </div>
                 </div>
 
@@ -136,6 +160,7 @@
                                 data-bs-toggle="modal"
                                 data-bs-target="#modalPlanilla"
                                 data-empleado="{{ empleado_data.empleado.nombre }}"
+                                data-sueldo="{{ empleado_data.empleado.salario|floatformat:2 }}"
                                 data-dias='{{ empleado_data.dias_json|safe }}'
                                 data-total="{{ empleado_data.total_general|floatformat:2 }}">
                                 <i class="bi bi-eye"></i> Detalles
@@ -146,9 +171,7 @@
                     <div class="alert alert-warning">No hay empleados que coincidan con los criterios de búsqueda.</div>
                     {% endfor %}
 
-                    {% if empleados_data.has_other_pages %}
-                        {% include "paginacion.html" %}
-                    {% endif %}
+                    
                 </div>
             </div>
         </div>
@@ -166,7 +189,7 @@
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">
                     <i class="fas fa-user me-2"></i>
-                    Detalle de <span id="detalleEmpleado"></span>
+                    Detalle de <span id="detalleEmpleado">
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -202,6 +225,31 @@
         </div>
     </div>
 </div>
+
+
+<!-- Modal Editar Fecha -->
+<div class="modal fade" id="modalEditarFecha" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-calendar-alt me-2"></i>Seleccionar fecha</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label for="fechaEditar" class="form-label">Elige una fecha:</label>
+                <input type="date" id="fechaEditar" class="form-control">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btnIrAFecha" class="btn btn-success">
+                    <i class="fas fa-arrow-right"></i> Ir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
 <style>
 /* Estilos para el modal en modo oscuro */
@@ -240,16 +288,18 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const btnIrAFecha = document.getElementById('btnIrAFecha');
         const modal = document.getElementById('modalPlanilla');
         modal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
             const empleado = button.getAttribute('data-empleado');
+            const sueldo = button.getAttribute('data-sueldo');
             const diasRaw = button.getAttribute('data-dias');
             const total = button.getAttribute('data-total');
 
             // Debug: mostrar el JSON crudo en consola
             console.log('JSON crudo:', diasRaw);
-
+            console.log(sueldo);
             let dias;
             try {
                 // Intentar parsear el JSON
@@ -261,7 +311,7 @@
                 return;
             }
 
-            document.getElementById('detalleEmpleado').textContent = empleado;
+            document.getElementById('detalleEmpleado').textContent = empleado + " (Sueldo: $" + sueldo+ ")";
             document.getElementById('detalleTotal').textContent = "$" + parseFloat(total).toFixed(2);
 
             const tbody = document.getElementById('detalleDias');
@@ -300,6 +350,20 @@
             });
         });
 
+        btnIrAFecha.addEventListener('click', function () {
+        const fecha = document.getElementById('fechaEditar').value;
+
+        if (!fecha) {
+            alert("Por favor selecciona una fecha.");
+            return;
+            }
+
+            // Convertir fecha a formato YYYY-MM-DD
+            const fechaStr = fecha; // ya viene en formato ISO de input type=date
+
+            // Redirigir usando la URL de Django
+            window.location.href = `/planilla/editar/${fechaStr}/`;
+        });
         // Validación del formulario de búsqueda (opcional - puedes quitarla si no la quieres)
         document.getElementById('formBusqueda').addEventListener('submit', function (event) {
             const buscar = document.querySelector('input[name="buscar"]').value.trim();

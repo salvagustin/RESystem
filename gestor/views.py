@@ -2347,7 +2347,7 @@ def lista_planilla_semanal(request):
     dias_semana = obtener_dias_semana(domingo_inicio)
     nombres_dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
-    empleados = Empleado.objects.filter(estado=True)
+    empleados = Empleado.objects.filter(estado=True).order_by('nombre')
     if buscar:
         empleados = empleados.filter(nombre__icontains=buscar)
 
@@ -2360,13 +2360,20 @@ def lista_planilla_semanal(request):
         for p in planillas_semana
     }
 
+    # Totales generales
+    total_pago_general = 0.0
+    total_pagos_extra_general = 0.0
+    total_horas_extra_general = 0.0
+    total_jornadas_general = 0
+
     empleados_data = []
     for empleado in empleados:
         info = {
             'empleado': empleado,
             'dias': [],
-            'total_semana': 0.0,
-            'total_extra_semana': 0.0
+            'total_salarios_semana': 0.0,
+            'total_horas_extra_semana': 0.0,
+            'total_pagos_extra_semana': 0.0,
         }
 
         for i, dia in enumerate(dias_semana):
@@ -2374,59 +2381,72 @@ def lista_planilla_semanal(request):
             planilla = planillas_dict.get(key)
             
             if planilla:
-                if planilla.jornada:
-                    pago_dia = float(empleado.salario)
-                else:
-                    pago_dia = 0.0
-                    
+                salario_dia = float(empleado.salario) if planilla.jornada else 0.0
                 horas_extra = float(planilla.horasextra) if planilla.horasextra else 0.0
                 pago_extra_dia = float(planilla.pagoextra) if planilla.pagoextra else 0.0
-                
-                # Obtener observaciones si existe el campo
-                observaciones = ""
-                if hasattr(planilla, 'observaciones') and planilla.observaciones:
-                    observaciones = planilla.observaciones
-                    
+                observaciones = getattr(planilla, 'observaciones', '') or ''
+
+                # Contar jornada si trabajó
+                if planilla.jornada:
+                    total_jornadas_general += 1
             else:
-                pago_dia = 0.0
+                salario_dia = 0.0
                 horas_extra = 0.0
                 pago_extra_dia = 0.0
                 observaciones = ""
 
+            pago_horas_extra = horas_extra * 2
+            total_dia = salario_dia + pago_horas_extra + pago_extra_dia
+
             info['dias'].append({
                 'nombre_dia': nombres_dias[i],
-                'salario_dia': pago_dia,
+                'salario_dia': salario_dia,
                 'horas_extra': horas_extra,
+                'pago_horas_extra': pago_horas_extra,
                 'pago_extra': pago_extra_dia,
-                'observaciones': observaciones  # AGREGADO: Incluir observaciones
+                'total_dia': total_dia,
+                'observaciones': observaciones
             })
 
-            info['total_semana'] += pago_dia
-            info['total_extra_semana'] += pago_extra_dia
+            info['total_salarios_semana'] += salario_dia
+            info['total_horas_extra_semana'] += pago_horas_extra
+            info['total_pagos_extra_semana'] += pago_extra_dia
 
-        info['total_general'] = info['total_semana'] + info['total_extra_semana']
-        
-        # Convertir a JSON con las observaciones incluidas
+        info['total_general'] = (
+            info['total_salarios_semana'] +
+            info['total_horas_extra_semana'] +
+            info['total_pagos_extra_semana']
+        )
+
+        info['total_semana'] = info['total_salarios_semana']
+        info['total_extra_semana'] = info['total_horas_extra_semana'] + info['total_pagos_extra_semana']
         info['dias_json'] = json.dumps(info['dias'], cls=DjangoJSONEncoder)
 
         empleados_data.append(info)
 
-    pagina = request.GET.get("page", 1)
-    try:
-        paginator = Paginator(empleados_data, 10)
-        empleados_paginados = paginator.page(pagina)
-    except:
-        raise Http404("Página no encontrada")
+        # Sumar a totales generales
+        total_pago_general += info['total_general']
+        total_pagos_extra_general += info['total_pagos_extra_semana']
+        total_horas_extra_general += info['total_horas_extra_semana']
+
+        total_pago_general = round(total_pago_general, 2)
+        total_pagos_extra_general = round(total_pagos_extra_general, 2)
+        total_horas_extra_general = round(total_horas_extra_general, 2)
+
 
     return render(request, 'Planilla/lista_planilla.html', {
-        'empleados_data': empleados_paginados,
+        'empleados_data': empleados_data,
         'nombres_dias': nombres_dias,
-        'paginator': paginator,
         'filtro': filtro,
         'buscar': request.GET.get('buscar', ''),
         'semana': semana_str,
         'fecha_inicio': domingo_inicio,
         'fecha_fin': sabado_fin,
+        # Totales generales
+        'total_pago_general': total_pago_general,
+        'total_pagos_extra_general': total_pagos_extra_general,
+        'total_horas_extra_general': total_horas_extra_general,
+        'total_jornadas_general': total_jornadas_general,
     })
 
 @login_required
@@ -2585,6 +2605,14 @@ def procesar_planilla_diaria(request):
 @login_required
 def planilla_fecha_especifica(request, fecha_str):
     """Vista para crear/editar planilla de una fecha específica"""
+    # Verificar si existe planilla para esa fecha
+    existe_planilla = Planilla.objects.filter(fecha=fecha_str).exists()
+
+    if not existe_planilla:
+        messages.warning(request, f"No existe planilla para la fecha {fecha_str}.")
+        return redirect('lista_planilla')
+
+    # Si existe, redirigir a la vista de edición
     return redirect(f"{reverse('agregarplanilla')}?fecha={fecha_str}")
 
 # Vista para obtener planilla de hoy directamente

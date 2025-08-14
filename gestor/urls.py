@@ -76,8 +76,8 @@ urlpatterns = [
     # Planillas
     path('planilla/', views.lista_planilla_semanal, name='lista_planilla'),
     path('agregarplanilla/', views.planilla_form_view, name='agregarplanilla'),
-    path('planilla/fecha/<str:fecha_str>/', views.planilla_fecha_especifica, name='planilla_fecha'),
     path('planilla/hoy/', views.planilla_hoy, name='planilla_hoy'),
+    path('planilla/editar/<str:fecha_str>/', views.planilla_fecha_especifica, name='editarplanilla'),
 
     # Compras
     path('compras/', views.lista_compras, name='lista_compras'),

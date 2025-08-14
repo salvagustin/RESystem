@@ -160,8 +160,8 @@ class Planilla(models.Model):
     empleado = models.ForeignKey(Empleado, on_delete=models.CASCADE, verbose_name="Empleado")
     fecha = models.DateField('Fecha de pago', auto_now_add=True)
     jornada = models.BooleanField('Jornada', default=False)
-    horasextra = models.DecimalField('Horas extra', max_digits=5, decimal_places=2)
-    pagoextra = models.DecimalField('Pago extra', max_digits=10, decimal_places=2)
+    horasextra = models.DecimalField('Horas extra', max_digits=5, decimal_places=2, default=0)
+    pagoextra = models.DecimalField('Pago extra', max_digits=10, decimal_places=2, default=0)
     observaciones = models.TextField('Observaciones', blank=True, null=True)
 
     class Meta:
@@ -169,13 +169,10 @@ class Planilla(models.Model):
         unique_together = ['empleado', 'fecha']
         ordering = ['-fecha', 'empleado__nombre']
     
-    def save(self, *args, **kwargs):
-        # Calcular automáticamente el pago extra basado en horas extra
-        if self.horasextra:
-            self.pagoextra = self.horasextra * 2  # $2 por hora extra
-        else:
-            self.pagoextra = 0
-        super().save(*args, **kwargs)
+    # ELIMINAR EL MÉTODO save() QUE SOBRESCRIBE pagoextra
+    # def save(self, *args, **kwargs):
+    #     # Este método causaba el problema - ELIMINADO
+    #     super().save(*args, **kwargs)
     
     def __str__(self):
         return f"{self.fecha} - {self.empleado.nombre}"
@@ -186,9 +183,14 @@ class Planilla(models.Model):
         return self.empleado.salario if self.jornada else 0
     
     @property
+    def pago_horas_extra(self):
+        """Retorna el pago de las horas extra (horas * $2)"""
+        return self.horasextra * 2 if self.horasextra else 0
+    
+    @property
     def total_dia(self):
-        """Retorna el total del día (jornada + extra)"""
-        return self.pago_jornada + self.pagoextra
+        """Retorna el total del día: salario (si asistió) + (horas extra * 2) + pago extra"""
+        return self.pago_jornada + self.pago_horas_extra + self.pagoextra
 
 
 
