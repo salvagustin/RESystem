@@ -38,6 +38,18 @@ class Plantacion(models.Model):
     def __str__(self):
         return f" {self.cultivo.nombre}"
 
+class Cliente(models.Model):
+    idcliente = models.AutoField(primary_key=True)
+    nombre = models.CharField('Nombre', max_length=300)
+    telefono = models.CharField('Teléfono', max_length=300)
+    opcliente = (("C", "Comprador"), ("P", "Proveedor"))
+    tipocliente =  models.CharField('Tipo cliente', max_length=1, choices=opcliente, blank=False, null=False)
+    opmercado = (("F", "Formal"), ("I", "Informal"))
+    tipomercado = models.CharField('Tipo mercado', max_length=1, choices=opmercado, blank=False, null=True)
+    
+    def __str__(self):
+        return f"{self.nombre}"
+
 class Cosecha(models.Model):
     idcosecha = models.AutoField(primary_key=True)
     plantacion = models.ForeignKey(Plantacion, on_delete=models.CASCADE, verbose_name="Plantación")
@@ -69,18 +81,6 @@ class DetalleCosecha(models.Model):
     def __str__(self):
         return f"{self.categoria} - {self.cantidad} en Cosecha #{self.cosecha.idcosecha}"    
 
-class Cliente(models.Model):
-    idcliente = models.AutoField(primary_key=True)
-    nombre = models.CharField('Nombre', max_length=300)
-    telefono = models.CharField('Teléfono', max_length=300)
-    opcliente = (("C", "Comprador"), ("P", "Proveedor"))
-    tipocliente =  models.CharField('Tipo cliente', max_length=1, choices=opcliente, blank=False, null=False)
-    opmercado = (("F", "Formal"), ("I", "Informal"))
-    tipomercado = models.CharField('Tipo mercado', max_length=1, choices=opmercado, blank=False, null=True)
-    
-    def __str__(self):
-        return f"{self.nombre}"
-
 class Venta(models.Model):
     idventa = models.AutoField(primary_key=True)
     cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, verbose_name="Cliente")
@@ -108,6 +108,7 @@ class DetalleVenta(models.Model):
     venta = models.ForeignKey('Venta', on_delete=models.CASCADE)
     cosecha = models.ForeignKey('Cosecha', on_delete=models.CASCADE)
     categoria = models.CharField(max_length=10, choices=CATEGORIAS)
+    tipocosecha = models.CharField('Tipo de cosecha', max_length=2, choices=DetalleCosecha.OPCIONES)
     cantidad = models.IntegerField(default=0)
     subtotal = models.DecimalField('Subtotal', default=0, max_digits=10, decimal_places=2)
 

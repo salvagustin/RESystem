@@ -29,7 +29,7 @@ from django.core.paginator import EmptyPage, PageNotAnInteger
 
 horayfecha = datetime.now()
 hoy = horayfecha.date()
-
+grupos_permitidos = ['Administrador']
 
 @login_required
 def inicio(request):
@@ -476,6 +476,9 @@ def lista_parcelas(request):
 
 @login_required
 def crear_parcela(request):
+    if not request.user.groups.filter(name__in=grupos_permitidos).exists():
+        messages.error(request, "No tienes permiso.")
+        return redirect('inicio')
     if request.method == 'POST':
         form = ParcelaForm(request.POST)
         if form.is_valid():
@@ -1350,7 +1353,6 @@ def crear_venta(request):
             venta.cliente = cliente
             venta.total = sum(float(prod['total']) for prod in productos)
             venta.save()
-            messages.success(request, "Venta registrada correctamente.")
 
             for producto in productos:
                 cultivo_id = producto['cultivo_id']
@@ -1359,30 +1361,24 @@ def crear_venta(request):
                 cantidad = int(producto['cantidad'])
                 subtotal = float(producto['total'])
 
-                cosechas = Cosecha.objects.filter(
-                    plantacion_id=cultivo_id,
-                    detallecosecha__tipocosecha=tipo,
-                    estado=False
-                ).distinct().order_by('fecha')
+                detalles_cosecha = DetalleCosecha.objects.filter(
+                    cosecha__plantacion_id=cultivo_id,
+                    cosecha__estado=False,
+                    tipocosecha=tipo,
+                    categoria=categoria
+                ).select_related('cosecha').order_by('cosecha__fecha')
 
                 cantidad_restante = cantidad
                 subtotal_unitario = subtotal / cantidad if cantidad > 0 else 0
 
-                for cosecha in cosechas:
-                    detalle = DetalleCosecha.objects.filter(
-                        cosecha=cosecha,
-                        tipocosecha=tipo,
-                        categoria=categoria
-                    ).first()
-
-                    if not detalle:
-                        continue
-
+                for detalle in detalles_cosecha:
+                    cosecha = detalle.cosecha
                     total_cosechado = detalle.cantidad
 
                     total_vendido = DetalleVenta.objects.filter(
                         cosecha=cosecha,
-                        categoria=categoria
+                        categoria=categoria,
+                        tipocosecha=tipo
                     ).aggregate(total=Sum('cantidad'))['total'] or 0
 
                     disponible = max(total_cosechado - total_vendido, 0)
@@ -1396,6 +1392,7 @@ def crear_venta(request):
                         venta=venta,
                         cosecha=cosecha,
                         categoria=categoria,
+                        tipocosecha=tipo,  # ✔ Guardar tipocosecha
                         cantidad=usar,
                         subtotal=subtotal_unitario * usar
                     )
@@ -1404,25 +1401,29 @@ def crear_venta(request):
                     if cantidad_restante <= 0:
                         break
 
-            # 🔁 Verificar si cada cosecha fue completamente vendida
+            # Actualizar estado de las cosechas agotadas
             cosechas_afectadas = Cosecha.objects.filter(estado=False)
             for cosecha in cosechas_afectadas:
                 agotada = True
                 detalles = DetalleCosecha.objects.filter(cosecha=cosecha)
 
                 for cat in ['primera', 'segunda', 'tercera']:
-                    detalle_cat = detalles.filter(categoria=cat).first()
-                    if not detalle_cat:
-                        continue
+                    for tipo_op in [op[0] for op in DetalleCosecha.OPCIONES]:
+                        detalle_cat = detalles.filter(categoria=cat, tipocosecha=tipo_op).first()
+                        if not detalle_cat:
+                            continue
 
-                    total_cosechado = detalle_cat.cantidad
-                    total_vendido = DetalleVenta.objects.filter(
-                        cosecha=cosecha,
-                        categoria=cat
-                    ).aggregate(total=Sum('cantidad'))['total'] or 0
+                        total_cosechado = detalle_cat.cantidad
+                        total_vendido = DetalleVenta.objects.filter(
+                            cosecha=cosecha,
+                            categoria=cat,
+                            tipocosecha=tipo_op
+                        ).aggregate(total=Sum('cantidad'))['total'] or 0
 
-                    if total_vendido < total_cosechado:
-                        agotada = False
+                        if total_vendido < total_cosechado:
+                            agotada = False
+                            break
+                    if not agotada:
                         break
 
                 if agotada:
@@ -1434,35 +1435,23 @@ def crear_venta(request):
 
         messages.error(request, "Formulario inválido o faltan productos.")
 
-        cultivos = Plantacion.objects.filter(
-            idplantacion__in=Cosecha.objects.filter(estado=False).values_list('plantacion_id', flat=True)
-        ).distinct()
-        tipo_cosecha_opciones = Cosecha.OPCIONES
-        cantidades = obtener_disponibilidad_por_cultivo()
-
-        return render(request, 'Venta/form_venta.html', {
-            'form': form,
-            'cultivos': cultivos,
-            'tipo_cosecha_opciones': tipo_cosecha_opciones,
-            'cantidades': cantidades,
-            'cliente': cliente,
-        })
-
     else:
         form = VentaForm()
-        cultivos = Plantacion.objects.filter(
-            idplantacion__in=Cosecha.objects.filter(estado=False).values_list('plantacion_id', flat=True)
-        ).distinct()
-        tipo_cosecha_opciones = DetalleCosecha.OPCIONES
-        cantidades = obtener_disponibilidad_por_cultivo()
-        
-        return render(request, 'Venta/form_venta.html', {
-            'form': form,
-            'cultivos': cultivos,
-            'tipo_cosecha_opciones': tipo_cosecha_opciones,
-            'cantidades': cantidades,
-            'cliente': cliente,
-        })
+
+    cultivos = Plantacion.objects.filter(
+        idplantacion__in=Cosecha.objects.filter(estado=False).values_list('plantacion_id', flat=True)
+    ).distinct()
+    tipo_cosecha_opciones = DetalleCosecha.OPCIONES
+    cantidades = obtener_disponibilidad_por_cultivo()
+
+    return render(request, 'Venta/form_venta.html', {
+        'form': form,
+        'cultivos': cultivos,
+        'tipo_cosecha_opciones': tipo_cosecha_opciones,
+        'cantidades': cantidades,
+        'cliente': cliente,
+    })
+
 
 @login_required
 def ajax_categorias(request):
@@ -1527,6 +1516,7 @@ def ajax_categorias(request):
 
 @login_required
 def ajax_tipocosechas(request):
+    
     cultivo_id = request.GET.get('cultivo_id')
     categoria = request.GET.get('categoria')
     productos_temporales = request.GET.get('productos_temporales', '[]')
@@ -1580,64 +1570,117 @@ def ajax_tipocosechas(request):
 # Editar una venta existente
 @login_required
 def editar_venta(request, idventa):
-    if not request.user.has_perm('gestor.change_venta'):
-        messages.error(request, "No tienes permiso para editar ventas.")
-        return redirect('inicio')
-    venta = get_object_or_404(Venta, pk=idventa)
-    cosecha = get_object_or_404(Cosecha, idcosecha=venta.cosecha.idcosecha)
-
-    # Calcular cantidades disponibles
-    total_primera = cosecha.primera or 0
-    total_segunda = cosecha.segunda or 0
-    total_tercera = cosecha.tercera or 0
-
-    # Excluir esta venta actual para calcular correctamente la disponibilidad
-    ventas = Venta.objects.filter(cosecha=cosecha).exclude(pk=venta.pk)
-    vendida_primera = ventas.aggregate(Sum('primera'))['primera__sum'] or 0
-    vendida_segunda = ventas.aggregate(Sum('segunda'))['segunda__sum'] or 0
-    vendida_tercera = ventas.aggregate(Sum('tercera'))['tercera__sum'] or 0
-
-    disponible_primera = total_primera - vendida_primera
-    disponible_segunda = total_segunda - vendida_segunda
-    disponible_tercera = total_tercera - vendida_tercera
-
-    cantidades = {
-        'Parcela': cosecha.plantacion.parcela.nombre,
-        'Cultivo': cosecha.plantacion.cultivo.nombre,
-        'Tipo': cosecha.get_tipocosecha_display(),
-        'Primera (disponible)': disponible_primera,
-        'Segunda (disponible)': disponible_segunda,
-        'Tercera (disponible)': disponible_tercera,
-    }
-
+    venta = get_object_or_404(Venta, idventa=idventa)
+    
     if request.method == 'POST':
-        form = VentaForm(request.POST, instance=venta)
-        if form.is_valid():
-            nueva_venta = form.save(commit=False)
+        # Datos generales de la venta
+        cliente_id = request.POST.get('cliente')
+        fecha = request.POST.get('fecha')
+        observaciones = request.POST.get('observaciones', '')
+        productos_json = request.POST.get('productos', '[]')
+        
+        try:
+            productos = json.loads(productos_json)
+        except:
+            productos = []
 
-            errores = []
-            if nueva_venta.primera and nueva_venta.primera > disponible_primera:
-                errores.append(f"No hay suficiente **primera calidad** disponible. Solo quedan {disponible_primera}.")
-            if nueva_venta.segunda and nueva_venta.segunda > disponible_segunda:
-                errores.append(f"No hay suficiente **segunda calidad** disponible. Solo quedan {disponible_segunda}.")
-            if nueva_venta.tercera and nueva_venta.tercera > disponible_tercera:
-                errores.append(f"No hay suficiente **tercera calidad** disponible. Solo quedan {disponible_tercera}.")
-
-            if errores:
-                for error in errores:
-                    messages.error(request, error)
-            else:
-                nueva_venta.save()
-                messages.success(request, "Venta actualizada correctamente.")
-                return redirect('/ventas/')
+        # Actualizar datos generales
+        venta.cliente_id = cliente_id
+        venta.fecha = fecha
+        venta.observaciones = observaciones
+        venta.save()
+        
+        # Borrar los detalles anteriores
+        venta.detalleventa_set.all().delete()
+        
+        errores = []
+        
+        for prod in productos:
+            cultivo_id = prod.get('cultivo_id')
+            categoria = prod.get('categoria')
+            tipocosecha = prod.get('tipocosecha')
+            cantidad = int(prod.get('cantidad', 0))
+            
+            # Obtener cosechas disponibles
+            cosechas = Cosecha.objects.filter(plantacion_id=cultivo_id, estado=False)
+            
+            cantidad_disponible_total = 0
+            for cosecha in cosechas:
+                detalles = DetalleCosecha.objects.filter(cosecha=cosecha, categoria=categoria, tipocosecha=tipocosecha)
+                for detalle in detalles:
+                    cantidad_total = detalle.cantidad
+                    
+                    vendidos = DetalleVenta.objects.filter(
+                        cosecha=cosecha,
+                        categoria=categoria,
+                        tipocosecha=tipocosecha
+                    ).exclude(venta=venta).aggregate(total=Sum('cantidad'))['total'] or 0
+                    
+                    disponibles = max(cantidad_total - vendidos, 0)
+                    cantidad_disponible_total += disponibles
+            
+            if cantidad > cantidad_disponible_total:
+                errores.append(f"No hay suficiente stock para {categoria} - {tipocosecha}")
+                continue
+            
+            # Crear los detalles de venta
+            restante = cantidad
+            for cosecha in cosechas:
+                detalles = DetalleCosecha.objects.filter(cosecha=cosecha, categoria=categoria, tipocosecha=tipocosecha)
+                for detalle in detalles:
+                    cantidad_total = detalle.cantidad
+                    vendidos = DetalleVenta.objects.filter(
+                        cosecha=cosecha,
+                        categoria=categoria,
+                        tipocosecha=tipocosecha
+                    ).exclude(venta=venta).aggregate(total=Sum('cantidad'))['total'] or 0
+                    disponibles = max(cantidad_total - vendidos, 0)
+                    
+                    if disponibles <= 0:
+                        continue
+                    
+                    a_guardar = min(restante, disponibles)
+                    
+                    DetalleVenta.objects.create(
+                        venta=venta,
+                        cosecha=cosecha,
+                        categoria=categoria,
+                        tipocosecha=tipocosecha,
+                        cantidad=a_guardar
+                    )
+                    
+                    restante -= a_guardar
+                    if restante <= 0:
+                        break
+                if restante <= 0:
+                    break
+        
+        if errores:
+            return JsonResponse({'success': False, 'errores': errores})
+        
+        return JsonResponse({'success': True, 'mensaje': 'Venta editada correctamente'})
+    
     else:
-        form = VentaForm(instance=venta)
+        # Preparar datos para renderizar el formulario de edición
+        productos = []
+        for detalle in venta.detalleventa_set.all():
+            productos.append({
+                'cultivo_id': detalle.cosecha.plantacion_id,
+                'categoria': detalle.categoria,
+                'tipocosecha': detalle.tipocosecha,
+                'cantidad': detalle.cantidad
+            })
+        tipo_cosecha_opciones = DetalleCosecha.OPCIONES
+        cantidades = obtener_disponibilidad_por_cultivo()
+        context = {
+            'venta': venta,
+            'productos': json.dumps(productos),
+            'tipo_cosecha_opciones': tipo_cosecha_opciones,
+            'cantidades':cantidades,
+            # Agrega clientes, cultivos, etc., si lo necesitas
+        }
+        return render(request, 'Venta/form_venta.html', context)
 
-    return render(request, 'Venta/form_venta.html', {
-        'form': form,
-        'cosechas': cosecha,
-        'cantidades': cantidades,
-    })
 
 # Eliminar una venta
 @login_required
