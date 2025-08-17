@@ -5,7 +5,7 @@ from . import views
 
 urlpatterns = [
     path('', inicio, name='inicio'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='inicio'), name='logout'),
+    path('accounts/logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
 
 
     path('parcelas/', views.lista_parcelas, name='lista_parcelas'),
