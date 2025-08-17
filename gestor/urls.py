@@ -5,7 +5,10 @@ from . import views
 
 urlpatterns = [
     path('', inicio, name='inicio'),
-    path('accounts/logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
+    path('logout/', auth_views.LogoutView.as_view(
+        next_page='/',
+        http_method_names=['get', 'post']  # Permite tanto GET como POST
+    ), name='logout'),
 
 
     path('parcelas/', views.lista_parcelas, name='lista_parcelas'),
