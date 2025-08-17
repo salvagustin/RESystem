@@ -112,6 +112,26 @@
                                                                {% endwith %}
                                                            {% endif %}>
                                                 </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small">Horas Trabajadas</label>
+                                                    <input type="number" 
+                                                        class="form-control form-control-sm horas-trabajadas" 
+                                                        name="empleado_{{ empleado.idempleado }}_horastrabajadas"
+                                                        step="0.5" 
+                                                        min="0" 
+                                                        max="8"
+                                                        placeholder="0.0"
+                                                        data-salario="{{ empleado.salario }}"
+                                                        {% if planillas_dict %}
+                                                            {% with planilla=planillas_dict|get_item:empleado.idempleado %}
+                                                                {% if planilla %}
+                                                                    value="{{ planilla.horastrabajadas }}"
+                                                                    {% if planilla.jornada %} disabled {% endif %}
+                                                                {% endif %}
+                                                            {% endwith %}
+                                                        {% endif %}>
+                                                </div>
+
                                             </div>
                                         </td>
                                         
@@ -192,8 +212,12 @@
     </div>
 </div>
 
-<!-- Estilos personalizados -->
+
+
+
+
 <style>
+
 .avatar-sm {
     width: 35px;
     height: 35px;
@@ -321,6 +345,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log("Fecha mostrada:", document.getElementById('fecha-actual').textContent);
     console.log("Fecha input:", document.getElementById('fecha-input').value);
+    
+
+    // Control de horas trabajadas
+    document.querySelectorAll('.asistencia-check').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            const row = this.closest('tr');
+            const inputHorasTrab = row.querySelector('.horas-trabajadas');
+            const salario = parseFloat(this.dataset.salario) || 0;
+
+            if (this.checked) {
+                // Jornada completa
+                inputHorasTrab.value = 0;
+                inputHorasTrab.disabled = true;
+            } else {
+                // Jornada incompleta
+                inputHorasTrab.disabled = false;
+            }
+
+            calcularTotales();
+        });
+    });
+
+    // Cuando se escriben horas trabajadas
+    document.querySelectorAll('.horas-trabajadas').forEach(function(input) {
+        input.addEventListener('input', function() {
+            calcularTotales();
+        });
+    });
+
+
 
     // --- Tu código original de asistencia y totales ---
     document.querySelectorAll('.asistencia-check').forEach(function(checkbox) {
@@ -373,38 +427,61 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function calcularTotales() {
-        let totalPresentes = 0;
-        let totalSalarios = 0;      
-        let totalHorasExtra = 0;    
-        let totalPagosExtra = 0;    
-        
-        document.querySelectorAll('.empleado-row').forEach(function(row) {
-            const checkbox = row.querySelector('.asistencia-check');
-            const inputHoras = row.querySelector('.horas-extra');
-            const inputPago = row.querySelector('.pago-extra');
-            
-            const horasExtra = parseFloat(inputHoras.value) || 0;
-            const pagoExtra = parseFloat(inputPago.value) || 0;
-            const salario = parseFloat(checkbox.dataset.salario) || 0;
-            
-            if (checkbox.checked) {
-                totalPresentes++;
-                totalSalarios += salario;
-            }
-            
-            totalHorasExtra += horasExtra * 2;
-            totalPagosExtra += pagoExtra;
-        });
-        
-        const granTotal = totalSalarios + totalHorasExtra + totalPagosExtra;
-        
-        document.getElementById('total-presentes').textContent = totalPresentes;
-        document.getElementById('total-jornadas').textContent = '$' + totalSalarios.toFixed(2);
-        document.getElementById('total-extras').textContent = '$' + (totalHorasExtra + totalPagosExtra).toFixed(2);
-        document.getElementById('gran-total').textContent = '$' + granTotal.toFixed(2);
-    }
+    let totalPresentes = 0;
+    let totalSalarios = 0;      
+    let totalHorasExtra = 0;    
+    let totalPagosExtra = 0;    
+
+    document.querySelectorAll('.empleado-row').forEach(function(row) {
+        const checkbox = row.querySelector('.asistencia-check');
+        const inputHorasTrab = row.querySelector('.horas-trabajadas');
+        const inputHorasExtra = row.querySelector('.horas-extra');
+        const inputPagoExtra = row.querySelector('.pago-extra');
+
+        const horasTrab = parseFloat(inputHorasTrab.value) || 0;
+        const horasExtra = parseFloat(inputHorasExtra.value) || 0;
+        const pagoExtra = parseFloat(inputPagoExtra.value) || 0;
+        const salario = parseFloat(checkbox.dataset.salario) || 0;
+
+        if (checkbox.checked) {
+            // Jornada completa
+            totalPresentes++;
+            totalSalarios += salario;
+        } else {
+            // Pago proporcional por horas trabajadas
+            totalSalarios += (horasTrab * (salario / 8));
+        }
+
+        totalHorasExtra += horasExtra * 2;
+        totalPagosExtra += pagoExtra;
+    });
+    
+    const granTotal = totalSalarios + totalHorasExtra + totalPagosExtra;
+    
+    document.getElementById('total-presentes').textContent = totalPresentes;
+    document.getElementById('total-jornadas').textContent = '$' + totalSalarios.toFixed(2);
+    document.getElementById('total-extras').textContent = '$' + (totalHorasExtra + totalPagosExtra).toFixed(2);
+    document.getElementById('gran-total').textContent = '$' + granTotal.toFixed(2);
+}
+
 
     calcularTotales();
+
+
+// Al cargar la página, asegurar que se refleje correctamente
+document.querySelectorAll('.empleado-row').forEach(function(row) {
+    const checkbox = row.querySelector('.asistencia-check');
+    const inputHorasTrab = row.querySelector('.horas-trabajadas');
+
+    if (checkbox.checked) {
+        inputHorasTrab.value = 0;
+        inputHorasTrab.disabled = true;
+    } else {
+        inputHorasTrab.disabled = false;
+    }
+});
+
+
 });
 </script>
 

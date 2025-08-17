@@ -18,9 +18,10 @@
             {% csrf_token %}
             <div class="text-center mb-4">
               {% if cliente %}
-              <input type="hidden" name="cliente_id" value="{{ cliente.idcliente }}">
+              <input type="hidden" name="cliente" value="{{ cliente.idcliente }}">
               <div class="mb-3 py-2">
-                <label class="form-label fw-bold">Cliente: {{ cliente.nombre }}</label>
+                <p class="form-control-plaintext">Cliente: {{ cliente.nombre }}</p>
+                <input type="hidden" name="cliente" value="{{ venta.cliente.idcliente }}">
               </div>
               {% endif %}
             </div>
@@ -141,6 +142,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const totalInput = document.getElementById('total');
   const productos = [];
 
+  const productosIniciales = JSON.parse('{{ productos_json|default:"[]"|safe }}');
+
+
   function capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
@@ -225,6 +229,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return 0;
   }
 
+  //validar el formulario buscar antes de enviar
   addBtn.addEventListener('click', () => {
     const cultivo = cultivoSelect;
     const categoria = categoriaSelect;
@@ -387,10 +392,62 @@ document.addEventListener('DOMContentLoaded', function () {
     lineaCategoria.innerHTML = `<strong>${capitalize(producto.categoria)}:</strong> ${cantidadActual + producto.cantidad}`;
   }
 }
-function actualizarEstadoBotonGuardar() {
-  const guardarBtn = document.getElementById('guardar-btn');
-  guardarBtn.disabled = productos.length === 0;
-}
+  
+
+  function actualizarEstadoBotonGuardar() {
+    const guardarBtn = document.getElementById('guardar-btn');
+    guardarBtn.disabled = productos.length === 0;
+  }
+
+
+function agregarProductoUI(producto) {
+    productos.push(producto);
+    productosInput.value = JSON.stringify(productos);
+    actualizarEstadoBotonGuardar();
+
+    const li = document.createElement('li');
+    li.classList.add('list-group-item');
+    li.innerHTML = `
+      <strong>${producto.cultivo_text}</strong> - ${producto.cantidad} 
+      (${capitalize(producto.categoria)}, ${capitalize(producto.tipocosecha_text)}), 
+      Subtotal: $${producto.total.toFixed(2)}
+      <button type="button" class="btn btn-sm btn-danger float-end eliminar-producto">
+        <i class="bi bi-trash"></i>
+      </button>
+    `;
+    lista.appendChild(li);
+    actualizarTotalGeneral();
+
+    li.querySelector('.eliminar-producto').addEventListener('click', function () {
+      const index = productos.indexOf(producto);
+      if (index !== -1) productos.splice(index, 1);
+      productosInput.value = JSON.stringify(productos);
+      li.remove();
+      actualizarTotalGeneral();
+      restaurarDisponibilidad(producto);
+      actualizarEstadoBotonGuardar(); 
+    });
+
+    actualizarDisponibilidad(producto);
+  }
+
+  // 🔹 Cargar productos iniciales en edición
+  if (productosIniciales.length > 0) {
+    productosIniciales.forEach(prod => {
+      agregarProductoUI({
+        cultivo_id: prod.cultivo_id,
+        cultivo_text: prod.cultivo_text,
+        categoria: prod.categoria.toLowerCase(),
+        cantidad: prod.cantidad,
+        total: prod.total,
+        tipocosecha: prod.tipocosecha,
+        tipocosecha_text: prod.tipocosecha_text.toLowerCase()
+      });
+    });
+  }
+
+
+
 
 });
 

@@ -114,6 +114,7 @@
                                                 data-empleado="{{ empleado_data.empleado.nombre }}"
                                                 data-sueldo="{{ empleado_data.empleado.salario|floatformat:2 }}"
                                                 data-dias='{{ empleado_data.dias_json|safe }}'
+                                                data-horastrabajadas="{{ empleado_data.horastrabajadas|floatformat:2 }}"
                                                 data-total="{{ empleado_data.total_general|floatformat:2 }}"
                                                 data-observaciones="{{ empleado_data.observaciones }}">
                                                 ${{ empleado_data.total_extra_semana|floatformat:2 }}
@@ -162,6 +163,7 @@
                                 data-empleado="{{ empleado_data.empleado.nombre }}"
                                 data-sueldo="{{ empleado_data.empleado.salario|floatformat:2 }}"
                                 data-dias='{{ empleado_data.dias_json|safe }}'
+                                data-horastrabajadas="{{ empleado_data.horastrabajadas|floatformat:2 }}"
                                 data-total="{{ empleado_data.total_general|floatformat:2 }}">
                                 <i class="bi bi-eye"></i> Detalles
                             </button>
@@ -199,6 +201,7 @@
                         <thead class="table-secondary">
                             <tr>
                                 <th><i class="fas fa-calendar-day me-1"></i>Día</th>
+                                <th class="text-center"><i class="fas fa-clipboard-list me-1"></i>Horas trabajadas</th>
                                 <th class="text-center"><i class="fas fa-clock me-1"></i>Horas Extra</th>
                                 <th class="text-center"><i class="fas fa-dollar-sign me-1"></i>Pago Extra</th>
                                 <th><i class="fas fa-comment me-1"></i>Observaciones</th>
@@ -212,6 +215,9 @@
                     <div class="col-md-6 offset-md-6">
                         <div class="card bg-light">
                             <div class="card-body text-center">
+                                <h6 class="card-title mb-1">Horas trabajadas</h6>
+                                <h5 class="text-secondary mb-2" id="detalleHorasTrabajadas"></h5>
+
                                 <h6 class="card-title mb-1">Total General</h6>
                                 <h4 class="text-primary mb-0" id="detalleTotal"></h4>
                             </div>
@@ -294,6 +300,7 @@
             const button = event.relatedTarget;
             const empleado = button.getAttribute('data-empleado');
             const sueldo = button.getAttribute('data-sueldo');
+            const horastrabajadas = button.getAttribute('data-horastrabajadas');
             const diasRaw = button.getAttribute('data-dias');
             const total = button.getAttribute('data-total');
 
@@ -313,6 +320,8 @@
 
             document.getElementById('detalleEmpleado').textContent = empleado + " (Sueldo: $" + sueldo+ ")";
             document.getElementById('detalleTotal').textContent = "$" + parseFloat(total).toFixed(2);
+            document.getElementById('detalleHorasTrabajadas').textContent = horastrabajadas + " hrs";
+
 
             const tbody = document.getElementById('detalleDias');
             tbody.innerHTML = '';
@@ -323,6 +332,7 @@
                 // Determinar si hay datos para este día
                 const tieneHoras = d.horas_extra > 0;
                 const tienePago = d.pago_extra > 0;
+                const tieneHoratrabjada = d.horas_trabajadas > 0;
                 const tieneObs = d.observaciones && d.observaciones.trim() !== '';
                 
                 const horasTexto = tieneHoras ? 
@@ -333,6 +343,10 @@
                     `<span class="fw-bold text-success">$${parseFloat(d.pago_extra).toFixed(2)}</span>` : 
                     '<span class="sin-datos">$0.00</span>';
                     
+                const horasTrabajadasTexto = tieneHoratrabjada ? 
+                    `<span class="badge bg-info">${d.horas_trabajadas} hrs</span>` :
+                    '<span class="sin-datos">Sin horas trabajadas</span>';
+                
                 const obsTexto = tieneObs ? 
                     `<small>${d.observaciones}</small>` : 
                     '<span class="sin-datos">Sin observaciones</span>';
@@ -342,6 +356,7 @@
                         <strong>${d.nombre_dia}</strong>
                         ${d.salario_dia > 0 ? '<br><small class="text-success">✓ Trabajó</small>' : '<br><small class="text-muted">✗ No trabajó</small>'}
                     </td>
+                    <td class="text-center">${horasTrabajadasTexto}</td>
                     <td class="text-center">${horasTexto}</td>
                     <td class="text-center">${pagoTexto}</td>
                     <td>${obsTexto}</td>

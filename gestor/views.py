@@ -4,7 +4,7 @@ from django.db.models import Sum, Count, DecimalField, Avg, F, ExpressionWrapper
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from collections import defaultdict
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.core.paginator import Paginator
@@ -1567,120 +1567,242 @@ def ajax_tipocosechas(request):
 
     return JsonResponse({'tipos': opciones})
 
-# Editar una venta existente
 @login_required
 def editar_venta(request, idventa):
     venta = get_object_or_404(Venta, idventa=idventa)
+    cliente = venta.cliente
     
     if request.method == 'POST':
-        # Datos generales de la venta
-        cliente_id = request.POST.get('cliente')
-        fecha = request.POST.get('fecha')
-        observaciones = request.POST.get('observaciones', '')
-        productos_json = request.POST.get('productos', '[]')
+        data = request.POST
+        productos_data = data.get('productos_json')  # Cambié el nombre para que coincida con el form
+        
+        
+        
+        if not productos_data:
+            messages.error(request, "No se recibieron datos de productos.")
+            return redirect('editar_venta', idventa=idventa)
         
         try:
-            productos = json.loads(productos_json)
-        except:
-            productos = []
+            productos_nuevos = json.loads(productos_data)
+        except json.JSONDecodeError as e:
+            
+            messages.error(request, "Error al procesar los datos de productos.")
+            return redirect('editar_venta', idventa=idventa)
+        
+        
+        
+        if not productos_nuevos:
+            
+            venta.detalleventa_set.all().delete()
+            venta.total = 0
+            venta.save()
+            messages.success(request, "Venta actualizada - sin productos.")
+            return redirect('lista_ventas')
 
-        # Actualizar datos generales
-        venta.cliente_id = cliente_id
-        venta.fecha = fecha
-        venta.observaciones = observaciones
+        
+
+        # Calcular total
+        total = sum(float(p['total']) for p in productos_nuevos)
+        
+
+        # Verificar disponibilidad para los productos nuevos
+        for i, producto in enumerate(productos_nuevos):
+            
+            
+            cultivo_id = producto['cultivo_id']
+            tipocosecha = producto['tipocosecha']
+            categoria = producto['categoria']
+            cantidad_solicitada = int(producto['cantidad'])
+
+            # Obtener disponibilidad actual (excluyendo esta venta)
+            cosechas_activas = Cosecha.objects.filter(
+                plantacion_id=cultivo_id, 
+                estado=False
+            )
+            
+            total_disponible = 0
+            for cosecha in cosechas_activas:
+                detalle_cosecha = DetalleCosecha.objects.filter(
+                    cosecha=cosecha,
+                    categoria=categoria,
+                    tipocosecha=tipocosecha
+                ).first()
+                
+                if detalle_cosecha:
+                    total_cosechado = detalle_cosecha.cantidad
+                    
+                    # Total vendido EXCLUYENDO esta venta que estamos editando
+                    vendidos = DetalleVenta.objects.filter(
+                        cosecha=cosecha,
+                        categoria=categoria,
+                        tipocosecha=tipocosecha
+                    ).exclude(venta=venta).aggregate(
+                        total=Sum('cantidad')
+                    )['total'] or 0
+                    
+                    total_disponible += max(total_cosechado - vendidos, 0)
+
+            # También sumar lo que ya tenía esta venta para este producto específico
+            cantidad_actual_venta = DetalleVenta.objects.filter(
+                venta=venta,
+                cosecha__plantacion_id=cultivo_id,
+                categoria=categoria,
+                tipocosecha=tipocosecha
+            ).aggregate(total=Sum('cantidad'))['total'] or 0
+
+            total_disponible += cantidad_actual_venta
+            
+
+            if cantidad_solicitada > total_disponible:
+                messages.error(
+                    request,
+                    f"No hay suficiente stock disponible. Solicitado: {cantidad_solicitada}, "
+                    f"Disponible: {total_disponible} para {categoria} - {tipocosecha}"
+                )
+                return redirect('editar_venta', idventa=idventa)
+
+        # Actualizar cabecera de venta
+        venta.total = total
         venta.save()
-        
-        # Borrar los detalles anteriores
+
+        # 🔹 Eliminar detalles existentes
+        detalles_eliminados = venta.detalleventa_set.count()
         venta.detalleventa_set.all().delete()
-        
-        errores = []
-        
-        for prod in productos:
-            cultivo_id = prod.get('cultivo_id')
-            categoria = prod.get('categoria')
-            tipocosecha = prod.get('tipocosecha')
-            cantidad = int(prod.get('cantidad', 0))
-            
-            # Obtener cosechas disponibles
-            cosechas = Cosecha.objects.filter(plantacion_id=cultivo_id, estado=False)
-            
-            cantidad_disponible_total = 0
-            for cosecha in cosechas:
-                detalles = DetalleCosecha.objects.filter(cosecha=cosecha, categoria=categoria, tipocosecha=tipocosecha)
-                for detalle in detalles:
-                    cantidad_total = detalle.cantidad
-                    
-                    vendidos = DetalleVenta.objects.filter(
-                        cosecha=cosecha,
-                        categoria=categoria,
-                        tipocosecha=tipocosecha
-                    ).exclude(venta=venta).aggregate(total=Sum('cantidad'))['total'] or 0
-                    
-                    disponibles = max(cantidad_total - vendidos, 0)
-                    cantidad_disponible_total += disponibles
-            
-            if cantidad > cantidad_disponible_total:
-                errores.append(f"No hay suficiente stock para {categoria} - {tipocosecha}")
-                continue
-            
-            # Crear los detalles de venta
-            restante = cantidad
-            for cosecha in cosechas:
-                detalles = DetalleCosecha.objects.filter(cosecha=cosecha, categoria=categoria, tipocosecha=tipocosecha)
-                for detalle in detalles:
-                    cantidad_total = detalle.cantidad
-                    vendidos = DetalleVenta.objects.filter(
-                        cosecha=cosecha,
-                        categoria=categoria,
-                        tipocosecha=tipocosecha
-                    ).exclude(venta=venta).aggregate(total=Sum('cantidad'))['total'] or 0
-                    disponibles = max(cantidad_total - vendidos, 0)
-                    
-                    if disponibles <= 0:
-                        continue
-                    
-                    a_guardar = min(restante, disponibles)
-                    
-                    DetalleVenta.objects.create(
-                        venta=venta,
-                        cosecha=cosecha,
-                        categoria=categoria,
-                        tipocosecha=tipocosecha,
-                        cantidad=a_guardar
-                    )
-                    
-                    restante -= a_guardar
-                    if restante <= 0:
-                        break
-                if restante <= 0:
+
+        # 🔹 Crear nuevos detalles
+        detalles_creados = 0
+        for producto in productos_nuevos:
+            cultivo_id = producto['cultivo_id']
+            categoria = producto['categoria'].lower()
+            tipo = producto['tipocosecha'].lower()
+            cantidad = int(producto['cantidad'])
+            subtotal = float(producto['total'])
+
+
+            # Usar la misma lógica de distribución que en crear_venta
+            detalles_cosecha = DetalleCosecha.objects.filter(
+                cosecha__plantacion_id=cultivo_id,
+                cosecha__estado=False,
+                tipocosecha=tipo,
+                categoria=categoria
+            ).select_related('cosecha').order_by('cosecha__fecha')
+
+            cantidad_restante = cantidad
+            subtotal_unitario = subtotal / cantidad if cantidad > 0 else 0
+
+            for detalle_cosecha in detalles_cosecha:
+                cosecha_actual = detalle_cosecha.cosecha
+                total_cosechado = detalle_cosecha.cantidad
+
+                # Ahora que ya eliminamos los detalles de esta venta, podemos calcular normalmente
+                total_vendido = DetalleVenta.objects.filter(
+                    cosecha=cosecha_actual,
+                    categoria=categoria,
+                    tipocosecha=tipo
+                ).aggregate(total=Sum('cantidad'))['total'] or 0
+
+                disponible = max(total_cosechado - total_vendido, 0)
+
+                if disponible <= 0:
+                    continue
+
+                usar = min(cantidad_restante, disponible)
+
+                DetalleVenta.objects.create(
+                    venta=venta,
+                    cosecha=cosecha_actual,
+                    categoria=categoria,
+                    tipocosecha=tipo,
+                    cantidad=usar,
+                    subtotal=subtotal_unitario * usar
+                )
+                
+                detalles_creados += 1
+
+                cantidad_restante -= usar
+                if cantidad_restante <= 0:
                     break
+
+
+        # Actualizar estado de las cosechas agotadas
+        cosechas_afectadas = Cosecha.objects.filter(estado=False)
+        for cosecha in cosechas_afectadas:
+            agotada = True
+            detalles = DetalleCosecha.objects.filter(cosecha=cosecha)
+
+            for cat in ['primera', 'segunda', 'tercera']:
+                for tipo_op in [op[0] for op in DetalleCosecha.OPCIONES]:
+                    detalle_cat = detalles.filter(categoria=cat, tipocosecha=tipo_op).first()
+                    if not detalle_cat:
+                        continue
+
+                    total_cosechado = detalle_cat.cantidad
+                    total_vendido = DetalleVenta.objects.filter(
+                        cosecha=cosecha,
+                        categoria=cat,
+                        tipocosecha=tipo_op
+                    ).aggregate(total=Sum('cantidad'))['total'] or 0
+
+                    if total_vendido < total_cosechado:
+                        agotada = False
+                        break
+                if not agotada:
+                    break
+
+            if agotada:
+                cosecha.estado = True
+                cosecha.save()
+
         
-        if errores:
-            return JsonResponse({'success': False, 'errores': errores})
-        
-        return JsonResponse({'success': True, 'mensaje': 'Venta editada correctamente'})
-    
+        messages.success(request, "Venta actualizada correctamente.")
+        return redirect('lista_ventas')
+
     else:
-        # Preparar datos para renderizar el formulario de edición
+        # Preparar productos existentes para mostrar
         productos = []
         for detalle in venta.detalleventa_set.all():
             productos.append({
                 'cultivo_id': detalle.cosecha.plantacion_id,
+                'cultivo_text': str(detalle.cosecha.plantacion.cultivo),
                 'categoria': detalle.categoria,
                 'tipocosecha': detalle.tipocosecha,
-                'cantidad': detalle.cantidad
+                'cantidad': detalle.cantidad,
+                'total': float(detalle.subtotal),
+                'tipocosecha_text': detalle.get_tipocosecha_display()
             })
+
         tipo_cosecha_opciones = DetalleCosecha.OPCIONES
         cantidades = obtener_disponibilidad_por_cultivo()
+
+        # Ajustar disponibilidad sumando lo que ya estaba en la venta
+        for prod in productos:
+            cultivo = prod['cultivo_text']
+            tipo = prod['tipocosecha']
+            categoria = prod['categoria']
+            if cultivo in cantidades and tipo in cantidades[cultivo]:
+                cantidades[cultivo][tipo][categoria] += prod['cantidad']
+
+        
+
+
+
+        clientes = Cliente.objects.filter(tipocliente='C').order_by('nombre')
+        cultivos = Plantacion.objects.filter(
+            idplantacion__in=Cosecha.objects.filter(estado=False).values_list('plantacion_id', flat=True)
+        ).distinct()
+
         context = {
             'venta': venta,
-            'productos': json.dumps(productos),
+            'form': VentaForm(instance=venta),
+            'productos_json': json.dumps(productos),
             'tipo_cosecha_opciones': tipo_cosecha_opciones,
-            'cantidades':cantidades,
-            # Agrega clientes, cultivos, etc., si lo necesitas
+            'cantidades': cantidades,
+            'cliente':cliente,
+            'clientes': clientes,
+            'cultivos': cultivos,
+            'es_edicion': True,
         }
         return render(request, 'Venta/form_venta.html', context)
-
 
 # Eliminar una venta
 @login_required
@@ -2417,6 +2539,7 @@ def lista_planilla_semanal(request):
             'total_salarios_semana': 0.0,
             'total_horas_extra_semana': 0.0,
             'total_pagos_extra_semana': 0.0,
+            'horastrabajadas': 0.0,  # Total de horas trabajadas en la semana
         }
 
         for i, dia in enumerate(dias_semana):
@@ -2424,17 +2547,33 @@ def lista_planilla_semanal(request):
             planilla = planillas_dict.get(key)
             
             if planilla:
-                salario_dia = float(empleado.salario) if planilla.jornada else 0.0
+                # Calcular salario basado en horas trabajadas
+                horas_trabajadas = float(planilla.horastrabajadas) if planilla.horastrabajadas else 0.0
+                salario_por_hora = float(empleado.salario) / 8  # Asumiendo jornada de 8 horas
+                
+                if planilla.jornada:
+                    # Si marcó jornada completa, paga el salario completo
+                    salario_dia = float(empleado.salario)
+                elif horas_trabajadas > 0:
+                    # Si trabajó parcialmente, calcular proporcional
+                    salario_dia = salario_por_hora * horas_trabajadas
+                else:
+                    salario_dia = 0.0
+                
                 horas_extra = float(planilla.horasextra) if planilla.horasextra else 0.0
                 pago_extra_dia = float(planilla.pagoextra) if planilla.pagoextra else 0.0
                 observaciones = getattr(planilla, 'observaciones', '') or ''
 
-                # Contar jornada si trabajó
-                if planilla.jornada:
+                # Contar jornada si trabajó (completa o parcial)
+                if planilla.jornada or horas_trabajadas > 0:
                     total_jornadas_general += 1
+                    
+                # Sumar horas trabajadas al total semanal
+                info['horastrabajadas'] += horas_trabajadas
             else:
                 salario_dia = 0.0
                 horas_extra = 0.0
+                horas_trabajadas = 0.0
                 pago_extra_dia = 0.0
                 observaciones = ""
 
@@ -2444,6 +2583,7 @@ def lista_planilla_semanal(request):
             info['dias'].append({
                 'nombre_dia': nombres_dias[i],
                 'salario_dia': salario_dia,
+                'horas_trabajadas': horas_trabajadas,  # Agregar horas trabajadas al día
                 'horas_extra': horas_extra,
                 'pago_horas_extra': pago_horas_extra,
                 'pago_extra': pago_extra_dia,
@@ -2472,10 +2612,9 @@ def lista_planilla_semanal(request):
         total_pagos_extra_general += info['total_pagos_extra_semana']
         total_horas_extra_general += info['total_horas_extra_semana']
 
-        total_pago_general = round(total_pago_general, 2)
-        total_pagos_extra_general = round(total_pagos_extra_general, 2)
-        total_horas_extra_general = round(total_horas_extra_general, 2)
-
+    total_pago_general = round(total_pago_general, 2)
+    total_pagos_extra_general = round(total_pagos_extra_general, 2)
+    total_horas_extra_general = round(total_horas_extra_general, 2)
 
     return render(request, 'Planilla/lista_planilla.html', {
         'empleados_data': empleados_data,
@@ -2552,65 +2691,74 @@ def procesar_planilla_diaria(request):
         # Usar transacción para asegurar consistencia
         with transaction.atomic():
             
-            # Obtener todos los empleados activos
             empleados = Empleado.objects.filter(estado=True)
             
             for empleado in empleados:
-                # Construir los nombres de los campos para este empleado
+                # Campos dinámicos para cada empleado
                 jornada_key = f'empleado_{empleado.idempleado}_jornada'
                 horas_key = f'empleado_{empleado.idempleado}_horasextra'
                 pago_key = f'empleado_{empleado.idempleado}_pagoextra'
                 obs_key = f'empleado_{empleado.idempleado}_observaciones'
+                horastrab_key = f'empleado_{empleado.idempleado}_horastrabajadas'
                 
-                # Obtener los valores del POST
-                jornada = request.POST.get(jornada_key) == 'on'  # Checkbox
+                # Obtener valores del POST
+                jornada = request.POST.get(jornada_key) == 'on'
                 horas_extra = request.POST.get(horas_key, '0')
                 pago_extra = request.POST.get(pago_key, '0')
                 observaciones = request.POST.get(obs_key, '').strip()
+                horas_trab = request.POST.get(horastrab_key, '0')
                 
-                # Convertir a decimal
+                # Convertir a Decimal de forma segura
                 try:
-                    horas_extra = float(horas_extra) if horas_extra else 0
-                    pago_extra = float(pago_extra) if pago_extra else 0
-                except ValueError:
-                    horas_extra = 0
-                    pago_extra = 0
+                    horas_extra = Decimal(horas_extra) if horas_extra else Decimal(0)
+                except (InvalidOperation, ValueError):
+                    horas_extra = Decimal(0)
+
+                try:
+                    pago_extra = Decimal(pago_extra) if pago_extra else Decimal(0)
+                except (InvalidOperation, ValueError):
+                    pago_extra = Decimal(0)
+
+                try:
+                    horas_trab = Decimal(horas_trab) if horas_trab else Decimal(0)
+                except (InvalidOperation, ValueError):
+                    horas_trab = Decimal(0)
                 
-                # Verificar si ya existe una planilla para este empleado en esta fecha
+                # Verificar si ya existe una planilla para este empleado en esa fecha
                 try:
                     planilla = Planilla.objects.get(empleado=empleado, fecha=fecha_obj)
                     # Actualizar planilla existente
                     planilla.jornada = jornada
                     planilla.horasextra = horas_extra
                     planilla.pagoextra = pago_extra
+                    planilla.horastrabajadas = horas_trab
                     if hasattr(planilla, 'observaciones'):
                         planilla.observaciones = observaciones
                     planilla.save()
                     empleados_actualizados += 1
                     
                 except Planilla.DoesNotExist:
-                    # Solo crear nueva planilla si hay datos relevantes
-                    if jornada or horas_extra > 0 or pago_extra > 0 or observaciones:
+                    # Crear planilla solo si hay datos
+                    if jornada or horas_extra > 0 or pago_extra > 0 or horas_trab > 0 or observaciones:
                         planilla_data = {
                             'empleado': empleado,
                             'fecha': fecha_obj,
                             'jornada': jornada,
                             'horasextra': horas_extra,
                             'pagoextra': pago_extra,
+                            'horastrabajadas': horas_trab,
                         }
-                        
-                        # Agregar observaciones solo si el campo existe
                         if hasattr(Planilla, 'observaciones'):
                             planilla_data['observaciones'] = observaciones
-                            
+                        
                         Planilla.objects.create(**planilla_data)
                         empleados_creados += 1
                 
                 empleados_procesados += 1
-                if jornada or horas_extra > 0 or pago_extra > 0 or observaciones:
+                if jornada or horas_extra > 0 or pago_extra > 0 or horas_trab > 0 or observaciones:
                     empleados_con_datos += 1
         
-        # Mensaje de éxito personalizado
+        # Mensajes de éxito
         if empleados_actualizados > 0 and empleados_creados > 0:
             messages.success(
                 request, 
@@ -2635,8 +2783,8 @@ def procesar_planilla_diaria(request):
                 'No se realizaron cambios. Asegúrate de marcar asistencias o agregar datos.'
             )
         
-        return redirect('lista_planilla')  # Redirigir a la lista de planillas
-        
+        return redirect('lista_planilla')
+    
     except Exception as e:
         messages.error(
             request, 

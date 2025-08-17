@@ -161,6 +161,7 @@ class Planilla(models.Model):
     empleado = models.ForeignKey(Empleado, on_delete=models.CASCADE, verbose_name="Empleado")
     fecha = models.DateField('Fecha de pago', auto_now_add=True)
     jornada = models.BooleanField('Jornada', default=False)
+    horastrabajadas = models.DecimalField('Horas trabajadas', max_digits=5, decimal_places=2, default=0)
     horasextra = models.DecimalField('Horas extra', max_digits=5, decimal_places=2, default=0)
     pagoextra = models.DecimalField('Pago extra', max_digits=10, decimal_places=2, default=0)
     observaciones = models.TextField('Observaciones', blank=True, null=True)
@@ -180,8 +181,16 @@ class Planilla(models.Model):
     
     @property
     def pago_jornada(self):
-        """Retorna el pago de la jornada si trabajó ese día"""
-        return self.empleado.salario if self.jornada else 0
+        """Retorna el pago de la jornada basado en si trabajó jornada completa o parcial"""
+        if self.jornada:
+            # Si marcó jornada completa, paga el salario completo
+            return self.empleado.salario
+        elif self.horastrabajadas > 0:
+            # Si trabajó parcialmente, calcular proporcional
+            salario_por_hora = self.empleado.salario / 8  # Asumiendo jornada de 8 horas
+            return salario_por_hora * self.horastrabajadas
+        else:
+            return 0
     
     @property
     def pago_horas_extra(self):
@@ -191,7 +200,7 @@ class Planilla(models.Model):
     @property
     def total_dia(self):
         """Retorna el total del día: salario (si asistió) + (horas extra * 2) + pago extra"""
-        return self.pago_jornada + self.pago_horas_extra + self.pagoextra
+        return self.pago_jornada + self.pago_horas_extra + self.pagoextra 
 
 
 
