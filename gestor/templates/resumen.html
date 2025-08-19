@@ -65,6 +65,13 @@
       <div class="card-body">
         <h5 class="card-title fw-bold">{{ item.cultivo }} - {{ item.variedad }}</h5>
         <p class="mb-1"><strong>Parcela:</strong> {{ item.parcela }}</p>
+        <p class="mb-1"><strong>Estado:</strong> 
+        {% if plantacion.estado %}
+              <span class="badge bg-danger">Finalizado</span>
+            {% else %}
+              <span class="badge bg-success">Activo</span>
+            {% endif %}
+        </p>
         <p class="mb-1"><strong>Plantas:</strong> {{ item.plantas }}</p>
         <p class="mb-1"><strong>Cant. Producida:</strong> {{ item.cantidad_producida }}</p>
         <p class="mb-1"><strong>Vendido:</strong> ${{ item.vendido }}</p>
@@ -103,6 +110,7 @@
         <thead class="table-dark">
           <tr>
             <th>Parcela</th>
+            <th>Estado</th>
             <th>Cultivo</th>
             <th>Variedad</th>
             <th>Plantas</th>
@@ -116,6 +124,13 @@
           {% for item in data %}
           <tr>
             <td>{{ item.parcela }}</td>
+            <td>
+            {% if item.estado %}
+                <span class="badge bg-danger">Finalizado</span>
+              {% else %}
+                <span class="badge bg-success">Activo</span>
+            {% endif %}
+            </td>
             <td>{{ item.cultivo }}</td>
             <td>{{ item.variedad }}</td>
             <td>{{ item.plantas }}</td>

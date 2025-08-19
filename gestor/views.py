@@ -330,28 +330,72 @@ def control_calidad(request):
     
 @login_required    
 def reportes_view(request):
+    from django.db.models import Count, Case, When, IntegerField, Sum, Avg, F, ExpressionWrapper, DurationField
+    from collections import defaultdict
+
     parcelas = Parcela.objects.all()
     cultivos = Cultivo.objects.all()
 
-    # Producción por calidad
-    produccion_por_cultivo = defaultdict(lambda: {'primera': 0, 'segunda': 0, 'tercera': 0, 'total': 0})
+    # Datos de cosecha por cultivo, tipo y categoría
+    datos_cosecha_cultivos = {}
+    tipos_cosecha = ['S', 'MS', 'U', 'Lb']  # Saco, Medio saco, Unidad, Libra
+    categorias = ['primera', 'segunda', 'tercera', 'perdida']
+    
     for cultivo in cultivos:
         cosechas = Cosecha.objects.filter(plantacion__cultivo=cultivo)
-        
-        # Ahora obtenemos los datos de DetalleCosecha
         detalles = DetalleCosecha.objects.filter(cosecha__in=cosechas)
         
-        suma = detalles.aggregate(
+        datos_cosecha_cultivos[cultivo.nombre] = {}
+        
+        for tipo in tipos_cosecha:
+            datos_cosecha_cultivos[cultivo.nombre][tipo] = {}
+            
+            for categoria in categorias:
+                if categoria == 'perdida':
+                    # Para perdida, podemos calcular como diferencia o dejarlo en 0
+                    # por ahora lo dejamos en 0, pero se puede ajustar según la lógica de negocio
+                    cantidad = 0
+                else:
+                    cantidad = detalles.filter(
+                        tipocosecha=tipo, 
+                        categoria=categoria
+                    ).aggregate(total=Sum('cantidad'))['total'] or 0
+                
+                datos_cosecha_cultivos[cultivo.nombre][tipo][categoria] = cantidad
+
+    # Listado de cultivos con promedios y totales
+    estadisticas_cultivos = {}
+    for cultivo in cultivos:
+        cosechas = Cosecha.objects.filter(plantacion__cultivo=cultivo)
+        detalles = DetalleCosecha.objects.filter(cosecha__in=cosechas)
+        
+        # Totales cosechados por categoría
+        totales = detalles.aggregate(
             primera=Sum(Case(When(categoria='primera', then='cantidad'), default=0, output_field=IntegerField())),
             segunda=Sum(Case(When(categoria='segunda', then='cantidad'), default=0, output_field=IntegerField())),
             tercera=Sum(Case(When(categoria='tercera', then='cantidad'), default=0, output_field=IntegerField()))
         )
         
-        produccion_por_cultivo[cultivo.nombre] = {
-            'primera': suma['primera'] or 0,
-            'segunda': suma['segunda'] or 0,
-            'tercera': suma['tercera'] or 0,
-            'total': sum(filter(None, [suma['primera'], suma['segunda'], suma['tercera']]))
+        # Total vendido
+        ventas_cultivo = DetalleVenta.objects.filter(cosecha__plantacion__cultivo=cultivo)
+        total_vendido = ventas_cultivo.aggregate(total=Sum('cantidad'))['total'] or 0
+        
+        # Número de cosechas para calcular promedio
+        num_cosechas = cosechas.count()
+        
+        primera_total = totales['primera'] or 0
+        segunda_total = totales['segunda'] or 0 
+        tercera_total = totales['tercera'] or 0
+        total_cosechado = primera_total + segunda_total + tercera_total
+        
+        estadisticas_cultivos[cultivo.nombre] = {
+            'variedad': cultivo.variedad,
+            'promedio_primera': round(primera_total / num_cosechas, 2) if num_cosechas > 0 else 0,
+            'promedio_segunda': round(segunda_total / num_cosechas, 2) if num_cosechas > 0 else 0,
+            'promedio_tercera': round(tercera_total / num_cosechas, 2) if num_cosechas > 0 else 0,
+            'total_cosechado': total_cosechado,
+            'total_vendido': total_vendido,
+            'num_cosechas': num_cosechas
         }
 
     # Producción por tipo de parcela
@@ -359,11 +403,8 @@ def reportes_view(request):
     cosechas = Cosecha.objects.select_related('plantacion__parcela')
     for cosecha in cosechas:
         tipo = dict(Parcela.Opciones).get(cosecha.plantacion.parcela.tipoparcela)
-        
-        # Obtener total de esta cosecha desde DetalleCosecha
         detalles = DetalleCosecha.objects.filter(cosecha=cosecha)
         total = detalles.aggregate(total=Sum('cantidad'))['total'] or 0
-        
         produccion_por_tipo_parcela[tipo] += total
 
     # Ciclo promedio de cada cultivo
@@ -376,10 +417,8 @@ def reportes_view(request):
     rendimiento_por_plantacion = {}
     plantaciones = Plantacion.objects.select_related('cultivo', 'parcela')
     for p in plantaciones:
-        # Obtener total de cosecha desde DetalleCosecha
         detalles = DetalleCosecha.objects.filter(cosecha__plantacion=p)
         total = detalles.aggregate(suma=Sum('cantidad'))['suma'] or 0
-        
         rendimiento = total / p.cantidad if p.cantidad else 0
         rendimiento_por_plantacion[p.idplantacion] = {
             'cultivo': p.cultivo.nombre,
@@ -401,6 +440,22 @@ def reportes_view(request):
     # Estado de parcelas
     estado_parcelas = {p.nombre: 'Ocupada' if p.estado else 'Libre' for p in parcelas}
 
+    # Datos para gráfico con filtros
+    datos_grafico_filtros = {}
+    for cultivo in cultivos:
+        datos_grafico_filtros[cultivo.nombre] = {}
+        cosechas = Cosecha.objects.filter(plantacion__cultivo=cultivo)
+        detalles = DetalleCosecha.objects.filter(cosecha__in=cosechas)
+        
+        for categoria in ['primera', 'segunda', 'tercera']:
+            datos_grafico_filtros[cultivo.nombre][categoria] = {}
+            detalles_categoria = detalles.filter(categoria=categoria)
+            
+            for tipo in ['S', 'U', 'MS', 'C', 'MC', 'Lb']:
+                cantidad = detalles_categoria.filter(tipocosecha=tipo).aggregate(
+                    total=Sum('cantidad'))['total'] or 0
+                datos_grafico_filtros[cultivo.nombre][categoria][tipo] = cantidad
+
     # Resumen de cosechas por fecha y calidad
     resumen_cosechas_fecha = defaultdict(lambda: {'primera': 0, 'segunda': 0, 'tercera': 0})
     cosechas = Cosecha.objects.all()
@@ -410,13 +465,19 @@ def reportes_view(request):
             resumen_cosechas_fecha[c.fecha][detalle.categoria] += detalle.cantidad
 
     context = {
-        'produccion_por_cultivo': dict(produccion_por_cultivo),
+        'datos_cosecha_cultivos': datos_cosecha_cultivos,
+        'tipos_cosecha': tipos_cosecha,
+        'categorias': categorias,
+        'estadisticas_cultivos': estadisticas_cultivos,
         'produccion_por_tipo_parcela': produccion_por_tipo_parcela,
         'ciclo_promedio': ciclo_promedio,
         'rendimiento_por_plantacion': rendimiento_por_plantacion,
         'historial_por_parcela': dict(historial_por_parcela),
         'estado_parcelas': estado_parcelas,
         'resumen_cosechas_fecha': dict(resumen_cosechas_fecha),
+        'datos_grafico_filtros': datos_grafico_filtros,
+        'opciones_tipocosecha': DetalleCosecha.OPCIONES,
+        'cultivos_nombres': [c.nombre for c in cultivos]
     }
 
     return render(request, 'reportes.html', context)
@@ -429,7 +490,7 @@ def resumen_view(request):
     fecha_fin = request.GET.get('fecha_fin', '')
 
     # Traemos plantaciones con relaciones
-    plantaciones = Plantacion.objects.select_related('parcela', 'cultivo').filter(estado=False).order_by('-fecha')
+    plantaciones = Plantacion.objects.select_related('parcela', 'cultivo').order_by('-fecha')
     
     
     # --- FILTRO POR TEXTO ---
@@ -488,6 +549,7 @@ def resumen_view(request):
             "parcela": p.parcela.nombre,
             "cultivo": p.cultivo.nombre,
             "variedad": p.cultivo.variedad,
+            "estado":p.estado,
             "plantas": p.cantidad,
             "dias_siembra": dias_siembra,
             "dias_corte": dias_corte,

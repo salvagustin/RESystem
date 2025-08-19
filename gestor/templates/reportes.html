@@ -8,32 +8,58 @@
         <p class="text-muted">Análisis detallado de producción y rendimiento</p>
     </div>
 
-    <!-- Resumen de Producción por Cultivo -->
-    <h3 class="fw-bold mb-4">Producción por Cultivo</h3>
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 mb-5">
-        {% for cultivo, datos in produccion_por_cultivo.items %}
-        <div class="col">
-            <div class="card h-100 shadow-sm border-success">
-                <div class="card-header bg-success text-white text-center fw-bold text-uppercase">
+    <!-- Datos de Cosecha por Cultivo -->
+    <h3 class="fw-bold mb-4">Cosecha por Cultivo y Tipo</h3>
+    <div class="row g-4 mb-5">
+        {% for cultivo, tipos in datos_cosecha_cultivos.items %}
+        <div class="col-12">
+            <div class="card shadow-sm cosecha-card">
+                <div class="card-header bg-success text-white fw-bold text-center">
                     {{ cultivo }}
                 </div>
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-success fw-bold">Primera</span>
-                        <span class="fw-bold">{{ datos.primera }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-info fw-bold">Segunda</span>
-                        <span class="fw-bold">{{ datos.segunda }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-warning fw-bold">Tercera</span>
-                        <span class="fw-bold">{{ datos.tercera }}</span>
-                    </div>
-                    <hr>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-dark fw-bold">Total</span>
-                        <span class="fw-bold fs-5 text-primary">{{ datos.total }}</span>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 cosecha-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="fw-bold">Tipo Cosecha</th>
+                                    <th class="text-success fw-bold">Primera</th>
+                                    <th class="text-info fw-bold">Segunda</th>
+                                    <th class="text-warning fw-bold">Tercera</th>
+                                    <th class="text-danger fw-bold">Perdida</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">Saco</td>
+                                    <td class="text-center">{{ tipos.S.primera|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.S.segunda|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.S.tercera|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.S.perdida|default:0 }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Medio saco</td>
+                                    <td class="text-center">{{ tipos.MS.primera|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.MS.segunda|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.MS.tercera|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.MS.perdida|default:0 }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Unidad</td>
+                                    <td class="text-center">{{ tipos.U.primera|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.U.segunda|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.U.tercera|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.U.perdida|default:0 }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Libra</td>
+                                    <td class="text-center">{{ tipos.Lb.primera|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.Lb.segunda|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.Lb.tercera|default:0 }}</td>
+                                    <td class="text-center">{{ tipos.Lb.perdida|default:0 }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -41,12 +67,45 @@
         {% endfor %}
     </div>
 
+    <!-- Estadísticas de Cultivos -->
+    <h3 class="fw-bold mb-4">Estadísticas de Cultivos</h3>
+    <div class="table-responsive mb-5">
+        <table class="table table-striped table-hover cultivos-table">
+            <thead class="table-dark">
+                <tr>
+                    <th>Cultivo</th>
+                    <th>Variedad</th>
+                    <th>Promedio Primera</th>
+                    <th>Promedio Segunda</th>
+                    <th>Promedio Tercera</th>
+                    <th>Total Cosechado</th>
+                    <th>Total Vendido</th>
+                    <th>Cosechas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cultivo, datos in estadisticas_cultivos.items %}
+                <tr>
+                    <td class="fw-bold">{{ cultivo }}</td>
+                    <td>{{ datos.variedad }}</td>
+                    <td><span class="badge bg-success">{{ datos.promedio_primera }}</span></td>
+                    <td><span class="badge bg-info">{{ datos.promedio_segunda }}</span></td>
+                    <td><span class="badge bg-warning">{{ datos.promedio_tercera }}</span></td>
+                    <td class="fw-bold text-primary">{{ datos.total_cosechado }}</td>
+                    <td class="fw-bold text-success">{{ datos.total_vendido }}</td>
+                    <td>{{ datos.num_cosechas }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
     <!-- Estadísticas Generales -->
     <h3 class="fw-bold mb-4">Estadísticas Generales</h3>
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3 mb-5">
         {% for tipo, cantidad in produccion_por_tipo_parcela.items %}
         <div class="col">
-            <div class="card h-100 text-white {% if tipo == 'Campo abierto' %}bg-info{% else %}bg-warning{% endif %} text-center shadow-sm">
+            <div class="card h-100 text-white {% if tipo == 'Campo abierto' %}bg-info{% else %}bg-warning{% endif %} text-center shadow-sm stats-card">
                 <div class="card-header fw-bold">{{ tipo }}</div>
                 <div class="card-body">
                     <p class="mb-1 text-uppercase">Producción Total</p>
@@ -56,7 +115,7 @@
         </div>
         {% endfor %}
         <div class="col">
-            <div class="card h-100 text-white bg-secondary text-center shadow-sm">
+            <div class="card h-100 text-white bg-secondary text-center shadow-sm stats-card">
                 <div class="card-header fw-bold">Parcelas</div>
                 <div class="card-body">
                     <p class="mb-1 text-uppercase">Ocupadas</p>
@@ -70,20 +129,67 @@
         </div>
     </div>
 
-    <!-- Gráficos -->
+    <!-- Gráfico con Filtros -->
     <div class="row g-4 mb-5">
-        <div class="col-12 col-lg-6">
-            <div class="card shadow-sm">
+        <div class="col-12">
+            <div class="card shadow-sm chart-card">
                 <div class="card-header bg-success text-white fw-bold">
-                    Producción por Calidad
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Producción por Cultivo, Calidad y Tipo</span>
+                        <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#filtrosGrafico" aria-expanded="false">
+                            <i class="fas fa-filter"></i> Filtros
+                        </button>
+                    </div>
+                </div>
+                <div class="collapse" id="filtrosGrafico">
+                    <div class="card-header bg-light border-top">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Cultivo:</label>
+                                <select id="filtroCultivo" class="form-select">
+                                    <option value="">Todos los cultivos</option>
+                                    {% for cultivo in cultivos_nombres %}
+                                    <option value="{{ cultivo }}">{{ cultivo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Calidad:</label>
+                                <select id="filtroCalidad" class="form-select">
+                                    <option value="">Todas las calidades</option>
+                                    <option value="primera">Primera</option>
+                                    <option value="segunda">Segunda</option>
+                                    <option value="tercera">Tercera</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tipo de Cosecha:</label>
+                                <select id="filtroTipo" class="form-select">
+                                    <option value="">Todos los tipos</option>
+                                    {% for codigo, nombre in opciones_tipocosecha %}
+                                    <option value="{{ codigo }}">{{ nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button id="aplicarFiltros" class="btn btn-success">Aplicar Filtros</button>
+                            <button id="limpiarFiltros" class="btn btn-outline-secondary">Limpiar</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <canvas id="graficoCalidadTotal"></canvas>
+                    <canvas id="graficoProduccionFiltros"></canvas>
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Otros Gráficos -->
+    <div class="row g-4 mb-5">
         <div class="col-12 col-lg-6">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm chart-card">
                 <div class="card-header bg-primary text-white fw-bold">
                     Producción por Tipo de Parcela
                 </div>
@@ -92,11 +198,8 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="row g-4 mb-5">
-        <div class="col-12">
-            <div class="card shadow-sm">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm chart-card">
                 <div class="card-header bg-info text-white fw-bold">
                     Ciclo Promedio por Cultivo (días)
                 </div>
@@ -112,7 +215,7 @@
     <div class="row g-3 mb-5">
         {% for id, datos in rendimiento_por_plantacion.items %}
         <div class="col-12 col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm">
+            <div class="card h-100 shadow-sm rendimiento-card">
                 <div class="card-header bg-light fw-bold">
                     {{ datos.cultivo }} - {{ datos.parcela }}
                 </div>
@@ -130,7 +233,7 @@
     <div class="row g-3 mb-5">
         {% for parcela, estado in estado_parcelas.items %}
         <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-            <div class="card h-100 shadow-sm {% if estado == 'Ocupada' %}border-danger{% else %}border-success{% endif %}">
+            <div class="card h-100 shadow-sm parcela-card {% if estado == 'Ocupada' %}border-danger{% else %}border-success{% endif %}">
                 <div class="card-body text-center">
                     <h6 class="card-title">{{ parcela }}</h6>
                     <span class="badge {% if estado == 'Ocupada' %}bg-danger{% else %}bg-success{% endif %}">
@@ -144,7 +247,7 @@
 
     <!-- Historial de Cultivos por Parcela -->
     <h3 class="fw-bold mb-4">Historial por Parcela</h3>
-    <div class="accordion" id="historialAccordion">
+    <div class="accordion historial-accordion" id="historialAccordion">
         {% for parcela, cultivos in historial_por_parcela.items %}
         <div class="accordion-item">
             <h2 class="accordion-header" id="heading{{ forloop.counter }}">
@@ -159,7 +262,7 @@
                     <div class="row g-2">
                         {% for cultivo in cultivos %}
                         <div class="col-12 col-md-6">
-                            <div class="card h-100">
+                            <div class="card h-100 historial-item">
                                 <div class="card-body p-3">
                                     <h6 class="card-title">{{ cultivo.cultivo }}</h6>
                                     <p class="card-text small mb-1">
@@ -181,59 +284,230 @@
         {% endfor %}
     </div>
 </div>
+
+<!-- Estilos para modo oscuro -->
+<style>
+    /* Modo oscuro */
+    [data-bs-theme="dark"] .cultivo-card,
+    [data-bs-theme="dark"] .chart-card,
+    [data-bs-theme="dark"] .rendimiento-card,
+    [data-bs-theme="dark"] .parcela-card,
+    [data-bs-theme="dark"] .historial-item,
+    [data-bs-theme="dark"] .cosecha-card {
+        background-color: var(--bs-dark);
+        border-color: var(--bs-gray-700);
+    }
+
+    [data-bs-theme="dark"] .cultivos-table,
+    [data-bs-theme="dark"] .cosecha-table {
+        --bs-table-bg: var(--bs-dark);
+        --bs-table-color: var(--bs-light);
+    }
+
+    [data-bs-theme="dark"] .cosecha-table .table-light {
+        --bs-table-bg: var(--bs-gray-800);
+        --bs-table-color: var(--bs-light);
+    }
+
+    [data-bs-theme="dark"] .cultivos-table tbody tr:hover,
+    [data-bs-theme="dark"] .cosecha-table tbody tr:hover {
+        background-color: var(--bs-gray-800);
+    }
+
+    [data-bs-theme="dark"] .stats-card.bg-info,
+    [data-bs-theme="dark"] .stats-card.bg-warning,
+    [data-bs-theme="dark"] .stats-card.bg-secondary {
+        opacity: 0.9;
+    }
+
+    [data-bs-theme="dark"] .accordion-button {
+        background-color: var(--bs-dark);
+        color: var(--bs-light);
+        border-color: var(--bs-gray-700);
+    }
+
+    [data-bs-theme="dark"] .accordion-button:not(.collapsed) {
+        background-color: var(--bs-gray-800);
+        color: var(--bs-primary);
+    }
+
+    [data-bs-theme="dark"] .accordion-item {
+        border-color: var(--bs-gray-700);
+        background-color: var(--bs-dark);
+    }
+
+    /* Mejoras visuales generales */
+    .cultivo-card:hover,
+    .chart-card:hover,
+    .rendimiento-card:hover,
+    .parcela-card:hover,
+    .cosecha-card:hover {
+        transform: translateY(-2px);
+        transition: transform 0.2s ease;
+    }
+
+    .badge {
+        font-size: 0.85em;
+    }
+
+    .table th {
+        border-top: none;
+    }
+
+    /* Estilos específicos para tabla de cosecha */
+    .cosecha-table {
+        font-size: 0.9rem;
+    }
+
+    .cosecha-table td, .cosecha-table th {
+        padding: 0.5rem;
+        vertical-align: middle;
+    }
+
+    .cosecha-table tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+</style>
 {% endblock content %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    
     // Datos desde Django
-    const produccionPorCultivo = {{ produccion_por_cultivo|safe }};
+    const datosGraficoFiltros = {{ datos_grafico_filtros|safe }};
     let produccionPorTipo = {{ produccion_por_tipo_parcela|safe }};
     let cicloPromedio = {{ ciclo_promedio|safe }};
 
-    // Gráfico de Producción por Calidad
-    let ctxCalidad = document.getElementById('graficoCalidadTotal').getContext('2d');
-    let cultivos = Object.keys(produccionPorCultivo);
-    let dataPrimera = cultivos.map(c => produccionPorCultivo[c].primera);
-    let dataSegunda = cultivos.map(c => produccionPorCultivo[c].segunda);
-    let dataTercera = cultivos.map(c => produccionPorCultivo[c].tercera);
-
-    new Chart(ctxCalidad, {
-        type: 'bar',
-        data: {
-            labels: cultivos,
-            datasets: [{
-                label: 'Primera',
-                data: dataPrimera,
-                backgroundColor: 'rgba(40, 167, 69, 0.8)',
-                borderColor: 'rgba(40, 167, 69, 1)',
-                borderWidth: 1
-            }, {
-                label: 'Segunda',
-                data: dataSegunda,
-                backgroundColor: 'rgba(23, 162, 184, 0.8)',
-                borderColor: 'rgba(23, 162, 184, 1)',
-                borderWidth: 1
-            }, {
-                label: 'Tercera',
-                data: dataTercera,
-                backgroundColor: 'rgba(255, 193, 7, 0.8)',
-                borderColor: 'rgba(255, 193, 7, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true },
-                x: { stacked: false }
-            },
-            plugins: {
-                legend: { display: true }
-            }
+    let graficoFiltros;
+    
+    // Configuración de colores para modo oscuro
+    const isDarkMode = () => document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    
+    const getChartColors = () => {
+        if (isDarkMode()) {
+            return {
+                textColor: '#fff',
+                gridColor: 'rgba(255, 255, 255, 0.1)',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+            };
+        } else {
+            return {
+                textColor: '#666',
+                gridColor: 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: 'rgba(0, 0, 0, 0.05)'
+            };
         }
+    };
+
+    // Función para crear gráfico con filtros
+    function crearGraficoFiltros(cultivo = '', calidad = '', tipo = '') {
+        const ctx = document.getElementById('graficoProduccionFiltros').getContext('2d');
+        
+        if (graficoFiltros) {
+            graficoFiltros.destroy();
+        }
+
+        let datos = [];
+        let labels = [];
+        const colors = getChartColors();
+
+        if (cultivo && calidad && tipo) {
+            // Filtros específicos aplicados
+            if (datosGraficoFiltros[cultivo] && datosGraficoFiltros[cultivo][calidad]) {
+                datos = [datosGraficoFiltros[cultivo][calidad][tipo] || 0];
+                labels = [`${cultivo} - ${calidad} - ${tipo}`];
+            }
+        } else if (cultivo && calidad) {
+            // Cultivo y calidad específicos
+            if (datosGraficoFiltros[cultivo] && datosGraficoFiltros[cultivo][calidad]) {
+                Object.keys(datosGraficoFiltros[cultivo][calidad]).forEach(t => {
+                    datos.push(datosGraficoFiltros[cultivo][calidad][t]);
+                    labels.push(`${cultivo} - ${calidad} - ${t}`);
+                });
+            }
+        } else if (cultivo) {
+            // Solo cultivo específico
+            if (datosGraficoFiltros[cultivo]) {
+                Object.keys(datosGraficoFiltros[cultivo]).forEach(cat => {
+                    Object.keys(datosGraficoFiltros[cultivo][cat]).forEach(t => {
+                        if (datosGraficoFiltros[cultivo][cat][t] > 0) {
+                            datos.push(datosGraficoFiltros[cultivo][cat][t]);
+                            labels.push(`${cultivo} - ${cat} - ${t}`);
+                        }
+                    });
+                });
+            }
+        } else {
+            // Mostrar todos los datos
+            Object.keys(datosGraficoFiltros).forEach(c => {
+                Object.keys(datosGraficoFiltros[c]).forEach(cat => {
+                    Object.keys(datosGraficoFiltros[c][cat]).forEach(t => {
+                        if (datosGraficoFiltros[c][cat][t] > 0) {
+                            datos.push(datosGraficoFiltros[c][cat][t]);
+                            labels.push(`${c} - ${cat} - ${t}`);
+                        }
+                    });
+                });
+            });
+        }
+
+        graficoFiltros = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Cantidad',
+                    data: datos,
+                    backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { color: colors.textColor },
+                        grid: { color: colors.gridColor }
+                    },
+                    x: { 
+                        ticks: { 
+                            color: colors.textColor,
+                            maxRotation: 45 
+                        },
+                        grid: { color: colors.gridColor }
+                    }
+                },
+                plugins: {
+                    legend: { 
+                        display: true,
+                        labels: { color: colors.textColor }
+                    }
+                }
+            }
+        });
+    }
+
+    // Eventos de filtros
+    document.getElementById('aplicarFiltros').addEventListener('click', function() {
+        const cultivo = document.getElementById('filtroCultivo').value;
+        const calidad = document.getElementById('filtroCalidad').value;
+        const tipo = document.getElementById('filtroTipo').value;
+        crearGraficoFiltros(cultivo, calidad, tipo);
     });
+
+    document.getElementById('limpiarFiltros').addEventListener('click', function() {
+        document.getElementById('filtroCultivo').value = '';
+        document.getElementById('filtroCalidad').value = '';
+        document.getElementById('filtroTipo').value = '';
+        crearGraficoFiltros();
+    });
+
+    // Inicializar gráfico con filtros
+    crearGraficoFiltros();
 
     // Gráfico de Producción por Tipo de Parcela
     const ctxTipo = document.getElementById('graficoTipoParcela').getContext('2d');
@@ -258,7 +532,10 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {
             responsive: true,
             plugins: {
-                legend: { position: 'bottom' }
+                legend: { 
+                    position: 'bottom',
+                    labels: { color: getChartColors().textColor }
+                }
             }
         }
     });
@@ -284,15 +561,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Días'
-                    }
+                        text: 'Días',
+                        color: getChartColors().textColor
+                    },
+                    ticks: { color: getChartColors().textColor },
+                    grid: { color: getChartColors().gridColor }
+                },
+                x: {
+                    ticks: { color: getChartColors().textColor },
+                    grid: { color: getChartColors().gridColor }
                 }
             },
             plugins: {
-                legend: { display: false }
+                legend: { 
+                    display: false
+                }
             }
         }
     });
+
+    // Actualizar gráficos cuando cambie el tema
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.attributeName === 'data-bs-theme') {
+                // Recrear gráficos con nuevos colores
+                setTimeout(() => {
+                    crearGraficoFiltros(
+                        document.getElementById('filtroCultivo').value,
+                        document.getElementById('filtroCalidad').value,
+                        document.getElementById('filtroTipo').value
+                    );
+                }, 100);
+            }
+        });
+    });
+
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-bs-theme']
+    });
 });
 </script>
-{% endblock scripts %}1w
+
+{% endblock scripts %}
