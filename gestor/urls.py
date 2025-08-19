@@ -5,10 +5,7 @@ from . import views
 
 urlpatterns = [
     path('', inicio, name='inicio'),
-    path('logout/', auth_views.LogoutView.as_view(
-        next_page='/',
-        http_method_names=['get', 'post']  # Permite tanto GET como POST
-    ), name='logout'),
+    path('logout/', custom_logout, name='logout'),
 
 
     path('parcelas/', views.lista_parcelas, name='lista_parcelas'),
@@ -52,6 +49,7 @@ urlpatterns = [
     #path('dashboard/', views.dashboard_view, name='dashboard'),
     path('controlcalidad/', views.control_calidad, name='control_calidad'),
     path('reportes/', views.reportes_view, name='reportes'),
+    path('resumen/', views.resumen_view, name='resumen'),
 
     path('ajax/categorias/', views.ajax_categorias, name='ajax_categorias'),
     path('ajax/tipocosechas/', views.ajax_tipocosechas, name='ajax_tipocosechas'),

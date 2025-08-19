@@ -969,20 +969,22 @@ body.dark-mode .card-header {
             <li><a href="#" class="menu-link">Otros</a></li>
         </ul>
     </li>
-
-    <li class="menu-item">
-        <a href="{% url 'reportes' %}" class="menu-link">
-            <i class="bi bi-graph-up"></i>
+    <li class="menu-item dropdown" id="marketDropdown3">
+        <a href="#" class="menu-link">
+            <i class="bi bi-shop-window"></i>
             Reportes
+            <i class="bi bi-chevron-down dropdown-arrow"></i>
         </a>
+        <ul class="dropdown-menu-custom">
+            <li><a href="{% url 'resumen' %}" class="menu-link">Resumen</a></li>
+            <li><a href="{% url 'reportes' %}" class="menu-link">Reporte</a></li>
+            <li><a href="{% url 'control_calidad' %}" class="menu-link">Control de calidad</a></li>
+            <li><a href="#" class="menu-link">Ventas</a></li>
+            <li><a href="#" class="menu-link">Compras</a></li>
+        </ul>
     </li>
+    
 
-    <li class="menu-item">
-        <a href="{% url 'control_calidad' %}" class="menu-link">
-            <i class="bi bi-shield-check"></i>
-            Control Calidad
-        </a>
-    </li>
 
     <li class="menu-item">
         <a href="#" class="menu-link">

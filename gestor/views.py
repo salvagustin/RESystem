@@ -223,6 +223,14 @@ def inicio(request):
     }
     return render(request, 'index.html', context)
 
+
+def custom_logout(request):
+    """Vista personalizada para logout que siempre funciona"""
+    logout(request)
+    return redirect('inicio') 
+
+
+
 @login_required
 def control_calidad(request):
     # Prepara las ventas agrupadas por cosecha usando DetalleVenta
@@ -319,7 +327,6 @@ def control_calidad(request):
     ]
     
     return render(request, 'control_calidad.html', {'bloques': bloques})
-
     
 @login_required    
 def reportes_view(request):
@@ -414,8 +421,97 @@ def reportes_view(request):
 
     return render(request, 'reportes.html', context)
 
+@login_required
+def resumen_view(request):
+    filtro = request.GET.get('filtro', 'parcela')
+    buscar = request.GET.get('buscar', '').strip().lower()
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+
+    # Traemos plantaciones con relaciones
+    plantaciones = Plantacion.objects.select_related('parcela', 'cultivo').filter(estado=False).order_by('-fecha')
+    
+    
+    # --- FILTRO POR TEXTO ---
+    if buscar:
+        if filtro == 'parcela':
+            plantaciones = plantaciones.filter(parcela__nombre__icontains=buscar)
+        elif filtro == 'cultivo':
+            plantaciones = plantaciones.filter(cultivo__nombre__icontains=buscar)
+        elif filtro == 'estado':
+            if buscar in ['disponible', 'true', '1', 'd', 'f']:
+                plantaciones = plantaciones.filter(estado=False)
+            elif buscar in ['ocupada', 'false', '0', 'o']:
+                plantaciones = plantaciones.filter(estado=True)
+
+    # --- FILTRO POR FECHAS ---
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            plantaciones = plantaciones.filter(fecha__gte=fecha_inicio_obj)
+        except ValueError:
+            pass
+
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            plantaciones = plantaciones.filter(fecha__lte=fecha_fin_obj)
+        except ValueError:
+            pass
+
+    # --- ARMAR EL RESUMEN ---
+    data = []
+    for p in plantaciones:
+        dias_siembra = (date.today() - p.fecha).days if p.fecha else 0
+
+        cosechas = Cosecha.objects.filter(plantacion=p).order_by("fecha")
+
+        dias_corte = (date.today() - cosechas.first().fecha).days if cosechas.exists() else 0
+        ciclo_promedio = (cosechas.first().fecha - p.fecha).days if cosechas.exists() else 0
+        total_cortes = cosechas.count()
+
+        cantidad_producida = DetalleCosecha.objects.filter(cosecha__in=cosechas).aggregate(
+            total=Sum("cantidad")
+        )["total"] or 0
+
+        promedio = cantidad_producida / p.cantidad if p.cantidad > 0 else 0
+
+        perdida = DetalleCosecha.objects.filter(
+            cosecha__in=cosechas, categoria="tercera"
+        ).aggregate(total=Sum("cantidad"))["total"] or 0
+
+        vendido = DetalleVenta.objects.filter(cosecha__in=cosechas).aggregate(
+            total=Sum("subtotal")
+        )["total"] or 0
+
+        data.append({
+            "parcela": p.parcela.nombre,
+            "cultivo": p.cultivo.nombre,
+            "variedad": p.cultivo.variedad,
+            "plantas": p.cantidad,
+            "dias_siembra": dias_siembra,
+            "dias_corte": dias_corte,
+            "ciclo_promedio": ciclo_promedio,
+            "total_cortes": total_cortes,
+            "promedio": round(promedio, 2),
+            "cantidad_producida": cantidad_producida,
+            "perdida": perdida,
+            "vendido": vendido,
+        })
+
+    return render(request, "resumen.html", {
+        "data": data,
+        "filtro": filtro,
+        "buscar": buscar,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+    })
+
+
 
 #######PARCELAS#########
+
+
 # Mostrar lista de parcelas
 @login_required
 def lista_parcelas(request):
@@ -2956,7 +3052,7 @@ def editar_compra(request, idcompra):
     
     compra = get_object_or_404(Compra, pk=idcompra)
     detalles = DetalleCompra.objects.filter(compra=compra)
-
+    proveedor = compra.cliente
     if request.method == 'POST':
         form = CompraForm(request.POST, instance=compra)
         productos_data = request.POST.get('productos_json')
@@ -3015,6 +3111,7 @@ def editar_compra(request, idcompra):
     return render(request, 'Compras/form_compra.html', {
         'form': form,
         'proveedores': proveedores,
+        'proveedor':proveedor,
         'opciones_tipo': opciones_tipo,
         'opciones_detalle': opciones_detalle,
         'compra': compra,

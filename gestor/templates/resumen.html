@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% block title %} | Resumen {% endblock %}
+
+{% block content %}
+{% load static %}
+
+<div class="container py-2">
+  
+  <!-- Título -->
+  <div class="text-center mb-3">
+    <h2 class="fw-bold">📊 Resumen de Producción</h2>
+  </div>
+
+  <!-- Acciones y Filtros -->
+  <div class="row gy-3 align-items-center mb-2">
+    <!-- Botón Restablecer -->
+    <div class="col-12 col-md-3">
+      <a href="{% url 'resumen' %}" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
+        <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
+      </a>
+    </div>
+
+    <!-- Formulario de búsqueda -->
+    <div class="col-12 col-md-9">
+      <form method="get" class="row g-2 justify-content-center" id="formBusqueda">
+        <!-- Filtro -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <select class="form-select form-select-sm" name="filtro">
+            <option value="parcela" {% if filtro == "parcela" %}selected{% endif %}>Parcela</option>
+            <option value="cultivo" {% if filtro == "cultivo" %}selected{% endif %}>Cultivo</option>
+            <option value="estado" {% if filtro == "estado" %}selected{% endif %}>Estado</option>
+          </select>
+        </div>
+
+        <!-- Buscar -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <input type="text" name="buscar" class="form-control form-control-sm" placeholder="Buscar..." value="{{ buscar }}">
+        </div>
+
+        <!-- Fecha Inicio -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}" title="Desde">
+        </div>
+
+        <!-- Fecha Fin -->
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}" title="Hasta">
+        </div>
+
+        <!-- Botón Buscar -->
+        <div class="col-12 col-sm-4 col-md-auto">
+          <button type="submit" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center">
+            <i class="bi bi-search fs-5 me-2"></i> <span>Buscar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Cards para móviles -->
+  <div class="d-md-none">
+    {% for item in data %}
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title fw-bold">{{ item.cultivo }} - {{ item.variedad }}</h5>
+        <p class="mb-1"><strong>Parcela:</strong> {{ item.parcela }}</p>
+        <p class="mb-1"><strong>Plantas:</strong> {{ item.plantas }}</p>
+        <p class="mb-1"><strong>Cant. Producida:</strong> {{ item.cantidad_producida }}</p>
+        <p class="mb-1"><strong>Vendido:</strong> ${{ item.vendido }}</p>
+        <div class="d-flex flex-wrap gap-2">
+          <button 
+            type="button" 
+            class="btn btn-sm btn-info text-white"
+            data-bs-toggle="modal" 
+            data-bs-target="#modalResumen"
+            data-parcela="{{ item.parcela }}"
+            data-cultivo="{{ item.cultivo }}"
+            data-variedad="{{ item.variedad }}"
+            data-plantas="{{ item.plantas }}"
+            data-dias_siembra="{{ item.dias_siembra }}"
+            data-dias_corte="{{ item.dias_corte }}"
+            data-ciclo="{{ item.ciclo_promedio }}"
+            data-totalcortes="{{ item.total_cortes }}"
+            data-promedio="{{ item.promedio }}"
+            data-produccion="{{ item.cantidad_producida }}"
+            data-perdida="{{ item.perdida }}"
+            data-vendido="{{ item.vendido }}">
+            <i class="bi bi-eye"></i> Detalles
+          </button>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="text-center">No hay registros en el resumen.</div>
+    {% endfor %}
+  </div>
+
+  <!-- Tabla para escritorio -->
+  <div class="tbl_container d-none d-md-block">
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover text-center align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Parcela</th>
+            <th>Cultivo</th>
+            <th>Variedad</th>
+            <th>Plantas</th>
+            <th>Producción</th>
+            <th>Promedio</th>
+            <th>Vendido</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in data %}
+          <tr>
+            <td>{{ item.parcela }}</td>
+            <td>{{ item.cultivo }}</td>
+            <td>{{ item.variedad }}</td>
+            <td>{{ item.plantas }}</td>
+            <td>{{ item.cantidad_producida }}</td>
+            <td>{{ item.promedio }}</td>
+            <td>${{ item.vendido }}</td>
+            <td>
+              <button 
+                type="button" 
+                class="btn btn-info btn-sm text-white"
+                data-bs-toggle="modal" 
+                data-bs-target="#modalResumen"
+                data-parcela="{{ item.parcela }}"
+                data-cultivo="{{ item.cultivo }}"
+                data-variedad="{{ item.variedad }}"
+                data-plantas="{{ item.plantas }}"
+                data-dias_siembra="{{ item.dias_siembra }}"
+                data-dias_corte="{{ item.dias_corte }}"
+                data-ciclo="{{ item.ciclo_promedio }}"
+                data-totalcortes="{{ item.total_cortes }}"
+                data-promedio="{{ item.promedio }}"
+                data-produccion="{{ item.cantidad_producida }}"
+                data-perdida="{{ item.perdida }}"
+                data-vendido="{{ item.vendido }}">
+                <i class="bi bi-eye"></i> Detalles
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8">No hay registros en el resumen.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>  
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Detalles Resumen -->
+<div class="modal fade" id="modalResumen" tabindex="-1" aria-labelledby="modalResumenLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <!-- Header -->
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalResumenLabel">📊 Detalles del Resumen</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="container-fluid">
+          <div class="row g-3">
+            <!-- Columna izquierda -->
+            <div class="col-md-6">
+              <p><strong>📍 Parcela:</strong> <span id="resumenParcela"></span></p>
+              <p><strong>🌿 Cultivo:</strong> <span id="resumenCultivo"></span></p>
+              <p><strong>🌱 Variedad:</strong> <span id="resumenVariedad"></span></p>
+              <p><strong>🔢 Plantas:</strong> <span id="resumenPlantas"></span></p>
+              <p><strong>📅 Días de Siembra:</strong> <span id="resumenDiasSiembra"></span></p>
+              <p><strong>✂️ Días de Corte:</strong> <span id="resumenDiasCorte"></span></p>
+            </div>
+
+            <!-- Columna derecha -->
+            <div class="col-md-6">
+              <p><strong>🔄 Ciclo Promedio:</strong> <span id="resumenCiclo"></span></p>
+              <p><strong>📦 Total Cortes:</strong> <span id="resumenTotalCortes"></span></p>
+              <p><strong>⚖️ Promedio:</strong> <span id="resumenPromedio"></span></p>
+              <p><strong>📊 Producción:</strong> <span id="resumenProduccion"></span></p>
+              <p><strong>❌ Pérdida:</strong> <span id="resumenPerdida"></span></p>
+              <p><strong>💰 Vendido:</strong> $<span id="resumenVendido"></span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const modalResumen = document.getElementById('modalResumen');
+    if (modalResumen) {
+      modalResumen.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+
+        document.getElementById('resumenParcela').textContent = button.getAttribute('data-parcela');
+        document.getElementById('resumenCultivo').textContent = button.getAttribute('data-cultivo');
+        document.getElementById('resumenVariedad').textContent = button.getAttribute('data-variedad');
+        document.getElementById('resumenPlantas').textContent = button.getAttribute('data-plantas');
+        document.getElementById('resumenDiasSiembra').textContent = button.getAttribute('data-dias_siembra');
+        document.getElementById('resumenDiasCorte').textContent = button.getAttribute('data-dias_corte');
+        document.getElementById('resumenCiclo').textContent = button.getAttribute('data-ciclo');
+        document.getElementById('resumenTotalCortes').textContent = button.getAttribute('data-totalcortes');
+        document.getElementById('resumenPromedio').textContent = button.getAttribute('data-promedio');
+        document.getElementById('resumenProduccion').textContent = button.getAttribute('data-produccion');
+        document.getElementById('resumenPerdida').textContent = button.getAttribute('data-perdida');
+        document.getElementById('resumenVendido').textContent = button.getAttribute('data-vendido');
+      });
+    }
+
+    document.getElementById('formBusqueda').addEventListener('submit', function (event) {
+      const buscar = document.querySelector('input[name="buscar"]').value.trim();
+      const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
+      const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
+
+      if (!buscar && (!fechaInicio || !fechaFin)) {
+        event.preventDefault();
+        alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
+      }
+    });
+  });
+</script>
+{% endblock %}
