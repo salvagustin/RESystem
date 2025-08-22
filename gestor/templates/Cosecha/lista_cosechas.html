@@ -336,6 +336,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <th>Categoría</th>
             <th>Tipo</th>
             <th>Cantidad</th>
+            <th>Valor unidades</th>
             <th>Disponible</th>
           </tr>
         </thead>
@@ -344,7 +345,8 @@ document.addEventListener('DOMContentLoaded', function () {
             <tr>
               <td>${d.categoria_display}</td>
               <td>${d.tipocosecha_display}</td>
-              <td>${d.cantidad}</td>
+              <td>${d.cantidad_original}</td>
+              <td>${d.multiplicador || 1}</td>             
               <td>${d.disponible}</td>
             </tr>
           `).join('')}

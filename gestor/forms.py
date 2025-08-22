@@ -17,6 +17,33 @@ class CultivoForm(forms.ModelForm):
     class Meta:
         model = Cultivo
         fields = ['nombre', 'variedad']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del cultivo'}),
+            'variedad': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Variedad del cultivo'}),
+        }
+
+class DetalleCultivoForm(forms.ModelForm):
+    class Meta:
+        model = DetalleCultivo
+        fields = ['categoria', 'tipocosecha', 'cantidad']
+        widgets = {
+            'categoria': forms.Select(attrs={'class': 'form-control'}),
+            'tipocosecha': forms.Select(attrs={'class': 'form-control'}),
+            'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'placeholder': 'Cantidad'}),
+        }
+
+DetalleCultivoFormSet = inlineformset_factory(
+    Cultivo,
+    DetalleCultivo,
+    form=DetalleCultivoForm,
+    extra=1,  # Número de formularios vacíos adicionales
+    can_delete=True,  # Permite eliminar detalles
+    min_num=0,  # Mínimo número de formularios requeridos
+    validate_min=False
+)
+
+
+
 
 class PlantacionForm(forms.ModelForm):
     class Meta:

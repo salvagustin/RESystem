@@ -92,7 +92,8 @@
             data-promedio="{{ item.promedio }}"
             data-produccion="{{ item.cantidad_producida }}"
             data-perdida="{{ item.perdida }}"
-            data-vendido="{{ item.vendido }}">
+            data-vendido="{{ item.vendido }}"
+            data-dinero="{{ item.dinero_vendido }}">
             <i class="bi bi-eye"></i> Detalles
           </button>
         </div>
@@ -116,7 +117,7 @@
             <th>Plantas</th>
             <th>Producción</th>
             <th>Promedio</th>
-            <th>Vendido</th>
+            <th>Cultivo vendido</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -136,7 +137,7 @@
             <td>{{ item.plantas }}</td>
             <td>{{ item.cantidad_producida }}</td>
             <td>{{ item.promedio }}</td>
-            <td>${{ item.vendido }}</td>
+            <td>{{ item.vendido }}</td>
             <td>
               <button 
                 type="button" 
@@ -153,8 +154,9 @@
                 data-totalcortes="{{ item.total_cortes }}"
                 data-promedio="{{ item.promedio }}"
                 data-produccion="{{ item.cantidad_producida }}"
-                data-perdida="{{ item.perdida }}"
-                data-vendido="{{ item.vendido }}">
+                data-perdida="{{ item.perdida }}" verificar perdida en modal
+                data-vendido="{{ item.vendido }}"
+                data-dinero="{{ item.dinero_vendido }}">
                 <i class="bi bi-eye"></i> Detalles
               </button>
             </td>
@@ -204,8 +206,10 @@
               <p><strong>📦 Total Cortes:</strong> <span id="resumenTotalCortes"></span></p>
               <p><strong>⚖️ Promedio:</strong> <span id="resumenPromedio"></span></p>
               <p><strong>📊 Producción:</strong> <span id="resumenProduccion"></span></p>
-              <p><strong>❌ Pérdida:</strong> <span id="resumenPerdida"></span></p>
-              <p><strong>💰 Vendido:</strong> $<span id="resumenVendido"></span></p>
+              <p><strong>📦 Cultivo vendido:</strong> <span id="resumenVendido"></span></p>
+              <p><strong>❌ Pérdida:</strong> <span id="resumenPerdida"></span></p>              
+              <p><strong>💵 Dinero vendido:</strong> $<span id="resumenDineroVendido"></span></p>
+
             </div>
           </div>
         </div>
@@ -241,6 +245,8 @@
         document.getElementById('resumenProduccion').textContent = button.getAttribute('data-produccion');
         document.getElementById('resumenPerdida').textContent = button.getAttribute('data-perdida');
         document.getElementById('resumenVendido').textContent = button.getAttribute('data-vendido');
+        document.getElementById('resumenDineroVendido').textContent = button.getAttribute('data-dinero');
+
       });
     }
 

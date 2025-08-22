@@ -41,23 +41,22 @@
             <div class="mb-3">
             <label for="tipocosecha">Tipo de cosecha</label>
             <select id="tipocosecha" class="form-select" name="tipocosecha">
-                <option value="">Seleccione tipo de corte</option>
-                {% for value, label in tipocosecha_choices %}
-                <option value="{{ value }}">{{ label }}</option>
-                {% endfor %}
+                <option value="">Primero seleccione una categoría</option>
             </select>
+            <small class="form-text text-muted">Los tipos de cosecha se actualizan según la categoría seleccionada</small>
             </div>
-
 
             <div class="mb-3">
               <label for="cantidad">Cantidad</label>
               <input type="number" class="form-control" id="cantidad" name="cantidad" min="1">
+              <small class="form-text text-muted">Para tipos diferentes a "Unidad", se aplicará automáticamente el multiplicador del cultivo</small>
             </div>
 
             <input type="hidden" name="cortes_json" id="cortes_json">
 
             <button type="button" class="btn btn-success" id="agregar-corte">Agregar</button>
-            <button type="submit" class="btn btn-primary" id="guardar-btn" disabled>Guardar</button>            
+            <button type="submit" class="btn btn-primary" id="guardar-btn" disabled>Guardar</button>
+            
             <a href="{% url 'lista_cosechas' %}" class="btn btn-secondary">Cancelar</a>
           </form>
         </div>
@@ -71,8 +70,16 @@
           <i class="bi bi-list-check"></i> Cortes Agregados
         </div>
         <div class="card-body">
+          {% if vendida_primera or vendida_segunda or vendida_tercera %}
+          <div class="alert alert-info">
+            <strong>Cantidades ya vendidas:</strong><br>
+            Primera: {{ vendida_primera|default:0 }} | 
+            Segunda: {{ vendida_segunda|default:0 }} | 
+            Tercera: {{ vendida_tercera|default:0 }}
+          </div>
+          {% endif %}
           <ul id="cortes-lista" class="list-group mb-3"></ul>
-          <p id="total-general" class="mt-2 fw-bold">Total Cantidad: 0</p>
+          <p id="total-general" class="mt-2 fw-bold">Total Unidades: 0</p>
         </div>
       </div>
     </div>
@@ -92,34 +99,143 @@ document.addEventListener('DOMContentLoaded', function () {
   const totalGeneral = document.getElementById('total-general');
   const agregarBtn = document.getElementById('agregar-corte');
 
+  // Obtener el ID de la plantación desde el template
+  const plantacionId = {{ plantacion.idplantacion|default:"null" }};
+
+  // Variables para almacenar tipos disponibles y multiplicadores
+  let tiposDisponibles = [];
+  let multiplicadores = {};
+
   function actualizarEstadoBotonGuardar() {
     const guardarBtn = document.getElementById('guardar-btn');
-    guardarBtn.disabled = cortes.length === 0;
+    const habilitado = cortes.length > 0;
+    guardarBtn.disabled = !habilitado;
   }
+
+  // Función para cargar los tipos de cosecha disponibles según la plantación
+  function cargarTiposCosecha() {
+    if (!plantacionId) {
+      tipocosecha.innerHTML = '<option value="">No hay plantación seleccionada</option>';
+      return;
+    }
+
+    // Hacer petición AJAX para obtener los tipos de cosecha disponibles
+    fetch(`/ajax/obtener-tipos-cosecha/?plantacion_id=${plantacionId}`)
+      .then(response => response.json())
+      .then(data => {
+        tiposDisponibles = data.tipos || [];
+        multiplicadores = data.multiplicadores || {};
+        actualizarSelectTipoCosecha();
+      })
+      .catch(error => {
+        console.error('Error al cargar tipos de cosecha:', error);
+        tipocosecha.innerHTML = '<option value="">Error al cargar opciones</option>';
+      });
+  }
+
+  // Función para actualizar el select de tipo de cosecha según la categoría seleccionada
+  function actualizarSelectTipoCosecha() {
+    const categoriaSeleccionada = categoria.value;
+    tipocosecha.innerHTML = '<option value="">Seleccione tipo de corte</option>';
+
+    if (!categoriaSeleccionada) {
+      tipocosecha.innerHTML = '<option value="">Primero seleccione una categoría</option>';
+      return;
+    }
+
+    // Filtrar tipos disponibles para la categoría seleccionada
+    const tiposFiltrados = tiposDisponibles.filter(tipo => 
+      tipo.categoria === categoriaSeleccionada
+    );
+
+    // Agregar las opciones al select
+    tiposFiltrados.forEach(tipo => {
+      const option = document.createElement('option');
+      option.value = tipo.value;
+      option.textContent = tipo.label;
+      option.dataset.multiplicador = tipo.cantidad || 1;
+      tipocosecha.appendChild(option);
+    });
+
+    if (tiposFiltrados.length === 0) {
+      tipocosecha.innerHTML = '<option value="">No hay tipos disponibles para esta categoría</option>';
+    }
+  }
+
+  // Event listener para cuando cambie la categoría
+  categoria.addEventListener('change', actualizarSelectTipoCosecha);
+
+  // Cargar los tipos de cosecha al inicializar la página
+  cargarTiposCosecha();
+
   // 🔹 Inicializamos con los detalles existentes si estamos editando
   let cortes = [];
+  
+  // Si tenemos datos del template (al editar), usarlos
   {% if detalles_json %}
   cortes = JSON.parse('{{ detalles_json|escapejs }}');
+  {% endif %}
+  
+  // Si tenemos multiplicadores del template (al editar), usarlos
+  {% if multiplicadores %}
+  multiplicadores = JSON.parse('{{ multiplicadores|escapejs }}');
+  {% endif %}
+  
+  // Si tenemos tipos disponibles del template (al editar), usarlos
+  {% if tipos_disponibles %}
+  tiposDisponibles = JSON.parse('{{ tipos_disponibles|escapejs }}');
   {% endif %}
 
   function getLabel(selectElement, value) {
     const option = [...selectElement.options].find(opt => opt.value === value);
-    return option ? option.text : value;
+    if (option) return option.text;
+    
+    // Si no encontramos en el select, buscar en los arrays de choices
+    const categoriaChoices = {
+      'primera': 'Primera',
+      'segunda': 'Segunda', 
+      'tercera': 'Tercera'
+    };
+    
+    const tipoChoices = {
+      'S': 'Saco',
+      'U': 'Unidad',
+      'C': 'Caja',
+      'Lb': 'Libra'
+    };
+    
+    return categoriaChoices[value] || tipoChoices[value] || value;
+  }
+
+  function getMultiplicador(categoria, tipocosecha) {
+    const clave = `${categoria}_${tipocosecha}`;
+    return multiplicadores[clave] || 1;
   }
 
   function actualizarLista() {
     cortesLista.innerHTML = '';
-    let totalCantidad = 0;
+    let totalUnidades = 0;
 
     cortes.forEach((corte, index) => {
-      totalCantidad += parseInt(corte.cantidad);
+      // Calcular unidades totales aplicando multiplicador
+      const multiplicador = getMultiplicador(corte.categoria, corte.tipocosecha);
+      const unidadesTotales = parseInt(corte.cantidad) * multiplicador;
+      totalUnidades += unidadesTotales;
 
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-center';
+      
+      let detalleTexto = `<strong>${getLabel(categoria, corte.categoria)}</strong> - ${corte.cantidad} ${getLabel(tipocosecha, corte.tipocosecha)}`;
+      
+      // Si no es unidad, mostrar el cálculo
+      if (corte.tipocosecha !== 'U' && multiplicador > 1) {
+        detalleTexto += ` <small class="text-muted">(${corte.cantidad} × ${multiplicador} = ${unidadesTotales} unidades)</small>`;
+      } else if (corte.tipocosecha === 'U') {
+        detalleTexto += ` <small class="text-muted">(= ${unidadesTotales} unidades)</small>`;
+      }
+
       li.innerHTML = `
-        <div>
-          <strong>${getLabel(categoria, corte.categoria)}</strong> - ${corte.cantidad} (${getLabel(tipocosecha, corte.tipocosecha)})
-        </div>
+        <div>${detalleTexto}</div>
         <button class="btn btn-sm btn-danger eliminar-corte" data-index="${index}">
           <i class="bi bi-trash"></i>
         </button>
@@ -127,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
       cortesLista.appendChild(li);
     });
 
-    totalGeneral.textContent = `Total Cantidad: ${totalCantidad}`;
+    totalGeneral.innerHTML = `<strong>Total Unidades: ${totalUnidades}</strong>`;
     cortesJson.value = JSON.stringify(cortes);
   }
 
@@ -151,6 +267,22 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    // Verificar si ya existe esta combinación
+    const existeCombo = cortes.some(corte => 
+      corte.categoria === cat && corte.tipocosecha === tipo
+    );
+
+    if (existeCombo) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Combinación duplicada',
+        text: 'Ya existe un corte con esta categoría y tipo de cosecha.',
+        timer: 2500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
     cortes.push({
       categoria: cat,
       tipocosecha: tipo,
@@ -161,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function () {
     actualizarEstadoBotonGuardar();
 
     categoria.selectedIndex = 0;
-    tipocosecha.selectedIndex = 0;
+    tipocosecha.innerHTML = '<option value="">Primero seleccione una categoría</option>';
     cantidad.value = '';
   });
 

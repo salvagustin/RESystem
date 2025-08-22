@@ -18,7 +18,35 @@ class Cultivo(models.Model):
     
     def __str__(self):
         return f"{self.nombre}, {self.variedad}"
-    
+
+    class Meta:
+        verbose_name = "Cultivo"
+        verbose_name_plural = "Cultivos"
+
+class DetalleCultivo(models.Model):
+    cultivo = models.ForeignKey(Cultivo, on_delete=models.CASCADE, verbose_name="Cultivo")
+    OPCIONES = (
+        ("S", "Saco"),
+        ("C", "Caja"),
+        ("Lb","Libra")
+    )
+    CATEGORIAS = (
+        ('primera', 'Primera'),
+        ('segunda', 'Segunda'),
+        ('tercera', 'Tercera'),
+    )
+    categoria = models.CharField('Categoria', max_length=10, choices=CATEGORIAS, blank=False, null=False)
+    tipocosecha = models.CharField('Tipo de corte', max_length=2, choices=OPCIONES, blank=False, null=False)
+    cantidad = models.IntegerField('Unidades', blank=False, null=False)
+
+    def __str__(self):
+        return f"{self.cultivo.nombre} - {self.get_categoria_display()}: {self.cantidad} {self.get_tipocosecha_display()}"
+
+    class Meta:
+        verbose_name = "Detalle de Cultivo"
+        verbose_name_plural = "Detalles de Cultivo"
+        unique_together = ['cultivo', 'categoria', 'tipocosecha']
+
 class Plantacion(models.Model):
     idplantacion = models.AutoField(primary_key=True)
     parcela = models.ForeignKey(Parcela, on_delete=models.CASCADE, verbose_name="Parcela")
@@ -63,10 +91,8 @@ class DetalleCosecha(models.Model):
     OPCIONES = (
         ("S", "Saco"),
         ("U", "Unidad"),
-        ("MS", "Medio saco"),
         ("C", "Caja"),
-        ("MC", "Media caja"),
-        ("Lb", "Libras")
+        ("Lb","Libra")
     )
     CATEGORIAS = (
         ('primera', 'Primera'),

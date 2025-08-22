@@ -17,6 +17,10 @@ urlpatterns = [
     path('cultivos/nuevo/', views.crear_cultivo, name='crear_cultivo'),
     path('cultivos/editar/<int:idcultivo>/', views.editar_cultivo, name='editar_cultivo'),
     path('cultivos/eliminar/<int:idcultivo>/', views.eliminar_cultivo, name='eliminar_cultivo'),
+    path('cultivos/detalle/<int:idcultivo>/', views.detalle_cultivo, name='detalle_cultivo'),
+    
+    # API endpoint para obtener detalles del cultivo (AJAX)
+    path('cultivos/api/detalles/<int:cultivo_id>/', views.api_detalles_cultivo, name='api_detalles_cultivo'),
 
     path('plantaciones/', views.lista_plantaciones, name='lista_plantaciones'),
     path('plantaciones/crear/', views.crear_plantacion, name='crear_plantacion'),
@@ -30,6 +34,9 @@ urlpatterns = [
     path('cosechas/editar/<int:idcosecha>/', views.editar_cosecha, name='editar_cosecha'),
     path('cosechas/eliminar/<int:idcosecha>/', views.eliminar_cosecha, name='eliminar_cosecha'),
     path('cosechas/cerrar/<int:id>/', views.cerrar_cosecha, name='cerrar_cosecha'),
+    path('ajax/obtener-tipos-cosecha/', views.obtener_tipos_cosecha, name='obtener_tipos_cosecha'),
+
+
 
 
     path('clientes/', views.lista_clientes, name='lista_clientes'),

@@ -33,7 +33,7 @@ grupos_permitidos = ['Administrador']
 
 @login_required
 def inicio(request):
-    import json  # Agregar esta importación
+    
     
     hoy = date.today()
     inicio_semana = hoy - timedelta(days=hoy.weekday())  # lunes
@@ -47,10 +47,8 @@ def inicio(request):
         opciones = {
             "S": "Saco",
             "U": "Unidad", 
-            "MS": "Medio saco",
             "C": "Caja",
-            "MC": "Media caja",
-            "Lb": "Libras"
+            "Lb":"Libra"
         }
         return opciones.get(codigo, codigo)
 
@@ -229,81 +227,49 @@ def custom_logout(request):
     logout(request)
     return redirect('inicio') 
 
-
-
 @login_required
 def control_calidad(request):
-    # Prepara las ventas agrupadas por cosecha usando DetalleVenta
-    ventas = DetalleVenta.objects.values('cosecha').annotate(
-        v1=Sum(Case(When(categoria='primera', then='cantidad'), default=0, output_field=IntegerField())),
-        v2=Sum(Case(When(categoria='segunda', then='cantidad'), default=0, output_field=IntegerField())),
-        v3=Sum(Case(When(categoria='tercera', then='cantidad'), default=0, output_field=IntegerField()))
-    )
-    ventas_dict = {v['cosecha']: v for v in ventas}
-    
+    from collections import defaultdict
+
     cosechas = Cosecha.objects.select_related('plantacion__cultivo', 'plantacion__parcela')
-    
+
     agrupados = {
         'parcelas': defaultdict(lambda: {'primera': 0, 'segunda': 0, 'tercera': 0, 'perdida': 0}),
         'cultivos': defaultdict(lambda: {'primera': 0, 'segunda': 0, 'tercera': 0, 'perdida': 0}),
         'plantaciones': defaultdict(lambda: {'primera': 0, 'segunda': 0, 'tercera': 0, 'perdida': 0}),
         'cosechas': []
     }
-    
+
     for c in cosechas:
-        # Obtener datos de cosecha desde DetalleCosecha
-        detalles_cosecha = DetalleCosecha.objects.filter(cosecha=c)
-        cosecha_data = detalles_cosecha.aggregate(
-            primera=Sum(Case(When(categoria='primera', then='cantidad'), default=0, output_field=IntegerField())),
-            segunda=Sum(Case(When(categoria='segunda', then='cantidad'), default=0, output_field=IntegerField())),
-            tercera=Sum(Case(When(categoria='tercera', then='cantidad'), default=0, output_field=IntegerField()))
-        )
-        
-        # Obtener datos de venta
-        venta = ventas_dict.get(c.idcosecha, {'v1': 0, 'v2': 0, 'v3': 0})
-        
-        # Calcular pérdidas
-        primera_cosecha = cosecha_data['primera'] or 0
-        segunda_cosecha = cosecha_data['segunda'] or 0
-        tercera_cosecha = cosecha_data['tercera'] or 0
-        
-        p_perdida = max(primera_cosecha - venta['v1'], 0)
-        s_perdida = max(segunda_cosecha - venta['v2'], 0)
-        t_perdida = max(tercera_cosecha - venta['v3'], 0)
+        cosecha_data = calcular_totales_con_multiplicadores(c)
+        venta = calcular_ventas_con_multiplicadores(c)
+
+        p_perdida = max(cosecha_data['primera'] - venta['primera'], 0)
+        s_perdida = max(cosecha_data['segunda'] - venta['segunda'], 0)
+        t_perdida = max(cosecha_data['tercera'] - venta['tercera'], 0)
         perdida_total = p_perdida + s_perdida + t_perdida
-        
+
         agrupados['cosechas'].append({
             'nombre': f"Cosecha #{c.idcosecha}",
-            'primera': primera_cosecha,
-            'segunda': segunda_cosecha,
-            'tercera': tercera_cosecha,
+            'primera': cosecha_data['primera'],
+            'segunda': cosecha_data['segunda'],
+            'tercera': cosecha_data['tercera'],
             'perdida': perdida_total
         })
-        
-        # Claves de agrupación
-        plantacion_id = c.plantacion.idplantacion
-        cultivo_id = c.plantacion.cultivo.idcultivo
+
+        pid = c.plantacion.idplantacion
+        cid = c.plantacion.cultivo.idcultivo
         parcela_id = c.plantacion.parcela.idparcela
-        
-        # Acumulación por categoría
-        agrupados['plantaciones'][plantacion_id]['primera'] += primera_cosecha
-        agrupados['plantaciones'][plantacion_id]['segunda'] += segunda_cosecha
-        agrupados['plantaciones'][plantacion_id]['tercera'] += tercera_cosecha
-        
-        agrupados['cultivos'][cultivo_id]['primera'] += primera_cosecha
-        agrupados['cultivos'][cultivo_id]['segunda'] += segunda_cosecha
-        agrupados['cultivos'][cultivo_id]['tercera'] += tercera_cosecha
-        
-        agrupados['parcelas'][parcela_id]['primera'] += primera_cosecha
-        agrupados['parcelas'][parcela_id]['segunda'] += segunda_cosecha
-        agrupados['parcelas'][parcela_id]['tercera'] += tercera_cosecha
-        
-        # Acumulación de pérdida
-        agrupados['plantaciones'][plantacion_id]['perdida'] += perdida_total
-        agrupados['cultivos'][cultivo_id]['perdida'] += perdida_total
+
+        for cat in ['primera', 'segunda', 'tercera']:
+            agrupados['plantaciones'][pid][cat] += cosecha_data[cat]
+            agrupados['cultivos'][cid][cat] += cosecha_data[cat]
+            agrupados['parcelas'][parcela_id][cat] += cosecha_data[cat]
+
+        agrupados['plantaciones'][pid]['perdida'] += perdida_total
+        agrupados['cultivos'][cid]['perdida'] += perdida_total
         agrupados['parcelas'][parcela_id]['perdida'] += perdida_total
-    
-    # Convertir a listas con nombres
+
     parcelas_data = [
         {'nombre': Parcela.objects.get(idparcela=pid).nombre, **val}
         for pid, val in agrupados['parcelas'].items()
@@ -317,108 +283,80 @@ def control_calidad(request):
         for pid, val in agrupados['plantaciones'].items()
     ]
     cosechas_data = agrupados['cosechas']
-    
-    # Lista de bloques para el template
+
     bloques = [
         {'titulo': '📍 Parcelas', 'items': parcelas_data},
         {'titulo': '🌱 Cultivos', 'items': cultivos_data},
         {'titulo': '🌿 Plantaciones', 'items': plantaciones_data},
         {'titulo': '🌾 Cosechas', 'items': cosechas_data},
     ]
-    
+
     return render(request, 'control_calidad.html', {'bloques': bloques})
-    
-@login_required    
+ 
+
+@login_required
 def reportes_view(request):
-    from django.db.models import Count, Case, When, IntegerField, Sum, Avg, F, ExpressionWrapper, DurationField
+    from django.db.models import Avg, ExpressionWrapper, F, DurationField
     from collections import defaultdict
 
     parcelas = Parcela.objects.all()
     cultivos = Cultivo.objects.all()
-
-    # Datos de cosecha por cultivo, tipo y categoría
-    datos_cosecha_cultivos = {}
-    tipos_cosecha = ['S', 'MS', 'U', 'Lb']  # Saco, Medio saco, Unidad, Libra
+    tipos_cosecha = ['S', 'C', 'U', 'Lb']
     categorias = ['primera', 'segunda', 'tercera', 'perdida']
-    
-    for cultivo in cultivos:
-        cosechas = Cosecha.objects.filter(plantacion__cultivo=cultivo)
-        detalles = DetalleCosecha.objects.filter(cosecha__in=cosechas)
-        
-        datos_cosecha_cultivos[cultivo.nombre] = {}
-        
-        for tipo in tipos_cosecha:
-            datos_cosecha_cultivos[cultivo.nombre][tipo] = {}
-            
-            for categoria in categorias:
-                if categoria == 'perdida':
-                    # Para perdida, podemos calcular como diferencia o dejarlo en 0
-                    # por ahora lo dejamos en 0, pero se puede ajustar según la lógica de negocio
-                    cantidad = 0
-                else:
-                    cantidad = detalles.filter(
-                        tipocosecha=tipo, 
-                        categoria=categoria
-                    ).aggregate(total=Sum('cantidad'))['total'] or 0
-                
-                datos_cosecha_cultivos[cultivo.nombre][tipo][categoria] = cantidad
 
-    # Listado de cultivos con promedios y totales
+    datos_cosecha_cultivos = {}
+    for cultivo in cultivos:
+        datos_cosecha_cultivos[cultivo.nombre] = {t: {c: 0 for c in categorias} for t in tipos_cosecha}
+        cosechas = Cosecha.objects.filter(plantacion__cultivo=cultivo)
+
+        for c in cosechas:
+            t = calcular_totales_con_multiplicadores(c)
+            for cat in ['primera', 'segunda', 'tercera']:
+                datos_cosecha_cultivos[cultivo.nombre]['U'][cat] += t[cat]
+
     estadisticas_cultivos = {}
     for cultivo in cultivos:
         cosechas = Cosecha.objects.filter(plantacion__cultivo=cultivo)
-        detalles = DetalleCosecha.objects.filter(cosecha__in=cosechas)
-        
-        # Totales cosechados por categoría
-        totales = detalles.aggregate(
-            primera=Sum(Case(When(categoria='primera', then='cantidad'), default=0, output_field=IntegerField())),
-            segunda=Sum(Case(When(categoria='segunda', then='cantidad'), default=0, output_field=IntegerField())),
-            tercera=Sum(Case(When(categoria='tercera', then='cantidad'), default=0, output_field=IntegerField()))
-        )
-        
-        # Total vendido
-        ventas_cultivo = DetalleVenta.objects.filter(cosecha__plantacion__cultivo=cultivo)
-        total_vendido = ventas_cultivo.aggregate(total=Sum('cantidad'))['total'] or 0
-        
-        # Número de cosechas para calcular promedio
-        num_cosechas = cosechas.count()
-        
-        primera_total = totales['primera'] or 0
-        segunda_total = totales['segunda'] or 0 
-        tercera_total = totales['tercera'] or 0
-        total_cosechado = primera_total + segunda_total + tercera_total
-        
+        totales = {'primera': 0, 'segunda': 0, 'tercera': 0}
+        total_vendido = 0
+        for c in cosechas:
+            t = calcular_totales_con_multiplicadores(c)
+            v = calcular_ventas_con_multiplicadores(c)
+            for cat in ['primera', 'segunda', 'tercera']:
+                totales[cat] += t[cat]
+                total_vendido += v[cat]
+
+        n = cosechas.count()
+        total_cosechado = sum(totales.values())
+
         estadisticas_cultivos[cultivo.nombre] = {
             'variedad': cultivo.variedad,
-            'promedio_primera': round(primera_total / num_cosechas, 2) if num_cosechas > 0 else 0,
-            'promedio_segunda': round(segunda_total / num_cosechas, 2) if num_cosechas > 0 else 0,
-            'promedio_tercera': round(tercera_total / num_cosechas, 2) if num_cosechas > 0 else 0,
+            'promedio_primera': round(totales['primera'] / n, 2) if n else 0,
+            'promedio_segunda': round(totales['segunda'] / n, 2) if n else 0,
+            'promedio_tercera': round(totales['tercera'] / n, 2) if n else 0,
             'total_cosechado': total_cosechado,
             'total_vendido': total_vendido,
-            'num_cosechas': num_cosechas
+            'num_cosechas': n
         }
 
-    # Producción por tipo de parcela
     produccion_por_tipo_parcela = {'Campo abierto': 0, 'Malla': 0}
     cosechas = Cosecha.objects.select_related('plantacion__parcela')
-    for cosecha in cosechas:
-        tipo = dict(Parcela.Opciones).get(cosecha.plantacion.parcela.tipoparcela)
-        detalles = DetalleCosecha.objects.filter(cosecha=cosecha)
-        total = detalles.aggregate(total=Sum('cantidad'))['total'] or 0
-        produccion_por_tipo_parcela[tipo] += total
+    for c in cosechas:
+        tipo = dict(Parcela.Opciones).get(c.plantacion.parcela.tipoparcela)
+        totales = calcular_totales_con_multiplicadores(c)
+        produccion_por_tipo_parcela[tipo] += sum(totales.values())
 
-    # Ciclo promedio de cada cultivo
     duraciones = Plantacion.objects.annotate(
         dias=ExpressionWrapper(F('cosecha__fecha') - F('fecha'), output_field=DurationField())
     ).values('cultivo__nombre').annotate(promedio=Avg('dias'))
+
     ciclo_promedio = {d['cultivo__nombre']: d['promedio'].days if d['promedio'] else 0 for d in duraciones}
 
-    # Rendimiento por planta
     rendimiento_por_plantacion = {}
-    plantaciones = Plantacion.objects.select_related('cultivo', 'parcela')
-    for p in plantaciones:
-        detalles = DetalleCosecha.objects.filter(cosecha__plantacion=p)
-        total = detalles.aggregate(suma=Sum('cantidad'))['suma'] or 0
+    for p in Plantacion.objects.select_related('cultivo', 'parcela'):
+        total = 0
+        for c in Cosecha.objects.filter(plantacion=p):
+            total += sum(calcular_totales_con_multiplicadores(c).values())
         rendimiento = total / p.cantidad if p.cantidad else 0
         rendimiento_por_plantacion[p.idplantacion] = {
             'cultivo': p.cultivo.nombre,
@@ -426,10 +364,8 @@ def reportes_view(request):
             'rendimiento': round(rendimiento, 2)
         }
 
-    # Historial de cultivos por parcela
     historial_por_parcela = defaultdict(list)
-    plantaciones_hist = Plantacion.objects.select_related('cultivo', 'parcela')
-    for p in plantaciones_hist:
+    for p in Plantacion.objects.select_related('cultivo', 'parcela'):
         historial_por_parcela[p.parcela.nombre].append({
             'cultivo': p.cultivo.nombre,
             'variedad': p.cultivo.variedad,
@@ -437,32 +373,23 @@ def reportes_view(request):
             'estado': 'Activa' if not p.estado else 'Finalizada'
         })
 
-    # Estado de parcelas
     estado_parcelas = {p.nombre: 'Ocupada' if p.estado else 'Libre' for p in parcelas}
 
-    # Datos para gráfico con filtros
     datos_grafico_filtros = {}
     for cultivo in cultivos:
-        datos_grafico_filtros[cultivo.nombre] = {}
+        datos_grafico_filtros[cultivo.nombre] = {'primera': {}, 'segunda': {}, 'tercera': {}}
         cosechas = Cosecha.objects.filter(plantacion__cultivo=cultivo)
-        detalles = DetalleCosecha.objects.filter(cosecha__in=cosechas)
-        
-        for categoria in ['primera', 'segunda', 'tercera']:
-            datos_grafico_filtros[cultivo.nombre][categoria] = {}
-            detalles_categoria = detalles.filter(categoria=categoria)
-            
-            for tipo in ['S', 'U', 'MS', 'C', 'MC', 'Lb']:
-                cantidad = detalles_categoria.filter(tipocosecha=tipo).aggregate(
-                    total=Sum('cantidad'))['total'] or 0
-                datos_grafico_filtros[cultivo.nombre][categoria][tipo] = cantidad
+        for c in cosechas:
+            t = calcular_totales_con_multiplicadores(c)
+            for cat in ['primera', 'segunda', 'tercera']:
+                datos_grafico_filtros[cultivo.nombre][cat]['U'] = \
+                    datos_grafico_filtros[cultivo.nombre][cat].get('U', 0) + t[cat]
 
-    # Resumen de cosechas por fecha y calidad
     resumen_cosechas_fecha = defaultdict(lambda: {'primera': 0, 'segunda': 0, 'tercera': 0})
-    cosechas = Cosecha.objects.all()
-    for c in cosechas:
-        detalles = DetalleCosecha.objects.filter(cosecha=c)
-        for detalle in detalles:
-            resumen_cosechas_fecha[c.fecha][detalle.categoria] += detalle.cantidad
+    for c in Cosecha.objects.all():
+        t = calcular_totales_con_multiplicadores(c)
+        for cat in ['primera', 'segunda', 'tercera']:
+            resumen_cosechas_fecha[c.fecha][cat] += t[cat]
 
     context = {
         'datos_cosecha_cultivos': datos_cosecha_cultivos,
@@ -482,6 +409,7 @@ def reportes_view(request):
 
     return render(request, 'reportes.html', context)
 
+
 @login_required
 def resumen_view(request):
     filtro = request.GET.get('filtro', 'parcela')
@@ -489,11 +417,9 @@ def resumen_view(request):
     fecha_inicio = request.GET.get('fecha_inicio', '')
     fecha_fin = request.GET.get('fecha_fin', '')
 
-    # Traemos plantaciones con relaciones
     plantaciones = Plantacion.objects.select_related('parcela', 'cultivo').order_by('-fecha')
-    
-    
-    # --- FILTRO POR TEXTO ---
+
+    # Filtros de búsqueda
     if buscar:
         if filtro == 'parcela':
             plantaciones = plantaciones.filter(parcela__nombre__icontains=buscar)
@@ -505,7 +431,6 @@ def resumen_view(request):
             elif buscar in ['ocupada', 'false', '0', 'o']:
                 plantaciones = plantaciones.filter(estado=True)
 
-    # --- FILTRO POR FECHAS ---
     if fecha_inicio:
         try:
             fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d')
@@ -520,36 +445,44 @@ def resumen_view(request):
         except ValueError:
             pass
 
-    # --- ARMAR EL RESUMEN ---
+    # Construir la data para el template
     data = []
     for p in plantaciones:
         dias_siembra = (date.today() - p.fecha).days if p.fecha else 0
-
         cosechas = Cosecha.objects.filter(plantacion=p).order_by("fecha")
 
-        dias_corte = (date.today() - cosechas.first().fecha).days if cosechas.exists() else 0
+        # ✅ Días distintos en que hubo cosecha
+        dias_corte = cosechas.values("fecha").distinct().count()
+
+        # Ciclo promedio: desde siembra hasta primera cosecha
         ciclo_promedio = (cosechas.first().fecha - p.fecha).days if cosechas.exists() else 0
         total_cortes = cosechas.count()
 
-        cantidad_producida = DetalleCosecha.objects.filter(cosecha__in=cosechas).aggregate(
-            total=Sum("cantidad")
-        )["total"] or 0
+        cantidad_producida = 0
+        perdida = 0
+        vendido = 0      # cantidad de producto
+        dinero_vendido = 0  # 💵 total de dinero vendido
 
-        promedio = cantidad_producida / p.cantidad if p.cantidad > 0 else 0
+        for c in cosechas:
+            t = calcular_totales_con_multiplicadores(c)
+            v = calcular_ventas_con_multiplicadores(c)
+            cantidad_producida += sum(t.values())
+            perdido = t['tercera'] - v['tercera']
+            perdida += perdido if perdido > 0 else 0
+            vendido += sum(v.values())
 
-        perdida = DetalleCosecha.objects.filter(
-            cosecha__in=cosechas, categoria="tercera"
-        ).aggregate(total=Sum("cantidad"))["total"] or 0
+            # 💵 sumar dinero vendido de esta cosecha
+            dinero_vendido += DetalleVenta.objects.filter(cosecha=c).aggregate(
+                total=models.Sum('subtotal')
+            )['total'] or 0
 
-        vendido = DetalleVenta.objects.filter(cosecha__in=cosechas).aggregate(
-            total=Sum("subtotal")
-        )["total"] or 0
+        promedio = cantidad_producida / p.cantidad if p.cantidad else 0
 
         data.append({
             "parcela": p.parcela.nombre,
             "cultivo": p.cultivo.nombre,
             "variedad": p.cultivo.variedad,
-            "estado":p.estado,
+            "estado": p.estado,
             "plantas": p.cantidad,
             "dias_siembra": dias_siembra,
             "dias_corte": dias_corte,
@@ -558,7 +491,8 @@ def resumen_view(request):
             "promedio": round(promedio, 2),
             "cantidad_producida": cantidad_producida,
             "perdida": perdida,
-            "vendido": vendido,
+            "vendido": vendido,               # cantidad de producto
+            "dinero_vendido": dinero_vendido  # 💵 total en dinero
         })
 
     return render(request, "resumen.html", {
@@ -685,6 +619,7 @@ def eliminar_parcela(request, pk):
 
 
 #######CULTIVOS#########
+
 # Mostrar lista de cultivos
 @login_required
 def lista_cultivos(request):
@@ -711,11 +646,15 @@ def lista_cultivos(request):
             total=Sum('subtotal')
         )['total'] or 0
 
+        # Obtener detalles de cultivo para mostrar información adicional
+        detalles = cultivo.detallecultivo_set.all()
+        
         cultivos_info.append({
             'cultivo': cultivo,
             'total_plantas': total_plantas,
             'total_cosechas': total_cosechas,
-            'total_vendido': total_vendido
+            'total_vendido': total_vendido,
+            'detalles': detalles
         })
         
     # Paginación manual (ya no se pagina directamente `cultivos`, sino `cultivos_info`)
@@ -738,13 +677,48 @@ def lista_cultivos(request):
 def crear_cultivo(request):
     if request.method == 'POST':
         form = CultivoForm(request.POST)
+        
+        # Obtener los detalles desde el campo JSON
+        detalles_json = request.POST.get('detalles_json', '[]')
+        try:
+            detalles = json.loads(detalles_json)
+        except json.JSONDecodeError:
+            detalles = []
+
         if form.is_valid():
-            form.save()
-            messages.success(request, "El cultivo ha sido creado exitosamente.")
-            return redirect('/cultivos/')
+            # Validar que haya al menos un detalle (opcional)
+            # if not detalles:
+            #     messages.error(request, "Debe agregar al menos un detalle de cultivo.")
+            #     return render(request, 'Cultivo/form_cultivo.html', {
+            #         'form': form,
+            #         'categoria_choices': DetalleCultivo.CATEGORIAS,
+            #         'tipocosecha_choices': DetalleCultivo.OPCIONES,
+            #         'action': 'Crear'
+            #     })
+
+            # Guardar el cultivo
+            cultivo = form.save()
+            
+            # Guardar cada detalle
+            for detalle_data in detalles:
+                DetalleCultivo.objects.create(
+                    cultivo=cultivo,
+                    categoria=detalle_data['categoria'],
+                    tipocosecha=detalle_data['tipocosecha'],
+                    cantidad=detalle_data['cantidad']
+                )
+
+            messages.success(request, f"El cultivo '{cultivo.nombre}' y sus detalles han sido creados exitosamente.")
+            return redirect('lista_cultivos')
     else:
         form = CultivoForm()
-    return render(request, 'Cultivo/form_cultivo.html', {'form': form})
+    
+    return render(request, 'Cultivo/form_cultivo.html', {
+        'form': form,
+        'categoria_choices': DetalleCultivo.CATEGORIAS,
+        'tipocosecha_choices': DetalleCultivo.OPCIONES,
+        'action': 'Crear'
+    })
 
 # Editar un cultivo existente
 @login_required
@@ -752,34 +726,117 @@ def editar_cultivo(request, idcultivo):
     if not request.user.has_perm('gestor.change_cultivo'):
         messages.error(request, "No tienes permiso para editar cultivos.")
         return redirect('inicio') 
+    
     cultivo = get_object_or_404(Cultivo, pk=idcultivo)
+    detalles_existentes = DetalleCultivo.objects.filter(cultivo=cultivo)
+    
     if request.method == 'POST':
         form = CultivoForm(request.POST, instance=cultivo)
+        
+        # Obtener los detalles desde el campo JSON
+        detalles_json = request.POST.get('detalles_json', '[]')
+        try:
+            detalles = json.loads(detalles_json)
+        except json.JSONDecodeError:
+            detalles = []
+
         if form.is_valid():
-            form.save()
-            messages.success(request, f"El cultivo '{cultivo.nombre}' ha sido actualizado exitosamente.")
-            return redirect('/cultivos')
+            # Guardar el cultivo
+            cultivo = form.save()
+            
+            # Eliminar detalles existentes y crear los nuevos
+            DetalleCultivo.objects.filter(cultivo=cultivo).delete()
+            
+            # Crear los nuevos detalles
+            for detalle_data in detalles:
+                DetalleCultivo.objects.create(
+                    cultivo=cultivo,
+                    categoria=detalle_data['categoria'],
+                    tipocosecha=detalle_data['tipocosecha'],
+                    cantidad=detalle_data['cantidad']
+                )
+
+            messages.success(request, f"El cultivo '{cultivo.nombre}' y sus detalles han sido actualizados exitosamente.")
+            return redirect('lista_cultivos')
     else:
         form = CultivoForm(instance=cultivo)
-    return render(request, 'Cultivo/form_cultivo.html', {'form': form})
+
+    # Convertir detalles existentes a JSON para JavaScript
+    from django.core.serializers.json import DjangoJSONEncoder
+    detalles_existentes_json = json.dumps(list(detalles_existentes.values(
+        'categoria', 'tipocosecha', 'cantidad'
+    )), cls=DjangoJSONEncoder)
+    
+    return render(request, 'Cultivo/form_cultivo.html', {
+        'form': form,
+        'categoria_choices': DetalleCultivo.CATEGORIAS,
+        'tipocosecha_choices': DetalleCultivo.OPCIONES,
+        'action': 'Editar',
+        'cultivo': cultivo,
+        'detalles_existentes': detalles_existentes_json,
+    })
+
+# Ver detalles de un cultivo
+@login_required
+def detalle_cultivo(request, idcultivo):
+    cultivo = get_object_or_404(Cultivo, pk=idcultivo)
+    detalles = cultivo.detalles.all()
+    
+    # Obtener estadísticas
+    plantaciones = cultivo.plantacion_set.all()
+    cosechas = Cosecha.objects.filter(plantacion__cultivo=cultivo)
+    
+    total_plantas = plantaciones.aggregate(total=Coalesce(Sum('cantidad'), 0))['total']
+    total_cosechas = cosechas.aggregate(total=Count('idcosecha'))['total']        
+    total_vendido = DetalleVenta.objects.filter(cosecha__in=cosechas).aggregate(
+        total=Sum('subtotal')
+    )['total'] or 0
+    
+    return render(request, 'Cultivo/detalle_cultivo.html', {
+        'cultivo': cultivo,
+        'detalles': detalles,
+        'total_plantas': total_plantas,
+        'total_cosechas': total_cosechas,
+        'total_vendido': total_vendido
+    })
 
 # Eliminar un cultivo
 @login_required
 def eliminar_cultivo(request, idcultivo):
     if not request.user.has_perm('gestor.delete_cultivo'):
         messages.error(request, "No tienes permiso para eliminar cultivos.")
-        return redirect('inicio') 
+        return redirect('inicio')
+    
     cultivo = get_object_or_404(Cultivo, pk=idcultivo)
+    
     if request.method == 'POST':
-        if Plantacion.objects.filter(cultivo=cultivo).exists():
-            messages.error(request, f"No se puede eliminar el cultivo '{cultivo.nombre}' porque tiene plantaciones asociadas.")
-        else:
-            cultivo.delete()
-            messages.success(request, f"El cultivo '{cultivo.nombre}' ha sido eliminado exitosamente.")
-    return redirect('/cultivos')
+        nombre = cultivo.nombre
+        cultivo.delete()
+        messages.success(request, f"El cultivo '{nombre}' ha sido eliminado exitosamente.")
+        return redirect('/cultivos/')
+    
+    return render(request, 'Cultivo/confirmar_eliminar.html', {'cultivo': cultivo})
+
+@login_required
+def api_detalles_cultivo(request, cultivo_id):
+    cultivo = get_object_or_404(Cultivo, pk=cultivo_id)
+    detalles = cultivo.detallecultivo_set.all()
+
+    data = {
+        "detalles": [
+            {
+                "categoria": d.get_categoria_display(),
+                "tipocosecha": d.get_tipocosecha_display(),
+                "cantidad": d.cantidad,
+            }
+            for d in detalles
+        ]
+    }
+    return JsonResponse(data)
 
 
 ############   PLANTACIONES  ####################
+
 # Mostrar lista de plantaciones
 @login_required
 def lista_plantaciones(request):
@@ -931,6 +988,9 @@ def eliminar_plantacion(request, idplantacion):
 
 
 ############   COSECHAS  ####################
+
+
+
 # Mostrar lista de cocechas
 @login_required
 def lista_cosechas(request):
@@ -941,25 +1001,13 @@ def lista_cosechas(request):
 
     cosechas = Cosecha.objects.select_related('plantacion__parcela', 'plantacion__cultivo').order_by('-idcosecha')
 
+    # Filtros existentes...
     if buscar:
         if filtro == 'parcela':
             cosechas = cosechas.filter(plantacion__parcela__nombre__icontains=buscar)
         elif filtro == 'cultivo':
             cosechas = cosechas.filter(plantacion__cultivo__nombre__icontains=buscar)
-        elif filtro == 'tipo':
-            tipo_map = {
-                'saco': 'S', 'unidad': 'U', 'medio saco': 'MS',
-                'caja': 'C', 'media caja': 'MC', 'libras': 'Lb'
-            }
-            for key, val in tipo_map.items():
-                if buscar in key:
-                    cosechas = cosechas.filter(detallecosecha__tipocosecha=val)
-                    break
-        elif filtro == 'estado':
-            if buscar in ['finalizado', 'true', '1', 'sí', 'si']:
-                cosechas = cosechas.filter(estado=True)
-            elif buscar in ['activo', 'no finalizado', 'false', '0', 'no']:
-                cosechas = cosechas.filter(estado=False)
+        # ... otros filtros
 
     if fecha_inicio:
         try:
@@ -975,21 +1023,18 @@ def lista_cosechas(request):
         except ValueError:
             pass
 
-    cosechas = cosechas.annotate(
-        primera=Sum(Case(
-            When(detallecosecha__categoria='primera', then='detallecosecha__cantidad'),
-            default=0, output_field=IntegerField()
-        )),
-        segunda=Sum(Case(
-            When(detallecosecha__categoria='segunda', then='detallecosecha__cantidad'),
-            default=0, output_field=IntegerField()
-        )),
-        tercera=Sum(Case(
-            When(detallecosecha__categoria='tercera', then='detallecosecha__cantidad'),
-            default=0, output_field=IntegerField()
-        )),
-    )
+    # ===== CÁLCULO MEJORADO CON MULTIPLICADORES =====
+    cosechas_con_totales = []
+    
+    for cosecha in cosechas:
+        # Calcular totales con multiplicadores
+        totales = calcular_totales_con_multiplicadores(cosecha)
+        cosecha.primera = totales['primera']
+        cosecha.segunda = totales['segunda'] 
+        cosecha.tercera = totales['tercera']
+        cosechas_con_totales.append(cosecha)
 
+    # Resto del código para ventas y detalles...
     ventas = DetalleVenta.objects.select_related('cosecha')
     ventas_por_cosecha = {}
 
@@ -1006,28 +1051,37 @@ def lista_cosechas(request):
         ventas_por_cosecha[cid]['cantidad'] += venta.cantidad or 0
 
     ventas_dict = {}
-    for cosecha in cosechas:
+    for cosecha in cosechas_con_totales:
         v = ventas_por_cosecha.get(cosecha.idcosecha, {
             'primera': 0, 'segunda': 0, 'tercera': 0,
             'total': 0, 'cantidad': 0,
         })
-        disponible_primera = max((cosecha.primera or 0) - v['primera'], 0)
-        disponible_segunda = max((cosecha.segunda or 0) - v['segunda'], 0)
-        disponible_tercera = max((cosecha.tercera or 0) - v['tercera'], 0)
+        ventas_convertidas = calcular_ventas_con_multiplicadores(cosecha)
+
+        disponible_primera = max((cosecha.primera or 0) - ventas_convertidas['primera'], 0)
+        disponible_segunda = max((cosecha.segunda or 0) - ventas_convertidas['segunda'], 0)
+        disponible_tercera = max((cosecha.tercera or 0) - ventas_convertidas['tercera'], 0)
+
+        ventas_primera = ventas_convertidas['primera']
+        ventas_segunda = ventas_convertidas['segunda']
+        ventas_tercera = ventas_convertidas['tercera']
+
+        total_cultivos_vendidos = ventas_primera + ventas_segunda + ventas_tercera
+
         total_cosecha = (cosecha.primera or 0) + (cosecha.segunda or 0) + (cosecha.tercera or 0)
         perdida = disponible_primera + disponible_segunda + disponible_tercera
-
+        print(perdida)
         ventas_dict[cosecha.idcosecha] = {
             'disponible_primera': disponible_primera,
             'disponible_segunda': disponible_segunda,
             'disponible_tercera': disponible_tercera,
             'total_cosecha': total_cosecha,
             'total_vendido': v['total'],
-            'cantidad_ventas': v['cantidad'],
+            'cantidad_ventas': total_cultivos_vendidos,
             'perdida': perdida,
         }
 
-    # Agrupamos detalles por cosecha (FUERA del bucle anterior)
+    # Agrupar detalles por cosecha
     categoria_display = dict(DetalleCosecha.CATEGORIAS)
     tipo_display = dict(DetalleCosecha.OPCIONES)
 
@@ -1035,7 +1089,6 @@ def lista_cosechas(request):
         'cosecha_id', 'categoria', 'tipocosecha'
     ).annotate(total=Sum('cantidad'))
 
-    # Agrupar ventas por cosecha y categoría
     ventas_detalle = DetalleVenta.objects.values('cosecha_id', 'categoria').annotate(
         cantidad_vendida=Sum('cantidad')
     )
@@ -1045,16 +1098,35 @@ def lista_cosechas(request):
 
     detalle_por_cosecha = defaultdict(list)
     for d in detalle_cosechas:
-        cantidad_cosechada = d['total'] or 0
-        cantidad_vendida = ventas_detalle_map.get((d['cosecha_id'], d['categoria']), 0)
-        disponibilidad = max(cantidad_cosechada - cantidad_vendida, 0)
+        # Obtener multiplicador para este tipo
+        cosecha_obj = Cosecha.objects.get(idcosecha=d['cosecha_id'])
+        cultivo = cosecha_obj.plantacion.cultivo
+        
+        multiplicador = 1
+        if d['tipocosecha'] != 'U':  # Si no es unidad
+            try:
+                detalle_cultivo = DetalleCultivo.objects.get(
+                    cultivo=cultivo,
+                    categoria=d['categoria'], 
+                    tipocosecha=d['tipocosecha']
+                )
+                multiplicador = detalle_cultivo.cantidad
+            except DetalleCultivo.DoesNotExist:
+                multiplicador = 1
 
+        cantidad_base = d['total'] or 0  # ESTA ES LA CANTIDAD ORIGINAL (ej: 1 caja)
+        cantidad_total = cantidad_base * multiplicador  # Unidades totales (ej: 100 tomates)
+        cantidad_vendida = ventas_detalle_map.get((d['cosecha_id'], d['categoria']), 0)
+        disponibilidad = max(cantidad_base - cantidad_vendida, 0)
+        
         detalle_por_cosecha[d['cosecha_id']].append({
             'categoria': d['categoria'],
             'categoria_display': categoria_display.get(d['categoria'], d['categoria']),
             'tipocosecha': d['tipocosecha'],
             'tipocosecha_display': tipo_display.get(d['tipocosecha'], d['tipocosecha']),
-            'cantidad': cantidad_cosechada,
+            'cantidad_original': cantidad_base,    # ← NUEVO NOMBRE
+            'multiplicador': multiplicador,
+            'cantidad_total': cantidad_total,      # ← NUEVO NOMBRE
             'cantidad_vendida': cantidad_vendida,
             'disponible': disponibilidad,
         })
@@ -1062,7 +1134,7 @@ def lista_cosechas(request):
     # Paginación
     pagina = request.GET.get("page", 1)
     try:
-        paginator = Paginator(cosechas, 10)
+        paginator = Paginator(cosechas_con_totales, 10)
         cosechas_paginadas = paginator.page(pagina)
     except:
         raise Http404("Página no encontrada")
@@ -1078,7 +1150,7 @@ def lista_cosechas(request):
         'fecha_fin': fecha_fin,
         'plantaciones': plantaciones,
         'ventas_dict': ventas_dict,
-        'detalle_por_cosecha': dict(detalle_por_cosecha),  # 👉 lo que usarás en el modal
+        'detalle_por_cosecha': dict(detalle_por_cosecha),
     })
 
 # Crear una nueva cosecha
@@ -1089,9 +1161,8 @@ def crear_cosecha(request):
 
     if request.method == 'POST':
         form = CosechaForm(request.POST)
-
-        # Obtener los cortes desde el campo oculto en formato JSON
         cortes_json = request.POST.get('cortes_json', '[]')
+        
         try:
             cortes = json.loads(cortes_json)
         except json.JSONDecodeError:
@@ -1099,8 +1170,8 @@ def crear_cosecha(request):
 
         if form.is_valid():
             cosecha = form.save()
-            messages.success(request, f"La cosecha #{cosecha.idcosecha} ha sido creada exitosamente.")
-            # Guardar cada detalle como instancia de DetalleCosecha
+            
+            # Guardar cada detalle
             for corte in cortes:
                 DetalleCosecha.objects.create(
                     cosecha=cosecha,
@@ -1109,6 +1180,8 @@ def crear_cosecha(request):
                     cantidad=corte['cantidad']
                 )
 
+            messages.success(request, f"La cosecha #{cosecha.idcosecha} ha sido creada exitosamente.")
+
             if request.POST.get('ir_a_venta') == '1':
                 return redirect(f"{reverse('crear_venta')}?cosecha_id={cosecha.idcosecha}")
 
@@ -1116,11 +1189,50 @@ def crear_cosecha(request):
     else:
         form = CosechaForm(initial={'plantacion': plantacion, 'estado': False})
 
+    # Obtener tipos disponibles para el cultivo si hay plantación
+    tipos_disponibles = []
+    multiplicadores = {}
+    tipos_ya_agregados = set()
+    
+    if plantacion:
+        detalles_cultivo = DetalleCultivo.objects.filter(cultivo=plantacion.cultivo)
+        
+        # Primero los tipos específicos del cultivo
+        for detalle in detalles_cultivo:
+            tipo_key = f"{detalle.categoria}_{detalle.tipocosecha}"
+            
+            if tipo_key not in tipos_ya_agregados:
+                tipos_disponibles.append({
+                    'value': detalle.tipocosecha,
+                    'label': detalle.get_tipocosecha_display(),
+                    'categoria': detalle.categoria
+                })
+                tipos_ya_agregados.add(tipo_key)
+            
+            clave = f"{detalle.categoria}_{detalle.tipocosecha}"
+            multiplicadores[clave] = detalle.cantidad
+
+        # SIEMPRE agregar "Unidad" para todas las categorías
+        categorias = ['primera', 'segunda', 'tercera']
+        for categoria in categorias:
+            unidad_key = f"{categoria}_U"
+            if unidad_key not in tipos_ya_agregados:
+                tipos_disponibles.append({
+                    'value': 'U',
+                    'label': 'Unidad',
+                    'categoria': categoria
+                })
+            
+            # Multiplicador para unidades siempre es 1
+            multiplicadores[f"{categoria}_U"] = 1
+
     return render(request, 'Cosecha/form_cosecha.html', {
         'form': form,
         'plantacion': plantacion,
         'categoria_choices': DetalleCosecha.CATEGORIAS,
         'tipocosecha_choices': DetalleCosecha.OPCIONES,
+        'tipos_disponibles': json.dumps(tipos_disponibles),
+        'multiplicadores': json.dumps(multiplicadores),
     })
 
 # Editar una cosecha existente
@@ -1133,10 +1245,10 @@ def editar_cosecha(request, idcosecha):
     cosecha = get_object_or_404(Cosecha, pk=idcosecha)
     detalles_existentes = DetalleCosecha.objects.filter(cosecha=cosecha)
 
-     # 🔹 Obtenemos la plantación asociada para mostrar en el template
+    # Obtenemos la plantación asociada para mostrar en el template
     plantacion = cosecha.plantacion
 
-    # Cantidades vendidas actuales desde DetalleVenta
+    # Cantidades vendidas actuales desde DetalleVenta (en UNIDADES)
     detalle_ventas = DetalleVenta.objects.filter(cosecha=cosecha)
     vendida_primera = detalle_ventas.filter(categoria='primera').aggregate(total=Sum('cantidad'))['total'] or 0
     vendida_segunda = detalle_ventas.filter(categoria='segunda').aggregate(total=Sum('cantidad'))['total'] or 0
@@ -1162,16 +1274,53 @@ def editar_cosecha(request, idcosecha):
                     cosecha=cosecha,
                     categoria=corte['categoria'],
                     tipocosecha=corte['tipocosecha'],
-                    cantidad=corte['cantidad']
+                    cantidad=corte['cantidad']  # Esta es la cantidad BASE (ej: 1 caja, no 100 unidades)
                 )
 
-            if request.POST.get('ir_a_venta') == '1':
-                return redirect(f"{reverse('crear_venta')}?cosecha_id={cosecha.idcosecha}")
             return redirect('lista_cosechas')
     else:
         form = CosechaForm(instance=cosecha)
 
+    # Obtener tipos disponibles para el cultivo y multiplicadores
+    detalles_cultivo = DetalleCultivo.objects.filter(cultivo=plantacion.cultivo)
+    
+    tipos_disponibles = []
+    multiplicadores = {}
+    tipos_ya_agregados = set()
+    
+    # Primero los tipos específicos del cultivo
+    for detalle in detalles_cultivo:
+        tipo_key = f"{detalle.categoria}_{detalle.tipocosecha}"
+        
+        if tipo_key not in tipos_ya_agregados:
+            tipos_disponibles.append({
+                'value': detalle.tipocosecha,
+                'label': detalle.get_tipocosecha_display(),
+                'categoria': detalle.categoria,
+                'cantidad': detalle.cantidad
+            })
+            tipos_ya_agregados.add(tipo_key)
+        
+        clave = f"{detalle.categoria}_{detalle.tipocosecha}"
+        multiplicadores[clave] = detalle.cantidad
+
+    # SIEMPRE agregar "Unidad" para todas las categorías
+    categorias = ['primera', 'segunda', 'tercera']
+    for categoria in categorias:
+        unidad_key = f"{categoria}_U"
+        if unidad_key not in tipos_ya_agregados:
+            tipos_disponibles.append({
+                'value': 'U',
+                'label': 'Unidad',
+                'categoria': categoria,
+                'cantidad': 1
+            })
+        
+        # Multiplicador para unidades siempre es 1
+        multiplicadores[f"{categoria}_U"] = 1
+
     # Convertimos los detalles existentes a JSON para JS
+    # IMPORTANTE: Guardamos la cantidad BASE, no la multiplicada
     from django.core.serializers.json import DjangoJSONEncoder
     detalles_json = json.dumps(list(detalles_existentes.values(
         'categoria', 'tipocosecha', 'cantidad'
@@ -1184,11 +1333,12 @@ def editar_cosecha(request, idcosecha):
         'vendida_segunda': vendida_segunda,
         'vendida_tercera': vendida_tercera,
         'detalles_existentes': detalles_existentes,
-        'detalles_json': detalles_json,  # 🔹 Para inicializar la tabla en JS
+        'detalles_json': detalles_json,  # Para inicializar la tabla en JS
         'categoria_choices': DetalleCosecha.CATEGORIAS,
         'tipocosecha_choices': DetalleCosecha.OPCIONES,
+        'tipos_disponibles': json.dumps(tipos_disponibles),
+        'multiplicadores': json.dumps(multiplicadores),
     })
-
 
 # Eliminar una cosecha
 @login_required
@@ -1222,6 +1372,123 @@ def cerrar_cosecha(request, id):
             return JsonResponse({'success': False, 'error': 'Cosecha no encontrada'}, status=404)
     return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
 
+@login_required
+def obtener_tipos_cosecha(request):
+    """
+    Vista AJAX que devuelve los tipos de cosecha disponibles 
+    para un cultivo específico + SIEMPRE incluye "Unidad"
+    """
+    plantacion_id = request.GET.get('plantacion_id')
+    
+    if not plantacion_id:
+        return JsonResponse({'tipos': [], 'multiplicadores': {}})
+    
+    try:
+        plantacion = Plantacion.objects.get(idplantacion=plantacion_id)
+        cultivo = plantacion.cultivo
+        
+        # Obtener detalles del cultivo con sus multiplicadores
+        detalles_cultivo = DetalleCultivo.objects.filter(cultivo=cultivo)
+        
+        tipos_disponibles = []
+        multiplicadores = {}
+        tipos_ya_agregados = set()
+        
+        # Primero agregar los tipos específicos del cultivo
+        for detalle in detalles_cultivo:
+            tipo_key = f"{detalle.categoria}_{detalle.tipocosecha}"
+            
+            if tipo_key not in tipos_ya_agregados:
+                tipos_disponibles.append({
+                    'value': detalle.tipocosecha,
+                    'label': detalle.get_tipocosecha_display(),
+                    'categoria': detalle.categoria,
+                    'cantidad': detalle.cantidad
+                })
+                tipos_ya_agregados.add(tipo_key)
+            
+            # Clave única para categoria + tipocosecha
+            clave = f"{detalle.categoria}_{detalle.tipocosecha}"
+            multiplicadores[clave] = detalle.cantidad
+        
+        # SIEMPRE agregar "Unidad" para todas las categorías
+        categorias = ['primera', 'segunda', 'tercera']
+        for categoria in categorias:
+            unidad_key = f"{categoria}_U"
+            if unidad_key not in tipos_ya_agregados:
+                tipos_disponibles.append({
+                    'value': 'U',
+                    'label': 'Unidad',
+                    'categoria': categoria,
+                    'cantidad': 1  # Las unidades no se multiplican
+                })
+            
+            # Multiplicador para unidades siempre es 1
+            multiplicadores[f"{categoria}_U"] = 1
+        
+        return JsonResponse({
+            'tipos': tipos_disponibles,
+            'multiplicadores': multiplicadores
+        })
+        
+    except Plantacion.DoesNotExist:
+        return JsonResponse({'tipos': [], 'multiplicadores': {}})
+
+# Función auxiliar para calcular totales con multiplicadores
+def calcular_totales_con_multiplicadores(cosecha):
+    """
+    Calcula los totales de una cosecha aplicando los multiplicadores
+    del DetalleCultivo cuando el tipo no es 'U' (Unidad)
+    """
+    detalles_cosecha = DetalleCosecha.objects.filter(cosecha=cosecha)
+    cultivo = cosecha.plantacion.cultivo
+    detalles_cultivo = DetalleCultivo.objects.filter(cultivo=cultivo)
+    
+    # Crear diccionario de multiplicadores
+    multiplicadores = {}
+    for dc in detalles_cultivo:
+        clave = f"{dc.categoria}_{dc.tipocosecha}"
+        multiplicadores[clave] = dc.cantidad
+    
+    totales = {'primera': 0, 'segunda': 0, 'tercera': 0}
+    
+    for detalle in detalles_cosecha:
+        cantidad_base = detalle.cantidad
+        
+        # Si no es unidad, aplicar multiplicador
+        if detalle.tipocosecha != 'U':
+            clave = f"{detalle.categoria}_{detalle.tipocosecha}"
+            multiplicador = multiplicadores.get(clave, 1)
+            cantidad_total = cantidad_base * multiplicador
+        else:
+            cantidad_total = cantidad_base
+            
+        totales[detalle.categoria] += cantidad_total
+    
+    return totales
+
+def calcular_ventas_con_multiplicadores(cosecha):
+    ventas = DetalleVenta.objects.filter(cosecha=cosecha)
+    ventas_convertidas = {'primera': 0, 'segunda': 0, 'tercera': 0}
+
+    for venta in ventas:
+        cultivo = cosecha.plantacion.cultivo
+        multiplicador = 1
+
+        try:
+            detalle_cultivo = DetalleCultivo.objects.get(
+                cultivo=cultivo,
+                categoria=venta.categoria,
+                tipocosecha=venta.tipocosecha
+            )
+            multiplicador = detalle_cultivo.cantidad
+        except DetalleCultivo.DoesNotExist:
+            multiplicador = 1
+
+        cantidad_real = venta.cantidad * multiplicador
+        ventas_convertidas[venta.categoria] += cantidad_real
+
+    return ventas_convertidas
 
 ############   CLIENTES  ####################
 

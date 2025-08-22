@@ -1,39 +1,272 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
-{% block title %} | Formulario Cultivo {% endblock %}
+{% block title %} | {{ action }} Cultivo {% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="text-center mb-4">
-        <h2 class="fw-bold">
-            {% if form.instance.pk %} Editar Cultivo {% else %} Nuevo Cultivo {% endif %}
-        </h2>
-    </div>
+<div class="container py-3">
+  <div class="row row-cols-1 row-cols-lg-2 g-4">
+    
+    <!-- Formulario de Cultivo -->
+    <div class="col">
+      <div class="card shadow-sm h-100 w-100">
+        <div class="card-header bg-primary text-white fw-bold">
+          {{ action }} Cultivo
+        </div>
+        <div class="card-body">
+          <form id="form-cultivo" method="post">
+            {% csrf_token %}
+            
+            <!-- Datos básicos del cultivo -->
+            {{ form|crispy }}
 
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-
-                        <!-- Aquí renderizas todo el form automáticamente -->
-                        {{ form|crispy }}
-
-                        <div class="d-flex justify-content-between">
-                            <a href="{% url 'lista_cultivos' %}" class="btn btn-secondary">Cancelar</a>
-                            <button type="submit" class="btn btn-primary">
-                                {% if form.instance.pk %} Actualizar {% else %} Guardar {% endif %}
-                            </button>
-                        </div>
-
-                    </form>
-                </div>
+            <hr class="my-4">
+            
+            <!-- Sección para agregar detalles -->
+            <h6 class="fw-bold mb-3">Agregar Detalle de Cultivo</h6>
+            
+            <!-- Categoría -->
+            <div class="mb-3">
+              <label for="categoria">Categoría</label>
+              <select id="categoria" class="form-select" name="categoria">
+                <option value="">Seleccione una categoría</option>
+                {% for value, label in categoria_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
             </div>
 
+            <!-- Tipo de cosecha -->
+            <div class="mb-3">
+              <label for="tipocosecha">Tipo de cosecha</label>
+              <select id="tipocosecha" class="form-select" name="tipocosecha">
+                <option value="">Seleccione tipo de cosecha</option>
+                {% for value, label in tipocosecha_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Cantidad -->
+            <div class="mb-3">
+              <label for="cantidad">Cantidad</label>
+              <input type="number" class="form-control" id="cantidad" name="cantidad" min="1" placeholder="Cantidad">
+            </div>
+
+            <!-- Campo oculto para enviar los detalles como JSON -->
+            <input type="hidden" name="detalles_json" id="detalles_json">
+
+            <div class="d-grid gap-2 d-md-flex">
+              <button type="button" class="btn btn-success me-md-2" id="agregar-detalle">
+                <i class="bi bi-plus-circle"></i> Agregar Detalle
+              </button>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+              <button type="submit" class="btn btn-primary me-md-2" id="guardar-btn">
+                <i class="bi bi-save"></i> Guardar Cultivo
+              </button>            
+              <a href="{% url 'lista_cultivos' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Cancelar
+              </a>
+            </div>
+          </form>
         </div>
+      </div>
     </div>
+
+    <!-- Lista de Detalles Agregados -->
+    <div class="col">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-success text-white fw-bold">
+          <i class="bi bi-list-check"></i> Detalles Agregados
+        </div>
+        <div class="card-body">
+          <div id="mensaje-sin-detalles" class="alert alert-info" style="display: none;">
+            <i class="bi bi-info-circle"></i>
+            <strong>Información:</strong> Los detalles de cultivo son opcionales. Puedes agregar el cultivo sin detalles y editarlo después, o agregar detalles ahora usando el formulario de la izquierda.
+          </div>
+          
+          <ul id="detalles-lista" class="list-group mb-3"></ul>
+          <div id="mensaje-vacio" class="text-muted text-center py-4">
+            <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.5;"></i>
+            <p class="mt-2">No hay detalles agregados aún</p>
+            <small class="text-muted">Usa el formulario de la izquierda para agregar detalles</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const categoria = document.getElementById('categoria');
+  const tipocosecha = document.getElementById('tipocosecha');
+  const cantidad = document.getElementById('cantidad');
+  const detallesLista = document.getElementById('detalles-lista');
+  const detallesJson = document.getElementById('detalles_json');
+  const agregarBtn = document.getElementById('agregar-detalle');
+  const mensajeVacio = document.getElementById('mensaje-vacio');
+
+  // Array para almacenar los detalles
+  let detalles = [];
+
+  // Si estamos editando, inicializar con detalles existentes
+  {% if detalles_existentes %}
+  detalles = {{ detalles_existentes|safe }};
+  {% endif %}
+
+  // Función para obtener el texto de una opción de select
+  function getLabel(selectElement, value) {
+    const option = [...selectElement.options].find(opt => opt.value === value);
+    return option ? option.text : value;
+  }
+
+  // Función para actualizar la lista visual
+  function actualizarLista() {
+    detallesLista.innerHTML = '';
+    
+    if (detalles.length === 0) {
+      mensajeVacio.style.display = 'block';
+    } else {
+      mensajeVacio.style.display = 'none';
+      
+      detalles.forEach((detalle, index) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.innerHTML = `
+          <div>
+            <span class="badge bg-primary me-2">${getLabel(categoria, detalle.categoria)}</span>
+            <strong>${detalle.cantidad}</strong> ${getLabel(tipocosecha, detalle.tipocosecha)}
+          </div>
+          <button class="btn btn-sm btn-outline-danger eliminar-detalle" data-index="${index}" title="Eliminar detalle">
+            <i class="bi bi-trash"></i>
+          </button>
+        `;
+        detallesLista.appendChild(li);
+      });
+    }
+
+    // Actualizar el campo oculto con los datos JSON
+    detallesJson.value = JSON.stringify(detalles);
+  }
+
+  // Función para validar si ya existe la combinación categoria + tipocosecha
+  function existeCombinacion(cat, tipo) {
+    return detalles.some(detalle => 
+      detalle.categoria === cat && detalle.tipocosecha === tipo
+    );
+  }
+
+  // Evento para agregar un detalle
+  agregarBtn.addEventListener('click', function () {
+    const cat = categoria.value;
+    const tipo = tipocosecha.value;
+    const cant = parseInt(cantidad.value);
+
+    // Validaciones
+    if (!cat || !tipo || isNaN(cant) || cant <= 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Datos inválidos',
+        text: 'Por favor completa todos los campos correctamente.',
+        timer: 2500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    // Verificar si ya existe la combinación
+    if (existeCombinacion(cat, tipo)) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Combinación duplicada',
+        text: 'Ya existe un detalle con esta categoría y tipo de cosecha.',
+        timer: 3000,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    // Agregar el detalle
+    detalles.push({
+      categoria: cat,
+      tipocosecha: tipo,
+      cantidad: cant
+    });
+
+    actualizarLista();
+
+    // Limpiar los campos
+    categoria.selectedIndex = 0;
+    tipocosecha.selectedIndex = 0;
+    cantidad.value = '';
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Detalle agregado',
+      text: 'El detalle se ha agregado correctamente.',
+      timer: 1500,
+      showConfirmButton: false
+    });
+  });
+
+  // Evento para eliminar un detalle
+  detallesLista.addEventListener('click', function (e) {
+    if (e.target.closest('.eliminar-detalle')) {
+      const index = parseInt(e.target.closest('.eliminar-detalle').getAttribute('data-index'));
+      
+      Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción eliminará el detalle seleccionado.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          detalles.splice(index, 1);
+          actualizarLista();
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Eliminado',
+            text: 'El detalle ha sido eliminado.',
+            timer: 1500,
+            showConfirmButton: false
+          });
+        }
+      });
+    }
+  });
+
+  // Inicializar la lista
+  actualizarLista();
+
+  // Validación del formulario antes de enviar
+  document.getElementById('form-cultivo').addEventListener('submit', function(e) {
+    const nombre = document.querySelector('input[name="nombre"]').value.trim();
+    const variedad = document.querySelector('input[name="variedad"]').value.trim();
+    
+    if (!nombre || !variedad) {
+      e.preventDefault();
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campos requeridos',
+        text: 'Por favor completa el nombre y variedad del cultivo.',
+        showConfirmButton: true
+      });
+      return false;
+    }
+  });
+});
+</script>
 {% endblock %}
