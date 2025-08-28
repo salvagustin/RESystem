@@ -33,39 +33,97 @@ grupos_permitidos = ['Administrador']
 
 @login_required
 def inicio(request):
-    
+    from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+    from datetime import date, timedelta
+    import json
     
     hoy = date.today()
     inicio_semana = hoy - timedelta(days=hoy.weekday())  # lunes
     dias_semana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-    # Obtener proveedores (clientes con tipo 'P' si existe esa distinción)
-    proveedores = Cliente.objects.filter(tipocliente='P').order_by('nombre') if hasattr(Cliente, 'tipocliente') else Cliente.objects.all().order_by('nombre')
+    # Obtener proveedores
+    proveedores = Cliente.objects.filter(tipocliente='P').order_by('nombre')
 
-    # Función para obtener el nombre legible del tipo de cosecha
-    def get_tipo_cosecha_display(codigo):
-        opciones = {
-            "S": "Saco",
-            "U": "Unidad", 
-            "C": "Caja",
-            "Lb":"Libra"
-        }
-        return opciones.get(codigo, codigo)
+    # Función auxiliar para calcular totales con multiplicadores (usar la que ya tienes)
+    def calcular_totales_con_multiplicadores(cosecha):
+        """
+        Calcula los totales de una cosecha aplicando los multiplicadores
+        del DetalleCultivo cuando el tipo no es 'U' (Unidad)
+        """
+        detalles_cosecha = DetalleCosecha.objects.filter(cosecha=cosecha)
+        cultivo = cosecha.plantacion.cultivo
+        detalles_cultivo = DetalleCultivo.objects.filter(cultivo=cultivo)
+        
+        # Crear diccionario de multiplicadores
+        multiplicadores = {}
+        for dc in detalles_cultivo:
+            clave = f"{dc.categoria}_{dc.tipocosecha}"
+            multiplicadores[clave] = dc.cantidad
+        
+        totales = {'primera': 0, 'segunda': 0, 'tercera': 0}
+        
+        for detalle in detalles_cosecha:
+            cantidad_base = detalle.cantidad
+            
+            # Si no es unidad, aplicar multiplicador
+            if detalle.tipocosecha != 'U':
+                clave = f"{detalle.categoria}_{detalle.tipocosecha}"
+                multiplicador = multiplicadores.get(clave, 1)
+                cantidad_total = cantidad_base * multiplicador
+            else:
+                cantidad_total = cantidad_base
+                
+            totales[detalle.categoria] += cantidad_total
+        
+        return totales
+
+    # Función para calcular totales de cosechas por día con equivalencias
+    def calcular_cosechas_totales_por_dia(fecha_inicio, num_dias=7):
+        """Calcula totales de cosechas por día aplicando equivalencias"""
+        cosechas_por_dia = {}
+        cosechas_por_cultivo_dia = {}
+        
+        for i in range(num_dias):
+            dia = fecha_inicio + timedelta(days=i)
+            cosechas_del_dia = Cosecha.objects.filter(fecha=dia)
+            
+            total_dia = {'primera': 0, 'segunda': 0, 'tercera': 0}
+            cultivos_dia = {}
+            
+            for cosecha in cosechas_del_dia:
+                totales_cosecha = calcular_totales_con_multiplicadores(cosecha)
+                cultivo_nombre = cosecha.plantacion.cultivo.nombre
+                
+                # Agregar al total del día
+                for categoria, cantidad in totales_cosecha.items():
+                    total_dia[categoria] += cantidad
+                
+                # Agregar por cultivo
+                if cultivo_nombre not in cultivos_dia:
+                    cultivos_dia[cultivo_nombre] = {'primera': 0, 'segunda': 0, 'tercera': 0}
+                
+                for categoria, cantidad in totales_cosecha.items():
+                    cultivos_dia[cultivo_nombre][categoria] += cantidad
+            
+            cosechas_por_dia[i] = total_dia
+            cosechas_por_cultivo_dia[i] = cultivos_dia
+        
+        return cosechas_por_dia, cosechas_por_cultivo_dia
 
     # Totales generales
     total_cultivos = Cultivo.objects.count()
     total_plantaciones = Plantacion.objects.count()
     
-    # Total de ventas del día (usando DetalleVenta)
+    # Total de ventas del día
     total_ventas_hoy = DetalleVenta.objects.filter(
         venta__fecha=hoy
     ).aggregate(
         total=Sum(F('subtotal'))
     )['total'] or 0
 
-     # Compras del día
+    # Total de compras del día
     total_compras_hoy = DetalleCompra.objects.filter(
-    compra__fecha=hoy
+        compra__fecha=hoy
     ).aggregate(
         total=Sum(
             ExpressionWrapper(
@@ -75,23 +133,49 @@ def inicio(request):
         )
     )['total'] or 0
 
-    # Plantaciones y cosechas disponibles
+    # Plantaciones, cosechas y clientes disponibles
     plantaciones = Plantacion.objects.filter(estado=0)
     cosechas = Cosecha.objects.filter(estado=0)
     clientes = Cliente.objects.filter(tipocliente='C')
     
-    # Cosechas de hoy agrupadas por categoría (mantenemos el original)
-    cosechas_hoy = DetalleCosecha.objects.filter(
-        cosecha__fecha=hoy
-    ).values('categoria').annotate(
-        total=Sum('cantidad')
-    )
+    # Calcular cosechas con equivalencias para la semana
+    cosechas_semana, cosechas_por_cultivo_semana = calcular_cosechas_totales_por_dia(inicio_semana, 7)
     
-    resumen_hoy = {'primera': 0, 'segunda': 0, 'tercera': 0}
-    for item in cosechas_hoy:
-        resumen_hoy[item['categoria']] = item['total'] or 0
+    # Cosechas de HOY con equivalencias aplicadas
+    cosechas_hoy_totales = cosechas_semana.get(hoy.weekday(), {'primera': 0, 'segunda': 0, 'tercera': 0})
+    
+    # Total único de cosechas de hoy (suma de todas las categorías)
+    total_cosechas_hoy = sum(cosechas_hoy_totales.values())
+    
+    # Cosechas detalladas de hoy por cultivo (con equivalencias)
+    cosechas_hoy_por_cultivo = cosechas_por_cultivo_semana.get(hoy.weekday(), {})
+    
+    # Obtener todos los cultivos que se cosecharon en la semana
+    todos_cultivos_semana = set()
+    for dia_cultivos in cosechas_por_cultivo_semana.values():
+        todos_cultivos_semana.update(dia_cultivos.keys())
+    
+    # Cultivos cosechados hoy
+    cultivos_hoy = set(cosechas_hoy_por_cultivo.keys())
+    
+    # Preparar datos para gráficos de la semana por cultivo
+    datos_graficos_cultivo = {}
+    for cultivo in todos_cultivos_semana:
+        datos_graficos_cultivo[cultivo] = {
+            'primera': [0] * 7,
+            'segunda': [0] * 7,
+            'tercera': [0] * 7
+        }
+        
+        for dia in range(7):
+            if dia in cosechas_por_cultivo_semana:
+                if cultivo in cosechas_por_cultivo_semana[dia]:
+                    cultivo_data = cosechas_por_cultivo_semana[dia][cultivo]
+                    datos_graficos_cultivo[cultivo]['primera'][dia] = cultivo_data.get('primera', 0)
+                    datos_graficos_cultivo[cultivo]['segunda'][dia] = cultivo_data.get('segunda', 0)
+                    datos_graficos_cultivo[cultivo]['tercera'][dia] = cultivo_data.get('tercera', 0)
 
-    # Ventas por día de la semana (usando DetalleVenta)
+    # Ventas por día de la semana
     ventas_por_dia = []
     for i in range(7):
         dia = inicio_semana + timedelta(days=i)
@@ -102,123 +186,72 @@ def inicio(request):
         )['total'] or 0
         ventas_por_dia.append(float(total_dia))
 
-    # Cosechas detalladas hoy por cultivo Y TIPO DE COSECHA
-    cosechas_detalle = DetalleCosecha.objects.filter(
-        cosecha__fecha=hoy
-    ).select_related('cosecha__plantacion__cultivo')
-    
-    cosechas_hoy_detalle = {}
-    
-    for detalle in cosechas_detalle:
-        cultivo = detalle.cosecha.plantacion.cultivo.nombre
-        tipo_cosecha_display = get_tipo_cosecha_display(detalle.tipocosecha)
-        categoria = detalle.categoria
-        cantidad = detalle.cantidad or 0
-        
-        if cultivo not in cosechas_hoy_detalle:
-            cosechas_hoy_detalle[cultivo] = {}
-        
-        if tipo_cosecha_display not in cosechas_hoy_detalle[cultivo]:
-            cosechas_hoy_detalle[cultivo][tipo_cosecha_display] = {
-                'primera': 0, 'segunda': 0, 'tercera': 0
-            }
-        
-        cosechas_hoy_detalle[cultivo][tipo_cosecha_display][categoria] += cantidad
-
-    # Cosechas por calidad por día POR CULTIVO (última semana)
-    cosechas_por_calidad_cultivo_tipo = {}
-    cultivos_nombres = set()
-    tipos_cosecha = set()
-
+    # Compras por día de la semana
+    compras_por_dia = []
     for i in range(7):
         dia = inicio_semana + timedelta(days=i)
-        detalles_dia = DetalleCosecha.objects.filter(
-            cosecha__fecha=dia
-        ).select_related('cosecha__plantacion__cultivo')
-        
-        for detalle in detalles_dia:
-            cultivo = detalle.cosecha.plantacion.cultivo.nombre
-            tipo_cosecha_display = get_tipo_cosecha_display(detalle.tipocosecha)
-            categoria = detalle.categoria
-            cantidad = detalle.cantidad or 0
-            
-            if cultivo not in cosechas_por_calidad_cultivo_tipo:
-                cosechas_por_calidad_cultivo_tipo[cultivo] = {}
-            
-            if tipo_cosecha_display not in cosechas_por_calidad_cultivo_tipo[cultivo]:
-                cosechas_por_calidad_cultivo_tipo[cultivo][tipo_cosecha_display] = {
-                    'primera': [0] * 7,
-                    'segunda': [0] * 7,
-                    'tercera': [0] * 7
-                }
-            
-            cosechas_por_calidad_cultivo_tipo[cultivo][tipo_cosecha_display][categoria][i] += cantidad
-            cultivos_nombres.add(cultivo)
-            tipos_cosecha.add(tipo_cosecha_display)
+        total_dia = DetalleCompra.objects.filter(
+            compra__fecha=dia
+        ).aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    F('cantidad') * F('preciounitario'),
+                    output_field=DecimalField()
+                )
+            )
+        )['total'] or 0
+        compras_por_dia.append(float(total_dia))
 
-    # Obtener cultivos que se cosecharon HOY (no toda la semana)
-    cultivos_hoy = set()
-    cosechas_detalle_hoy = DetalleCosecha.objects.filter(
-        cosecha__fecha=hoy
-    ).select_related('cosecha__plantacion__cultivo')
-    
-    for detalle in cosechas_detalle_hoy:
-        cultivos_hoy.add(detalle.cosecha.plantacion.cultivo.nombre)
-    
-    # Estructura consolidada por cultivo (suma todos los tipos de cosecha)
-    cosechas_por_calidad_y_cultivo = {}
-    
-    for cultivo in cultivos_nombres:
-        cosechas_por_calidad_y_cultivo[cultivo] = {
-            'primera': [0] * 7,
-            'segunda': [0] * 7,
-            'tercera': [0] * 7
-        }
-        
-        if cultivo in cosechas_por_calidad_cultivo_tipo:
-            for tipo, calidades in cosechas_por_calidad_cultivo_tipo[cultivo].items():
-                for categoria, dias in calidades.items():
-                    for i, cantidad in enumerate(dias):
-                        cosechas_por_calidad_y_cultivo[cultivo][categoria][i] += cantidad
-
-    # Solo crear datos de gráfico para cultivos que se cosecharon hoy
-    cosechas_por_calidad_cultivos_hoy = {}
-    for cultivo in cultivos_hoy:
-        if cultivo in cosechas_por_calidad_y_cultivo:
-            cosechas_por_calidad_cultivos_hoy[cultivo] = cosechas_por_calidad_y_cultivo[cultivo]
-
-   
-   
-
-    # Convertir datos a JSON para JavaScript
+    # Preparar datos JSON para JavaScript
     dias_semana_json = json.dumps(dias_semana)
     ventas_por_dia_json = json.dumps(ventas_por_dia)
-    calidad_por_cultivo_json = json.dumps(cosechas_por_calidad_cultivos_hoy)  # Solo cultivos de hoy
-    cultivos_hoy_json = json.dumps(sorted(list(cultivos_hoy)))  # Solo cultivos de hoy
+    compras_por_dia_json = json.dumps(compras_por_dia)
+    
+    # Solo cultivos que se cosecharon esta semana para los gráficos
+    cultivos_semana_lista = sorted(list(todos_cultivos_semana))
+    cultivos_hoy_lista = sorted(list(cultivos_hoy))
+    
+    # Datos de gráficos solo para cultivos de esta semana
+    calidad_por_cultivo_json = json.dumps(datos_graficos_cultivo)
+    cultivos_semana_json = json.dumps(cultivos_semana_lista)
+    cultivos_hoy_json = json.dumps(cultivos_hoy_lista)
 
     context = {
+        # Totales generales
         'total_cultivos': total_cultivos,
         'total_plantaciones': total_plantaciones,
         'total_ventas': total_ventas_hoy,
         'total_compras': total_compras_hoy,
-        'cosechas_hoy': resumen_hoy,
-        'cosechas_hoy_detalle': cosechas_hoy_detalle,
+        
+        # Cosechas de hoy
+        'total_cosechas_hoy': total_cosechas_hoy,
+        'cosechas_hoy': cosechas_hoy_totales,  # Por categoría
+        'cosechas_hoy_por_cultivo': cosechas_hoy_por_cultivo,  # Por cultivo
+        
+        # Listas para modales
         'clientes': clientes,
         'cosechas': cosechas,
         'plantaciones': plantaciones,
-        'proveedores':proveedores,
+        'proveedores': proveedores,
         
-        # Datos para JavaScript (ya convertidos a JSON)
+        # Datos para JavaScript (gráficos)
         'dias_semana': dias_semana_json,
         'ventas_por_dia': ventas_por_dia_json,
+        'compras_por_dia': compras_por_dia_json,
         'calidad_por_cultivo': calidad_por_cultivo_json,
-        'cultivos_hoy': cultivos_hoy_json,  # Solo cultivos cosechados hoy (para JS)
-        'cultivos_hoy_lista': sorted(list(cultivos_hoy)),  # Para el template HTML
+        'cultivos_semana': cultivos_semana_json,
+        'cultivos_hoy': cultivos_hoy_json,
         
-        # Datos adicionales para otros usos
-        'calidad_por_cultivo_tipo': cosechas_por_calidad_cultivo_tipo,
-        'tipos_cosecha': sorted(tipos_cosecha),
+        # Para el template HTML
+        'cultivos_semana_lista': cultivos_semana_lista,
+        'cultivos_hoy_lista': cultivos_hoy_lista,
+        
+        # Datos adicionales
+        'cosechas_semana_completa': cosechas_semana,
+        'fecha_inicio_semana': inicio_semana,
+        'fecha_hoy': hoy,
     }
+    
     return render(request, 'index.html', context)
 
 
@@ -1033,7 +1066,7 @@ def lista_cosechas(request):
         cosecha.segunda = totales['segunda'] 
         cosecha.tercera = totales['tercera']
         cosechas_con_totales.append(cosecha)
-
+    
     # Resto del código para ventas y detalles...
     ventas = DetalleVenta.objects.select_related('cosecha')
     ventas_por_cosecha = {}
@@ -1070,7 +1103,7 @@ def lista_cosechas(request):
 
         total_cosecha = (cosecha.primera or 0) + (cosecha.segunda or 0) + (cosecha.tercera or 0)
         perdida = disponible_primera + disponible_segunda + disponible_tercera
-        print(perdida)
+        
         ventas_dict[cosecha.idcosecha] = {
             'disponible_primera': disponible_primera,
             'disponible_segunda': disponible_segunda,
@@ -1097,39 +1130,48 @@ def lista_cosechas(request):
     }
 
     detalle_por_cosecha = defaultdict(list)
+    total_por_cosecha = {}  # NUEVO
+
     for d in detalle_cosechas:
-        # Obtener multiplicador para este tipo
-        cosecha_obj = Cosecha.objects.get(idcosecha=d['cosecha_id'])
+        cosecha_id = d['cosecha_id']
+        cosecha_obj = Cosecha.objects.get(idcosecha=cosecha_id)
         cultivo = cosecha_obj.plantacion.cultivo
-        
+
         multiplicador = 1
-        if d['tipocosecha'] != 'U':  # Si no es unidad
+        if d['tipocosecha'] != 'U':
             try:
                 detalle_cultivo = DetalleCultivo.objects.get(
                     cultivo=cultivo,
-                    categoria=d['categoria'], 
+                    categoria=d['categoria'],
                     tipocosecha=d['tipocosecha']
                 )
                 multiplicador = detalle_cultivo.cantidad
             except DetalleCultivo.DoesNotExist:
                 multiplicador = 1
 
-        cantidad_base = d['total'] or 0  # ESTA ES LA CANTIDAD ORIGINAL (ej: 1 caja)
-        cantidad_total = cantidad_base * multiplicador  # Unidades totales (ej: 100 tomates)
-        cantidad_vendida = ventas_detalle_map.get((d['cosecha_id'], d['categoria']), 0)
+        cantidad_base = d['total'] or 0
+        cantidad_total = cantidad_base * multiplicador
+        cantidad_vendida = ventas_detalle_map.get((cosecha_id, d['categoria']), 0)
         disponibilidad = max(cantidad_base - cantidad_vendida, 0)
-        
-        detalle_por_cosecha[d['cosecha_id']].append({
+
+        detalle_por_cosecha[cosecha_id].append({
             'categoria': d['categoria'],
             'categoria_display': categoria_display.get(d['categoria'], d['categoria']),
             'tipocosecha': d['tipocosecha'],
             'tipocosecha_display': tipo_display.get(d['tipocosecha'], d['tipocosecha']),
-            'cantidad_original': cantidad_base,    # ← NUEVO NOMBRE
+            'cantidad_original': cantidad_base,
             'multiplicador': multiplicador,
-            'cantidad_total': cantidad_total,      # ← NUEVO NOMBRE
+            'cantidad_total': cantidad_total,
             'cantidad_vendida': cantidad_vendida,
             'disponible': disponibilidad,
+            
+
         })
+
+        # Acumular total por cosecha
+        if cosecha_id not in total_por_cosecha:
+            total_por_cosecha[cosecha_id] = 0
+        total_por_cosecha[cosecha_id] += cantidad_total
 
     # Paginación
     pagina = request.GET.get("page", 1)
@@ -1151,6 +1193,8 @@ def lista_cosechas(request):
         'plantaciones': plantaciones,
         'ventas_dict': ventas_dict,
         'detalle_por_cosecha': dict(detalle_por_cosecha),
+        'total_por_cosecha': total_por_cosecha, 
+         
     })
 
 # Crear una nueva cosecha

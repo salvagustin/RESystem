@@ -21,8 +21,8 @@
             <i class="bi bi-plus-circle"></i> Compra
         </button>
         <a href="{% url 'agregarplanilla' %}" class="btn btn-success">
-                                    <i class="fas fa-plus"></i> Asistencia
-                                </a>
+            <i class="fas fa-plus"></i> Asistencia
+        </a>
     </div>
 </div>
 
@@ -30,48 +30,59 @@
 <h3 class="fw-bold mb-4">Resumen Diario</h3>
 
 <div class="row g-3">
-{% if cosechas_hoy_detalle %}
-  {% for cultivo, tipos in cosechas_hoy_detalle.items %}
-    <div class="col-12 col-sm-6 col-lg-3">
-      <div class="card shadow-sm border-success h-100">
-        <div class="card-header bg-success text-white text-center fw-bold text-uppercase py-2 small">
-          {{ cultivo }}
+
+<!-- Tarjeta de Total de Cosechas -->
+<div class="col-12 col-sm-6 col-lg-4">
+    <div class="card h-100 text-white bg-success text-center shadow-sm">
+        <div class="card-header fw-bold">
+            <i class="bi bi-scissors"></i> Cosechas
         </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered text-center mb-0 align-middle">
-              <thead class="table-success">
-                <tr class="small">
-                  <th>Tipo</th>
-                  <th><i class="bi bi-star-fill text-success"></i> P</th>
-                  <th><i class="bi bi-star-half text-info"></i> S</th>
-                  <th><i class="bi bi-star text-warning"></i> T</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for tipo, calidades in tipos.items %}
-                  <tr class="small">
-                    <td class="fw-bold text-capitalize">{{ tipo }}</td>
-                    <td>{{ calidades.primera|default:0 }}</td>
-                    <td>{{ calidades.segunda|default:0 }}</td>
-                    <td>{{ calidades.tercera|default:0 }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+        <div class="card-body">
+            <p class="mb-1 text-uppercase">Total del día</p>
+            <p class="fw-bold fs-4">{{ total_cosechas_hoy|floatformat:0 }}</p>
+            <small class="text-light">
+                P: {{ cosechas_hoy.primera|floatformat:0 }} | 
+                S: {{ cosechas_hoy.segunda|floatformat:0 }} | 
+                T: {{ cosechas_hoy.tercera|floatformat:0 }}
+            </small>
         </div>
-      </div>
     </div>
-  {% endfor %}
-{% else %}
-  <div class="col-12">
-    <div class="alert alert-info text-center">
-      <i class="bi bi-info-circle"></i> No hay cosechas registradas para hoy
+</div>
+
+<!-- Cosechas detalladas por cultivo (si hay) -->
+{% if cosechas_hoy_por_cultivo %}
+    {% for cultivo, totales in cosechas_hoy_por_cultivo.items %}
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="card shadow-sm border-success h-100">
+            <div class="card-header bg-success text-white text-center fw-bold text-uppercase py-2 small">
+                {{ cultivo }}
+            </div>
+            <div class="card-body p-2">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="text-success fw-bold fs-5">{{ totales.primera|floatformat:0 }}</div>
+                        <small class="text-muted">Primera</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-info fw-bold fs-5">{{ totales.segunda|floatformat:0 }}</div>
+                        <small class="text-muted">Segunda</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-warning fw-bold fs-5">{{ totales.tercera|floatformat:0 }}</div>
+                        <small class="text-muted">Tercera</small>
+                    </div>
+                </div>
+                <hr class="my-2">
+                <div class="text-center">
+                    <span class="fw-bold text-dark">Total: {{ totales.primera|add:totales.segunda|add:totales.tercera|floatformat:0 }} unidades</span>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
+    {% endfor %}
 {% endif %}
 
+<!-- Ventas del día -->
 <div class="col-12 col-md-6 col-lg-4">
     <div class="card h-100 text-white bg-primary text-center shadow-sm">
         <div class="card-header fw-bold">
@@ -79,11 +90,12 @@
         </div>
         <div class="card-body">
             <p class="mb-1 text-uppercase">Del día</p>
-            <p class="fw-bold fs-4">${{ total_ventas }}</p>
+            <p class="fw-bold fs-4">${{ total_ventas|floatformat:2 }}</p>
         </div>
     </div>
 </div>
 
+<!-- Compras del día -->
 <div class="col-12 col-md-6 col-lg-4">
     <div class="card h-100 text-white bg-secondary text-center shadow-sm">
         <div class="card-header fw-bold">
@@ -91,10 +103,18 @@
         </div>
         <div class="card-body">
             <p class="mb-1 text-uppercase">Del día</p>
-            <p class="fw-bold fs-4">${{ total_compras }}</p>
+            <p class="fw-bold fs-4">${{ total_compras|floatformat:2 }}</p>
         </div>
     </div>
 </div>
+
+{% if not cosechas_hoy_por_cultivo and total_cosechas_hoy == 0 %}
+<div class="col-12">
+    <div class="alert alert-info text-center">
+        <i class="bi bi-info-circle"></i> No hay cosechas registradas para hoy
+    </div>
+</div>
+{% endif %}
 
 </div>
 
@@ -103,21 +123,44 @@
     <div class="col-md-6 mb-4">
         <div class="card shadow-sm">
             <div class="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center">
-                <span>Producción diaria</span>
-                <select id="selectCultivo" class="form-select form-select-sm" style="width: auto; background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white;">
-                    {% for cultivo in cultivos_hoy_lista %}
-                        <option value="{{ cultivo }}" style="color: black;">{{ cultivo }}</option>
-                    {% endfor %}
-                </select>
+                <span>Producción semanal</span>
+                <div class="d-flex gap-2 align-items-center">
+                    <label for="selectCultivo" class="text-white mb-0 small">Cultivo:</label>
+                    <select id="selectCultivo" class="form-select form-select-sm" style="width: auto; background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; min-width: 120px;">
+                        {% if cultivos_semana_lista %}
+                            {% for cultivo in cultivos_semana_lista %}
+                                <option value="{{ cultivo }}" style="color: black;">{{ cultivo }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" style="color: gray;">Sin datos</option>
+                        {% endif %}
+                    </select>
+                </div>
             </div>
             <div class="card-body">
-                <canvas id="calidadChart" style="height: 350px;"></canvas>
+                {% if cultivos_semana_lista %}
+                    <canvas id="calidadChart" style="height: 350px;"></canvas>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-bar-chart-line fs-1"></i>
+                        <p class="mt-2">No hay datos de cosechas para mostrar esta semana</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
+    
     <div class="col-md-6 mb-4">
         <div class="card shadow-sm">
-            <div class="card-header bg-info text-white fw-bold">Ventas diarias</div>
+            <div class="card-header bg-info text-white fw-bold d-flex justify-content-between align-items-center">
+                <span>Ventas y Compras Semanales</span>
+                <div class="form-check form-switch" style="margin: 0;">
+                    <input class="form-check-input" type="checkbox" id="toggleCompras" checked>
+                    <label class="form-check-label text-white small" for="toggleCompras">
+                        Mostrar compras
+                    </label>
+                </div>
+            </div>
             <div class="card-body">
                 <canvas id="ventasChart" style="height: 350px;"></canvas>
             </div>
@@ -131,7 +174,9 @@
 window.dashboardData = {
     diasSemana: {{ dias_semana|safe }},
     ventasPorDia: {{ ventas_por_dia|safe }},
+    comprasPorDia: {{ compras_por_dia|safe }},
     calidadPorCultivo: {{ calidad_por_cultivo|safe }},
+    cultivosSemana: {{ cultivos_semana|safe }},
     cultivosHoy: {{ cultivos_hoy|safe }}
 };
 
@@ -147,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    const { diasSemana, ventasPorDia, calidadPorCultivo, cultivosHoy } = window.dashboardData;
+    const { diasSemana, ventasPorDia, comprasPorDia, calidadPorCultivo, cultivosSemana, cultivosHoy } = window.dashboardData;
 
     // Función para detectar si estamos en modo oscuro
     function getChartColors() {
@@ -164,9 +209,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const colors = getChartColors();
 
-    // CÓDIGO PARA BOTONES
+    // CÓDIGO PARA BOTONES DE MODALES
     const btnCorte = document.getElementById("btnIrFormularioCorte");
-    //const btnVenta = document.getElementById("btnIrFormularioVenta");
+    const btnVenta = document.getElementById("btnIrFormularioVenta");
+    const btnCompra = document.getElementById("btnIrFormularioCompra");
 
     if (btnCorte) {
         btnCorte.addEventListener("click", function () {
@@ -183,57 +229,72 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Botón de venta
-    const btnVenta = document.getElementById("btnIrFormularioVenta");
     if (btnVenta) {
         btnVenta.addEventListener("click", function () {
             const clienteId = document.getElementById("selectCliente")?.value;
             if (clienteId) {
-                window.location.href = `/ventas/crear/?cliente_id=${clienteId}`;
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarCliente'));
+                if (modal) modal.hide();
+                setTimeout(() => {
+                    window.location.href = `/ventas/crear/?cliente_id=${clienteId}`;
+                }, 300);
             } else {
                 alert("Debes seleccionar un cliente.");
             }
         });
     }
 
-    // Botón de compra
-    const btnCompra = document.getElementById("btnIrFormularioCompra");
     if (btnCompra) {
         btnCompra.addEventListener("click", function () {
             const proveedorId = document.getElementById("selectProveedor")?.value;
             if (proveedorId) {
-                window.location.href = `/compras/crear/?proveedor_id=${proveedorId}`;
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarProveedor'));
+                if (modal) modal.hide();
+                setTimeout(() => {
+                    window.location.href = `/compras/crear/?proveedor_id=${proveedorId}`;
+                }, 300);
             } else {
                 alert("Debes seleccionar un proveedor.");
             }
         });
     }
-    // Botón para ir al formulario de nueva compra
-    document.getElementById("btnIrFormulario").addEventListener("click", function () {
-        const proveedorId = document.getElementById("selectProveedor").value;
-        if (proveedorId) {
-            window.location.href = `/compras/crear/?proveedor_id=${proveedorId}`;
-        } else {
-            alert("Debes seleccionar un proveedor.");
-        }
-    }); 
 
-    // 1. GRÁFICO DE VENTAS
+    // 1. GRÁFICO DE VENTAS Y COMPRAS
     const ventasChartElement = document.getElementById('ventasChart');
+    const toggleCompras = document.getElementById('toggleCompras');
+    
     if (ventasChartElement && diasSemana && ventasPorDia) {
+        const datasets = [
+            {
+                label: 'Ventas ($)',
+                data: ventasPorDia,
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
+                type: 'bar'
+            }
+        ];
+
+        if (comprasPorDia && toggleCompras.checked) {
+            datasets.push({
+                label: 'Compras ($)',
+                data: comprasPorDia,
+                backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
+                type: 'bar'
+            });
+        }
+
         const ventasChart = new Chart(ventasChartElement, {
             type: 'bar',
             data: {
                 labels: diasSemana,
-                datasets: [{
-                    label: 'Ventas ($)',
-                    data: ventasPorDia,
-                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 2,
-                    borderRadius: 8,
-                    borderSkipped: false
-                }]
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -241,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Ventas por Día de la Semana',
+                        text: 'Ventas y Compras de la Semana',
                         color: colors.text,
                         font: { size: 16, weight: 'bold' },
                         padding: { bottom: 20 }
@@ -262,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         cornerRadius: 8,
                         callbacks: {
                             label: function(ctx) {
-                                return 'Ventas: $' + ctx.parsed.y.toLocaleString('es-ES', {
+                                return ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString('es-ES', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2
                                 });
@@ -286,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         },
                         title: {
                             display: true,
-                            text: 'Ventas ($)',
+                            text: 'Monto ($)',
                             color: colors.text,
                             font: { size: 12, weight: 'bold' }
                         }
@@ -307,16 +368,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-    } else {
-        console.error('❌ No se pudo crear el gráfico de ventas - Elemento o datos faltantes');
+
+        // Toggle para mostrar/ocultar compras
+        toggleCompras.addEventListener('change', function() {
+            if (this.checked && comprasPorDia) {
+                // Agregar dataset de compras
+                ventasChart.data.datasets.push({
+                    label: 'Compras ($)',
+                    data: comprasPorDia,
+                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                    type: 'bar'
+                });
+            } else {
+                // Remover dataset de compras
+                ventasChart.data.datasets = ventasChart.data.datasets.filter(ds => ds.label !== 'Compras ($)');
+            }
+            ventasChart.update();
+        });
     }
 
-    // 2. GRÁFICO DE CALIDAD/PRODUCCIÓN
+    // 2. GRÁFICO DE COSECHAS POR CULTIVO
     const calidadChartElement = document.getElementById('calidadChart');
     const selectCultivo = document.getElementById('selectCultivo');
     
-    if (calidadChartElement && selectCultivo && calidadPorCultivo && cultivosHoy.length > 0) {
-        let cultivoSeleccionado = cultivosHoy[0]; // Primer cultivo por defecto
+    if (calidadChartElement && selectCultivo && calidadPorCultivo && cultivosSemana.length > 0) {
+        let cultivoSeleccionado = cultivosSemana[0]; // Primer cultivo por defecto
         selectCultivo.value = cultivoSeleccionado;
         
         function obtenerDatosCultivo(cultivo) {
@@ -335,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const calidadChart = new Chart(calidadChartElement, {
             type: 'bar',
             data: {
-                labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                labels: diasSemana,
                 datasets: [
                     {
                         label: 'Primera Calidad',
@@ -369,7 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 plugins: {
                     title: {
                         display: true,
-                        text: `Cosechas de ${cultivoSeleccionado} por Calidad`,
+                        text: `Cosechas de ${cultivoSeleccionado} (Semana Actual)`,
                         color: colors.text,
                         font: { size: 16, weight: 'bold' },
                         padding: { bottom: 20 }
@@ -426,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         },
                         title: {
                             display: true,
-                            text: 'Cantidad (unidades)',
+                            text: 'Cantidad (unidades equivalentes)',
                             color: colors.text,
                             font: { size: 12, weight: 'bold' }
                         }
@@ -464,17 +544,15 @@ document.addEventListener('DOMContentLoaded', function() {
             calidadChart.data.datasets[2].data = datosCultivo.tercera;
             
             // Actualizar título
-            calidadChart.options.plugins.title.text = `Cosechas de ${selected} por Calidad`;
+            calidadChart.options.plugins.title.text = `Cosechas de ${selected} (Semana Actual)`;
             
             // Aplicar cambios con animación
             calidadChart.update('active');
-            
         });
 
-        console.log('✅ Gráfico de calidad creado');
+        console.log('✅ Gráfico de cosechas creado');
     } else {
-        console.error('❌ No se pudo crear el gráfico de calidad - Elemento o datos faltantes');
-        
+        console.error('❌ No se pudo crear el gráfico de cosechas - Elemento o datos faltantes');
     }
 
 });
@@ -511,12 +589,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="modalSeleccionarProveedor" tabindex="-1" aria-labelledby="modalSeleccionarProveedorLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-  
         <div class="modal-header">
           <h5 class="modal-title">Listado de Proveedores</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-  
         <div class="modal-body">
           <select id="selectProveedor" class="form-select">
             <option value="">Selecciona un proveedor</option>
@@ -525,16 +601,15 @@ document.addEventListener('DOMContentLoaded', function() {
             {% endfor %}
           </select>
         </div>
-  
         <div class="modal-footer">
-          <button id="btnIrFormularioCompra" class="btn btn-success">Ir al formulario</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button id="btnIrFormularioCompra" type="button" class="btn btn-success">Ir al formulario</button>
         </div>
-  
       </div>
     </div>
-  </div>
+</div>
 
-  <!-- Modal Seleccionar Cliente -->
+<!-- Modal Seleccionar Cliente -->
 <div class="modal fade" id="modalSeleccionarCliente" tabindex="-1" aria-labelledby="modalSeleccionarClienteLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -551,9 +626,10 @@ document.addEventListener('DOMContentLoaded', function() {
           </select>
         </div>
         <div class="modal-footer">
-          <button id="btnIrFormularioVenta" class="btn btn-success">Ir al formulario</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button id="btnIrFormularioVenta" type="button" class="btn btn-success">Ir al formulario</button>
         </div>
       </div>
     </div>
-  </div>
+</div>
 {% endblock modals %}

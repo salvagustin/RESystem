@@ -69,6 +69,10 @@
           <h5 class="card-title fw-bold">#{{ cosecha.idcosecha }} - {{ cosecha.plantacion.cultivo.nombre }}</h5>
           <p class="mb-1"><strong>Parcela:</strong> {{ cosecha.plantacion.parcela.nombre }}</p>
           <p class="mb-1"><strong>Fecha:</strong> {{ cosecha.fecha }}</p>
+          <p class="mb-1"><strong>Total:</strong> 
+            {{ total_por_cosecha|get_item:cosecha.idcosecha|default:0 }}
+          </p>
+
             <strong>Estado:</strong>
             {% if cosecha.estado == 1 %}
               <span class="badge bg-danger">Finalizado</span>
@@ -92,7 +96,8 @@
               data-disponible-tercera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_tercera' }}"
               data-totalvendido="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_vendido' }}"
               data-cantidadventas="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'cantidad_ventas' }}"
-              data-perdida="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'perdida' }}">
+              data-perdida="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'perdida' }}"
+              data-total="{{ total_por_cosecha|get_item:cosecha.idcosecha|default:0 }}">
               <i class="bi bi-eye"></i> Detalles
             </button>
           </div>
@@ -114,6 +119,7 @@
               <th>Fecha</th>
               <th>Cultivo</th>
               <th>Estado</th>
+              <th>Total</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -131,6 +137,7 @@
                   <span class="badge bg-success">Activo</span>
                 {% endif %}
               </td>
+              <td>{{ total_por_cosecha|get_item:cosecha.idcosecha|default:0 }}</td>
               <td>
                 <div class="d-flex flex-wrap justify-content-center gap-2">
                   <button 
@@ -148,7 +155,8 @@
                     data-disponible-tercera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_tercera' }}"
                     data-totalvendido="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'total_vendido' }}"
                     data-cantidadventas="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'cantidad_ventas' }}"
-                    data-perdida="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'perdida' }}">
+                    data-perdida="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'perdida' }}"
+                    data-total="{{ total_por_cosecha|get_item:cosecha.idcosecha|default:0 }}">
                     <i class="bi bi-eye"></i> Detalles
                   </button>
                 </div>
@@ -197,7 +205,7 @@
     </div>
   </div>
 
-<!-- Modal Detalles de Cosecha - CORREGIDO -->
+<!-- Modal Detalles de Cosecha -->
 <div class="modal fade" id="modalCosecha" tabindex="-1" aria-labelledby="modalCosechaLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -224,6 +232,7 @@
             <!-- LADO DERECHO - CORREGIDO -->
             <div class="col-md-6">
               <!-- Cantidades por categoría -->
+              <p><strong>📦 Total Cosecha:</strong> <span id="cosechaTotal"></span></p>
               <p><strong>💰 Total Vendido:</strong> $<span id="totalvendido"></span></p>
               <p><strong>📊 Cantidad Vendida:</strong> <span id="cantidadventas"></span></p>
               <p><strong>📉 Pérdida:</strong> <span id="cosechaPerdida"></span></p>
@@ -379,11 +388,14 @@ document.addEventListener('DOMContentLoaded', function () {
       const cultivo = button.getAttribute('data-cultivo');
       const fecha = button.getAttribute('data-fecha');
       const estado = Number(button.getAttribute('data-estado'));
+      const totalCosecha = parseFloat(button.getAttribute('data-total')) || 0;
 
       
       const perdida = parseFloat(button.getAttribute('data-perdida')) || 0;
       const cantidadVentas = button.getAttribute('data-cantidadventas') || '0';
       const totalvendido = parseFloat(button.getAttribute('data-totalvendido')) || 0;
+      
+
 
       // Actualizar elementos del lado izquierdo
       document.getElementById('cosechaId').textContent = id || '';
@@ -396,6 +408,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('totalvendido').textContent = totalvendido.toFixed(0);
       document.getElementById('cosechaPerdida').textContent = perdida.toFixed(0);
       document.getElementById('cantidadventas').textContent = cantidadVentas;
+      document.getElementById('cosechaTotal').textContent = totalCosecha.toFixed(0);
     
       // Configurar botones
       document.getElementById('btnEditarCosecha').href = `/cosechas/editar/${id}/`;
