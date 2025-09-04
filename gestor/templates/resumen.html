@@ -55,9 +55,11 @@
           </button>
         </div>
       </form>
+      
     </div>
+    
   </div>
-
+<small class="form-text text-muted">Estados: produccion - finalizada</small>
   <!-- Cards para móviles -->
   <div class="d-md-none">
     {% for item in data %}
@@ -66,10 +68,10 @@
         <h5 class="card-title fw-bold">{{ item.cultivo }} - {{ item.variedad }}</h5>
         <p class="mb-1"><strong>Parcela:</strong> {{ item.parcela }}</p>
         <p class="mb-1"><strong>Estado:</strong> 
-        {% if plantacion.estado %}
-              <span class="badge bg-danger">Finalizado</span>
+        {% if item.estado %}
+              <span class="badge bg-success">Produccion</span>
             {% else %}
-              <span class="badge bg-success">Activo</span>
+              <span class="badge bg-danger">Finalizada</span>
             {% endif %}
         </p>
         <p class="mb-1"><strong>Plantas:</strong> {{ item.plantas }}</p>
@@ -127,9 +129,9 @@
             <td>{{ item.parcela }}</td>
             <td>
             {% if item.estado %}
-                <span class="badge bg-danger">Finalizado</span>
+                <span class="badge bg-success">Produccion</span>
               {% else %}
-                <span class="badge bg-success">Activo</span>
+                <span class="badge bg-danger">Finalizada</span>
             {% endif %}
             </td>
             <td>{{ item.cultivo }}</td>
