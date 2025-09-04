@@ -87,15 +87,15 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
 
          
-        #'NAME':'sistemre',
-        #'USER':'admin',
-        #'PASSWORD':'Flores.1',       
-        #'HOST':'104.154.222.143',
+        'NAME':'sistemre',
+        'USER':'admin',
+        'PASSWORD':'Flores.1',       
+        'HOST':'104.154.222.143',
 
-        'NAME':'rodriguez',
-        'USER':'root',
-        'PASSWORD':'',
-        'HOST':'localhost',
+        #'NAME':'rodriguez',
+        #'USER':'root',
+        #'PASSWORD':'',
+        #'HOST':'localhost',
         
 
 
