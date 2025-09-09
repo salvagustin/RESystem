@@ -233,8 +233,8 @@
                     <th>Cultivo</th>
                     <th>Parcela</th>
                     <th>Cantidad</th>
-                    <th>Categoría</th>
                     <th>Tipo de Cosecha</th>
+                    <th>Categoría</th>
                     <th>Subtotal</th>
                   </tr>
                 </thead>
@@ -365,9 +365,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             <tr>
                                 <td>${detalle.cultivo}</td>
                                 <td>${detalle.parcela}</td>
-                                <td>${detalle.cantidad}</td>
-                                <td>${detalle.categoria}</td>
+                                <td>${detalle.cantidad}</td>                                
                                 <td>${detalle.tipocosecha || 'N/A'}</td>
+                                <td>${detalle.categoria}</td>
                                 <td>$${detalle.subtotal.toFixed(2)}</td>
                             </tr>
                         `;

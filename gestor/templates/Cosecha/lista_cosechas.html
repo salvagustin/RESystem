@@ -149,7 +149,7 @@
                     data-parcela="{{ cosecha.plantacion.parcela.nombre }}"
                     data-cultivo="{{ cosecha.plantacion.cultivo.nombre }}"
                     data-fecha="{{ cosecha.fecha }}"
-                    data-estado="{% if cosecha.estado %}1{% else %}0{% endif %}"                    data-total="100"
+                    data-estado="{% if cosecha.estado %}1{% else %}0{% endif %}"                    
                     data-disponible-primera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_primera' }}"
                     data-disponible-segunda="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_segunda' }}"
                     data-disponible-tercera="{{ ventas_dict|get_item:cosecha.idcosecha|dict_get:'disponible_tercera' }}"

@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import Http404, JsonResponse, HttpResponseNotAllowed, HttpResponse
-from django.db.models import Sum, Count, DecimalField, Avg, F, ExpressionWrapper, DurationField, Case, When, IntegerField
+from django.db.models import Sum, Count, DecimalField, Avg, F, ExpressionWrapper, DurationField, Case, When, IntegerField, Value
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from collections import defaultdict
@@ -1610,6 +1610,9 @@ def calcular_ventas_con_multiplicadores(cosecha):
 
     return ventas_convertidas
 
+
+
+
 ############   CLIENTES  ####################
 
 # Mostrar lista de clientes
@@ -1638,9 +1641,20 @@ def lista_clientes(request):
             elif buscar in ['informal', 'i']:
                 clientes = clientes.filter(tipomercado='I')
 
-    # Anotar cantidad total vendida por cliente
+    # Total de DINERO (ventas o compras según tipo)
     clientes = clientes.annotate(
-        total_cantidad_vendida=Sum('venta__detalleventa__cantidad')
+        total_dinero=Case(
+            When(
+                tipocliente='C',
+                then=Sum('venta__detalleventa__subtotal')
+            ),
+            When(
+                tipocliente='P',
+                then=Sum(F('compra__detallecompra__cantidad') * F('compra__detallecompra__preciounitario'))
+            ),
+            default=Value(0),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
     ).order_by('nombre')
 
     # Paginación
@@ -1710,6 +1724,7 @@ def eliminar_cliente(request, idcliente):
             cliente.delete()
             messages.success(request, f"El cliente '{cliente}' ha sido eliminado exitosamente.")
     return redirect('/clientes')
+
 
 
 ############   VENTAS  ####################
@@ -1996,7 +2011,6 @@ def crear_venta(request):
         'cantidades': cantidades,
         'cliente': cliente,
     })
-
 
 @login_required
 def ajax_categorias(request):
@@ -2382,7 +2396,7 @@ def toggle_estado_venta(request, idventa):
 
 ############   MERCADO FORMAL ####################
 
-# Mostrar lista de cliente formales
+# Mostrar lista de clientes formales
 @login_required
 def lista_clientesformales(request):
     filtro = request.GET.get('filtro', 'nombre')
@@ -2403,9 +2417,20 @@ def lista_clientesformales(request):
             elif buscar in ['proveedor', 'p']:
                 clientes = clientes.filter(tipocliente='P')
 
-    # Anotar cantidad total vendida por cliente
+    # Total de DINERO (ventas o compras según tipo)
     clientes = clientes.annotate(
-        total_cantidad_vendida=Sum('venta__detalleventa__cantidad')
+        total_dinero=Case(
+            When(
+                tipocliente='C',
+                then=Sum('venta__detalleventa__subtotal')
+            ),
+            When(
+                tipocliente='P',
+                then=Sum(F('compra__detallecompra__cantidad') * F('compra__detallecompra__preciounitario'))
+            ),
+            default=Value(0),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
     ).order_by('nombre')
 
     # Paginación
@@ -2644,7 +2669,7 @@ def lista_comprasformales(request):
     
 ############   MERCADO INFORMAL ####################
 
-# Mostrar lista de cliente formales
+# Mostrar lista de clientes informales
 @login_required
 def lista_clientesinformales(request):
     filtro = request.GET.get('filtro', 'nombre')
@@ -2665,9 +2690,20 @@ def lista_clientesinformales(request):
             elif buscar in ['proveedor', 'p']:
                 clientes = clientes.filter(tipocliente='P')
 
-    # Anotar cantidad total vendida por cliente
+    # Total de DINERO (ventas o compras según tipo)
     clientes = clientes.annotate(
-        total_cantidad_vendida=Sum('venta__detalleventa__cantidad')
+        total_dinero=Case(
+            When(
+                tipocliente='C',
+                then=Sum('venta__detalleventa__subtotal')
+            ),
+            When(
+                tipocliente='P',
+                then=Sum(F('compra__detallecompra__cantidad') * F('compra__detallecompra__preciounitario'))
+            ),
+            default=Value(0),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
     ).order_by('nombre')
 
     # Paginación
@@ -3015,6 +3051,8 @@ def cambiar_estado_empleado(request, idempleado):
     messages.success(request, f"El empleado '{empleado.nombre}' ha sido {estado_texto} exitosamente.")
     
     return redirect('/empleados')
+
+
 
 
 ############   PLANILLAS  ####################

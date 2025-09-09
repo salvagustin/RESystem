@@ -16,59 +16,50 @@
         </h2>
     </div>
 
-    <!-- Información del Proveedor (si está seleccionado) -->
-    {% if proveedor %}
-    <div class="alert alert-info mb-4">
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <h5 class="mb-1"><i class="bi bi-building"></i> Proveedor Seleccionado:</h5>
-                <p class="mb-0 fw-bold">{{ proveedor.idcliente }} - {{ proveedor.nombre }}</p>
-            </div>
-            <div class="col-md-6 text-md-end">
-                <a href="{% if compra %}/compras/editar/{{ compra.idcompra }}/{% else %}/compras/crear/{% endif %}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-arrow-repeat"></i> Cambiar Proveedor
-                </a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="row">
-        <!-- Formulario Principal -->
-        <div class="col-lg-6">
+    <div class="row row-cols-1 row-cols-lg-2 g-4">
+        
+        <!-- Cuadro 1: Proveedor Seleccionado -->
+        <div class="col">
             <div class="card shadow">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="bi bi-clipboard-data"></i> Información de la Compra</h5>
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-building"></i> Proveedor</h5>
                 </div>
                 <div class="card-body">
-                    <form id="formCompra" method="post">
-                        {% csrf_token %}
-                        
-                        <!-- Tipo de Compra -->
-                        <div class="mb-3">
-                            <label for="id_tipocompra" class="form-label fw-bold">
-                                <i class="bi bi-credit-card"></i> Tipo de Compra
-                            </label>
-                            {{ form.tipocompra }}
+                    {% if proveedor %}
+                        <h6 class="fw-bold">{{ proveedor.idcliente }} - {{ proveedor.nombre }}</h6>
+                        <div class="mt-2">
+                            <a href="{% if compra %}/compras/editar/{{ compra.idcompra }}/{% else %}/compras/crear/{% endif %}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-arrow-repeat"></i> Cambiar Proveedor
+                            </a>
                         </div>
-
-                        <!-- Selección de Proveedor (solo si no hay uno seleccionado) -->
-                        {% if not proveedor %}
+                        <input type="hidden" name="proveedor_id" form="formCompra" value="{{ proveedor.idcliente }}">
+                    {% else %}
                         <div class="mb-3">
-                            <label for="selectProveedor" class="form-label fw-bold">
-                                <i class="bi bi-building"></i> Proveedor
-                            </label>
-                            <select id="selectProveedor" name="proveedor_id" class="form-select" required>
-                                <option value="">Selecciona un proveedor</option>
+                            <label for="selectProveedor" class="form-label fw-bold">Selecciona un Proveedor</label>
+                            <select id="selectProveedor" name="proveedor_id" class="form-select" form="formCompra" required>
+                                <option value="">-- Seleccionar --</option>
                                 {% for prov in proveedores %}
                                     <option value="{{ prov.idcliente }}">{{ prov.idcliente }} - {{ prov.nombre }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        {% else %}
-                            <input type="hidden" name="proveedor_id" value="{{ proveedor.idcliente }}">
-                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
+        <!-- Cuadro 2: Tipo de Compra -->
+        <div class="col">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-credit-card"></i> Tipo de Compra</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formCompra" method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            {{ form.tipocompra }}
+                        </div>
                         <!-- Campo oculto para JSON de productos -->
                         <input type="hidden" id="productosJson" name="productos_json" value="">
                     </form>
@@ -76,33 +67,26 @@
             </div>
         </div>
 
-        <!-- Panel de Productos -->
-        <div class="col-lg-6">
+        <!-- Cuadro 3: Agregar Productos -->
+        <div class="col">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0"><i class="bi bi-box-seam"></i> Agregar Productos</h5>
                 </div>
                 <div class="card-body">
                     <form id="formProducto">
-                        <!-- Producto -->
                         <div class="mb-3">
                             <label for="producto" class="form-label fw-bold">Producto</label>
                             <input type="text" id="producto" class="form-control" placeholder="Nombre del producto" maxlength="300" required>
                         </div>
-
-                        <!-- Cantidad -->
                         <div class="mb-3">
                             <label for="cantidad" class="form-label fw-bold">Cantidad</label>
-                            <input type="number" id="cantidad" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+                            <input type="number" id="cantidad" class="form-control" step="0.01" min="0.01" required>
                         </div>
-
-                        <!-- Precio Unitario -->
                         <div class="mb-3">
                             <label for="preciounitario" class="form-label fw-bold">Precio Unitario</label>
-                            <input type="number" id="preciounitario" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+                            <input type="number" id="preciounitario" class="form-control" step="0.01" min="0.01" required>
                         </div>
-
-                        <!-- Tipo de Detalle -->
                         <div class="mb-3">
                             <label for="tipodetalle" class="form-label fw-bold">Tipo Detalle</label>
                             <select id="tipodetalle" class="form-select" required>
@@ -112,7 +96,6 @@
                                 {% endfor %}
                             </select>
                         </div>
-
                         <button type="button" id="btnAgregarProducto" class="btn btn-primary w-100">
                             <i class="bi bi-plus-circle"></i> Agregar Producto
                         </button>
@@ -120,11 +103,9 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Lista de Productos Agregados -->
-    <div class="row mt-4">
-        <div class="col-12">
+        <!-- Cuadro 4: Productos Agregados -->
+        <div class="col">
             <div class="card shadow">
                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-list-check"></i> Productos Agregados</h5>
@@ -138,7 +119,6 @@
                         </div>
                     </div>
 
-                    <!-- Tabla de productos (se muestra cuando hay productos) -->
                     <div id="tablaProductos" class="d-none">
                         <div class="table-responsive">
                             <table class="table table-bordered table-hover">
@@ -152,9 +132,7 @@
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody id="listaProductos">
-                                    <!-- Productos se insertan aquí -->
-                                </tbody>
+                                <tbody id="listaProductos"></tbody>
                                 <tfoot class="table-success">
                                     <tr>
                                         <td colspan="4" class="text-end fw-bold">TOTAL:</td>
@@ -168,13 +146,14 @@
                 </div>
             </div>
         </div>
+
     </div>
 
     <!-- Botones de Acción -->
     <div class="row mt-4">
         <div class="col-12 text-center">
-            <button type="button" id="btnGuardarCompra" class="btn btn-success btn-lg me-3" disabled>
-                <i class="bi bi-check-circle"></i> 
+            <button type="button" id="btnGuardarCompra" class="btn btn-success btn-lg me-3" form="formCompra" disabled>
+                <i class="bi bi-check-circle"></i>
                 {% if compra %}Actualizar{% else %}Guardar{% endif %} Compra
             </button>
             <a href="/compras/" class="btn btn-secondary btn-lg">
@@ -184,6 +163,7 @@
     </div>
 </div>
 {% endblock %}
+
 
 {% block scripts %}
 <script>

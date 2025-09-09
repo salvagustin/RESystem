@@ -19,7 +19,7 @@
                 <i class="bi bi-plus-circle fs-5 me-2"></i> <span>Nuevo Cliente</span>
             </a>
 
-            <a href="/clientes/" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
+            <a href="/clientesformales/" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center">
                 <i class="bi bi-arrow-counterclockwise fs-5 me-2"></i> <span>Restablecer</span>
             </a>
         </div>
@@ -76,7 +76,7 @@
             data-id="{{ cliente.idcliente }}"
             data-nombre="{{ cliente.nombre }}"
             data-telefono="{{ cliente.telefono }}"
-            data-totalvendido="{{ cliente.total_cantidad_vendida|default:"0"  }}"
+            data-totalvendido="{{ cliente.total_dinero|default:"0"  }}"
             data-tipocliente="{{ cliente.get_tipocliente_display }}">
             <i class="bi bi-eye"></i> Detalles
             </button>
@@ -125,7 +125,7 @@
                     data-id="{{ cliente.idcliente }}"
                     data-nombre="{{ cliente.nombre }}"
                     data-telefono="{{ cliente.telefono }}"
-                    data-totalvendido="{{ cliente.total_cantidad_vendida|default:"0"  }}"
+                    data-totalvendido="{{ cliente.total_dinero|default:"0"  }}"
                     data-tipocliente="{{ cliente.get_tipocliente_display }}">
                     <i class="bi bi-eye"></i> Detalles
                 </button>
@@ -170,7 +170,7 @@
             <div class="col-md-6">
               <p><strong>📞 Teléfono:</strong> <span id="clienteTelefono"></span></p>
               <p><strong>🏷️ Tipo de Cliente:</strong> <span id="clienteTipo"></span></p>
-            <p><strong>💵 Total Vendido:</strong> $<span id="clienteTotalVendido"></span></p>
+            <p><strong>💵 Total:</strong> $<span id="clienteTotalVendido"></span></p>
 
             </div>
           </div>
