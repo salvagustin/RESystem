@@ -7,7 +7,8 @@ from .views import custom_logout
 urlpatterns = [
     path('', inicio, name='inicio'),
     path('logout/', custom_logout, name='logout'),
-    
+    path('accounts/logout/', custom_logout, name='account_logout'),
+
 
     path('parcelas/', views.lista_parcelas, name='lista_parcelas'),
     path('parcelas/crear/', views.crear_parcela, name='crear_parcela'),
