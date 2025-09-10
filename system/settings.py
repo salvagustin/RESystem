@@ -28,7 +28,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['127.0.0.1','localhost','34.28.102.71','rodriguez.click']
 
 LOGIN_REDIRECT_URL='/'
-LOGOUT_REDIRECT_URL='/'
+LOGOUT_REDIRECT_URL='login'
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 
