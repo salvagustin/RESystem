@@ -256,9 +256,9 @@ def inicio(request):
 
 
 def custom_logout(request):
-    """Vista personalizada para logout que siempre funciona"""
+    """Cierra la sesión del usuario y redirige al login"""
     logout(request)
-    return redirect('inicio') 
+    return redirect('login') 
 
 @login_required
 def control_calidad(request):
