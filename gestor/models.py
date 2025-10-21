@@ -103,7 +103,8 @@ class DetalleCosecha(models.Model):
     categoria = models.CharField('Categoria', max_length=10, choices=CATEGORIAS, blank=False, null=False)
     tipocosecha = models.CharField('Tipo de corte', max_length=2, choices=OPCIONES, blank=False, null=False)
     cantidad = models.IntegerField('Cantidad', blank=False, null=False)
-
+    
+    
     def __str__(self):
         return f"{self.categoria} - {self.cantidad} en Cosecha #{self.cosecha.idcosecha}"    
 
@@ -130,13 +131,14 @@ class DetalleVenta(models.Model):
         ('segunda', 'Segunda'),
         ('tercera', 'Tercera'),
     )
-
+    
     venta = models.ForeignKey('Venta', on_delete=models.CASCADE)
     cosecha = models.ForeignKey('Cosecha', on_delete=models.CASCADE)
     categoria = models.CharField(max_length=10, choices=CATEGORIAS)
     tipocosecha = models.CharField('Tipo de cosecha', max_length=2, choices=DetalleCosecha.OPCIONES)
     cantidad = models.IntegerField(default=0)
     subtotal = models.DecimalField('Subtotal', default=0, max_digits=10, decimal_places=2)
+    rechazo = models.DecimalField(max_digits=10, decimal_places=2, default=0) 
 
     def __str__(self):
         return f"{self.venta} - {self.cosecha} ({self.categoria} - {self.cantidad})"

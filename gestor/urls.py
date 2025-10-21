@@ -53,6 +53,7 @@ urlpatterns = [
     path('ventas/eliminar/<int:idventa>/', views.eliminar_venta, name='eliminar_venta'),
     path('ventas/toggle_estadoventa/<int:idventa>/', views.toggle_estado_venta, name='toggle_estado_venta'),
     path('ventas/detalles/<int:venta_id>/', views.obtener_detalles_venta, name='obtener_detalles_venta'),
+    path('ventas/<int:venta_id>/rechazos/guardar/', views.guardar_rechazos, name='guardar_rechazos'),
 
 
     #path('dashboard/', views.dashboard_view, name='dashboard'),

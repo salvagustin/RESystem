@@ -235,15 +235,16 @@
                     <th>Cantidad</th>
                     <th>Tipo de Cosecha</th>
                     <th>Categoría</th>
+                    <th>Rechazo</th>
                     <th>Subtotal</th>
                   </tr>
                 </thead>
-                <tbody id="detalleVentaProductos">
+                <tbody id="detalleVentaProductos"></tbody>
                   <!-- Se insertan dinámicamente desde JavaScript -->
                 </tbody>
                 <tfoot class="table-dark">
                   <tr>
-                    <td colspan="5" class="text-end fw-bold">TOTAL:</td>
+                    <td colspan="6" class="text-end fw-bold">TOTAL:</td>
                     <td id="totalFooter" class="fw-bold">$0.00</td>
                   </tr>
                 </tfoot>
@@ -255,8 +256,11 @@
 
       <!-- Footer -->
       <div class="modal-footer">
+        <button id="btnGuardarRechazos" class="btn btn-outline-primary">
+          <i class="bi bi-save"></i> Guardar cambios
+        </button>
         <button id="btnToggleEstadoVenta" class="btn btn-outline-secondary">
-          Finalizar
+          <i class="bi bi-check2-circle"></i> Finalizar
         </button>
         <a id="btnEditarVenta" class="btn btn-outline-primary">
           <i class="bi bi-pencil-square"></i> Editar
@@ -268,9 +272,42 @@
           data-bs-dismiss="modal">
           <i class="bi bi-trash"></i> Eliminar
         </button>
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Modal Rechazo -->
+<div class="modal fade" id="modalRechazo" tabindex="-1" aria-labelledby="modalRechazoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="modalRechazoLabel">📦 Rechazo de Productos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-bordered text-center align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Producto</th>
+                <th>Tipo cosecha</th>
+                <th>Categoría</th>
+                <th>Cantidad</th>
+                <th>Rechazados</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tablaRechazoBody">
+              <tr><td colspan="6" class="text-center text-muted">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -302,173 +339,179 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function() {
     const modalVenta = document.getElementById('modalVenta');
     let VentaIdActual = null;
-
+  
     if (modalVenta) {
-        modalVenta.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
+      modalVenta.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const id = button.getAttribute('data-id');
+        const cliente = button.getAttribute('data-cliente');
+        const tipoventa = button.getAttribute('data-tipoventa');
+        const fecha = button.getAttribute('data-fecha');
+        const estado = button.getAttribute('data-estado');
+  
+        // Datos básicos
+        document.getElementById('ventaId').textContent = id;
+        document.getElementById('ventaCliente').textContent = cliente;
+        document.getElementById('ventaTipoventa').textContent = tipoventa;
+        document.getElementById('ventaFecha').textContent = fecha;
+        document.getElementById('ventaEstado').innerHTML = estado === 'True' 
+            ? '<span class="badge bg-success">Pagado</span>' 
+            : '<span class="badge bg-danger">Pendiente</span>';
+  
+        document.getElementById('btnToggleEstadoVenta').disabled = (estado === 'True');
+        document.getElementById('btnEditarVenta').href = `/ventas/editar/${id}/`;
+        document.getElementById('formEliminarVenta').action = `/ventas/eliminar/${id}/`;
+  
+        VentaIdActual = id;
+        cargarDetallesVenta(id);
+      });
+  
+      // 🔹 Cargar detalles (incluye campo editable de rechazo)
+      function cargarDetallesVenta(ventaId) {
+    fetch(`/ventas/detalles/${ventaId}/`)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('detalleVentaProductos');
+            const totalFooter = document.getElementById('totalFooter');
+            const ventaTotal = document.getElementById('ventaTotal');
 
-            const id = button.getAttribute('data-id');
-            const cliente = button.getAttribute('data-cliente');
-            const tipoventa = button.getAttribute('data-tipoventa');
-            const fecha = button.getAttribute('data-fecha');
-            const estado = button.getAttribute('data-estado');
+            tbody.innerHTML = '';
 
-            // Actualizar información básica del modal
-            document.getElementById('ventaId').textContent = id;
-            document.getElementById('ventaCliente').textContent = cliente;
-            document.getElementById('ventaTipoventa').textContent = tipoventa;
-            document.getElementById('ventaFecha').textContent = fecha;
-            document.getElementById('ventaEstado').innerHTML = estado === 'True' 
-                ? '<span class="badge bg-success">Pagado</span>' 
-                : '<span class="badge bg-danger">Pendiente</span>';
+            if (data.detalles.length > 0) {
+                data.detalles.forEach(detalle => {
+                    // 👇 Mapeo de códigos a nombres legibles
+                    const tipoMap = {
+                        's': 'Saco',
+                        'c': 'Caja',
+                        'lb': 'Libra',
+                        'u': 'Unidad'
+                    };
+                    const tipoCosecha = tipoMap[detalle.tipocosecha] || detalle.tipocosecha;
+                    console.log(tipoCosecha)
+                    tbody.innerHTML += `
+                        <tr data-id="${detalle.id}">
+                            <td>${detalle.cultivo}</td>
+                            <td>${detalle.parcela}</td>
+                            <td>${detalle.cantidad}</td>
+                            <td>${tipoCosecha}</td> <!-- 👈 aquí se muestra el texto -->
+                            <td>${detalle.categoria}</td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm input-rechazo"
+                                    min="0" max="${detalle.cantidad}" value="${detalle.rechazo}"
+                                    style="width: 80px; text-align: center;">
+                            </td>
+                            <td>$${detalle.subtotal.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
 
-            // Deshabilitar botón si ya está pagada
-            const btnToggle = document.getElementById('btnToggleEstadoVenta');
-            btnToggle.disabled = (estado === 'True');
-
-            // Actualizar enlaces y formularios
-            document.getElementById('btnEditarVenta').href = `/ventas/editar/${id}/`;
-            document.getElementById('formEliminarVenta').action = `/ventas/eliminar/${id}/`;
-
-            VentaIdActual = id;
-
-            // Cargar detalles de la venta via AJAX
-            cargarDetallesVenta(id);
-        });
-
-        // Función para cargar detalles de la venta
-        function cargarDetallesVenta(ventaId) {
-            fetch(`/ventas/detalles/${ventaId}/`, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error("Error al obtener detalles");
-                return response.json();
-            })
-            .then(data => {
-                const tbody = document.getElementById('detalleVentaProductos');
-                const totalFooter = document.getElementById('totalFooter');
-                const ventaTotal = document.getElementById('ventaTotal');
-                
-                tbody.innerHTML = '';
-
-                if (data.detalles && data.detalles.length > 0) {
-                    data.detalles.forEach(detalle => {
-                        tbody.innerHTML += `
-                            <tr>
-                                <td>${detalle.cultivo}</td>
-                                <td>${detalle.parcela}</td>
-                                <td>${detalle.cantidad}</td>                                
-                                <td>${detalle.tipocosecha || 'N/A'}</td>
-                                <td>${detalle.categoria}</td>
-                                <td>$${detalle.subtotal.toFixed(2)}</td>
-                            </tr>
-                        `;
-                    });
-                    
-                    const total = data.total || 0;
-                    totalFooter.textContent = `$${total.toFixed(2)}`;
-                    ventaTotal.textContent = `$${total.toFixed(2)}`;
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay detalles disponibles</td></tr>';
-                    totalFooter.textContent = '$0.00';
-                    ventaTotal.textContent = '$0.00';
-                }
-            })
-            .catch(error => {
-                console.error('Error al cargar detalles:', error);
-                const tbody = document.getElementById('detalleVentaProductos');
-                const totalFooter = document.getElementById('totalFooter');
-                const ventaTotal = document.getElementById('ventaTotal');
-                
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar los detalles</td></tr>';
+                totalFooter.textContent = `$${data.total.toFixed(2)}`;
+                ventaTotal.textContent = `$${data.total.toFixed(2)}`;
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">No hay detalles</td></tr>';
                 totalFooter.textContent = '$0.00';
                 ventaTotal.textContent = '$0.00';
-            });
-        }
-
-        // Acción para marcar como pagada (solo False → True)
-        document.getElementById('btnToggleEstadoVenta').addEventListener('click', () => {
-            if (!VentaIdActual) return;
-
-            fetch(`/ventas/toggle_estadoventa/${VentaIdActual}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Accept': 'application/json'
-                },
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.estado !== undefined) {
-                    document.getElementById('ventaEstado').innerHTML = data.estado 
-                        ? '<span class="badge bg-success">Pagado</span>' 
-                        : '<span class="badge bg-danger">Pendiente</span>';
-
-                    if (data.estado) {
-                        // Desactivar botón
-                        document.getElementById('btnToggleEstadoVenta').disabled = true;
-
-                        // Actualizar también en la tabla principal
-                        const celdaEstado = document.getElementById(`estado-${VentaIdActual}`);
-                        if (celdaEstado) {
-                            celdaEstado.innerHTML = '<span class="badge bg-success">Pagado</span>';
-                        }
-                    }
-                } else {
-                    alert("Error al actualizar estado");
-                }
-            })
-            .catch(() => alert("Fallo en la solicitud al servidor"));
+            }
         });
+}
+
+
+  
+      // 🔹 Guardar cambios en rechazo
+      document.getElementById('btnGuardarRechazos').addEventListener('click', () => {
+        const filas = document.querySelectorAll('#detalleVentaProductos tr');
+        const rechazos = [];
+
+        filas.forEach(fila => {
+            const detalleId = fila.dataset.id;
+            const input = fila.querySelector('.input-rechazo');
+            if (detalleId && input) {
+                rechazos.push({
+                    detalle_id: detalleId,
+                    rechazo: parseFloat(input.value) || 0
+                });
+            }
+        });
+
+        fetch(`/ventas/${VentaIdActual}/rechazos/guardar/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ rechazos })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok) {
+                alert(`Rechazos guardados (${data.detalles_actualizados} actualizados)`);
+            } else {
+                alert('Error: ' + (data.error || 'Revisar consola'));
+                console.log(data);
+            }
+            cargarDetallesVenta(VentaIdActual); // refrescar tabla
+        })
+        .catch(err => console.error(err));
+    });
+
+
+  
+      // 🔹 Marcar venta como pagada
+      document.getElementById('btnToggleEstadoVenta').addEventListener('click', () => {
+        if (!VentaIdActual) return;
+        fetch(`/ventas/toggle_estadoventa/${VentaIdActual}/`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Accept': 'application/json'
+          },
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.estado !== undefined) {
+            document.getElementById('ventaEstado').innerHTML = data.estado 
+                ? '<span class="badge bg-success">Pagado</span>' 
+                : '<span class="badge bg-danger">Pendiente</span>';
+  
+            if (data.estado) {
+              document.getElementById('btnToggleEstadoVenta').disabled = true;
+              const celdaEstado = document.getElementById(`estado-${VentaIdActual}`);
+              if (celdaEstado) celdaEstado.innerHTML = '<span class="badge bg-success">Pagado</span>';
+            }
+          }
+        });
+      });
     }
-
-    // Validación del formulario de búsqueda
-    document.getElementById('formBusqueda').addEventListener('submit', function (event) {
-        const buscar = document.querySelector('input[name="buscar"]').value.trim();
-        const fechaInicio = document.querySelector('input[name="fecha_inicio"]').value;
-        const fechaFin = document.querySelector('input[name="fecha_fin"]').value;
-
-        if (!buscar && (!fechaInicio || !fechaFin)) {
-            event.preventDefault();
-            alert("Debes escribir algo en buscar o seleccionar ambas fechas.");
-        }
-    });
-
-    // Botón para ir al formulario de nueva venta
+    // Botón para ir al formulario de nueva venta 
     document.getElementById("btnIrFormulario").addEventListener("click", function () {
-        const clienteId = document.getElementById("selectCliente").value;
-        if (clienteId) {
+        const clienteId = document.getElementById("selectCliente").value; 
+        if (clienteId) { 
             window.location.href = `/ventas/crear/?cliente_id=${clienteId}`;
-        } else {
-            alert("Debes seleccionar un cliente.");
-        }
-    });
-});
+        } else { 
+            alert("Debes seleccionar un cliente."); 
+        } 
+    }); 
 
-// Función para obtener el token CSRF
-function getCookie(name) {
+  });
+ 
+
+  // CSRF helper
+  function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
         }
+      }
     }
     return cookieValue;
-}
-</script>
-
-
+  }
+  </script>
 {% endblock scripts %}

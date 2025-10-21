@@ -1734,36 +1734,31 @@ def obtener_detalles_venta(request, venta_id):
         venta = Venta.objects.prefetch_related(
             'detalleventa_set__cosecha__plantacion__cultivo',
             'detalleventa_set__cosecha__plantacion__parcela',
-            'detalleventa_set__cosecha__detallecosecha_set',
         ).get(idventa=venta_id)
     except Venta.DoesNotExist:
         return JsonResponse({'error': 'Venta no encontrada'}, status=404)
 
     detalles = []
-    total_venta = 0  # Variable para acumular el total
-    
+    total_venta = 0
+
     for detalle_venta in venta.detalleventa_set.all():
-        # Obtener el tipo de cosecha desde DetalleCosecha
-        detalle_cosecha = detalle_venta.cosecha.detallecosecha_set.filter(
-            categoria=detalle_venta.categoria
-        ).first()
-        
         subtotal = float(detalle_venta.subtotal)
-        total_venta += subtotal  # Sumar al total
-        
+        total_venta += subtotal
+    
         detalles.append({
+            'id': detalle_venta.id,  
             'cultivo': detalle_venta.cosecha.plantacion.cultivo.nombre,
             'parcela': detalle_venta.cosecha.plantacion.parcela.nombre,
             'cantidad': detalle_venta.cantidad,
+            'rechazo': detalle_venta.rechazo or 0,  
             'categoria': detalle_venta.get_categoria_display(),
-            'tipocosecha': detalle_cosecha.get_tipocosecha_display() if detalle_cosecha else 'N/A',
+            'tipocosecha': detalle_venta.get_tipocosecha_display(),
             'subtotal': subtotal,
         })
- 
-    
+
     return JsonResponse({
         'detalles': detalles,
-        'total': total_venta  # Enviar el total calculado
+        'total': total_venta
     })
 
 # Mostrar lista de ventas
@@ -2392,7 +2387,60 @@ def toggle_estado_venta(request, idventa):
         return JsonResponse({'error': 'Venta no encontrada'}, status=404)
 
 
+@login_required
+@require_POST
+def guardar_rechazos(request, venta_id):
+    """
+    Guarda los valores de rechazo enviados desde el modal DetalleVenta.
+    Actualiza también la cantidad del detalle.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        rechazos = data.get('rechazos', [])
+        detalles_actualizados = 0
+        errores = []
 
+        for item in rechazos:
+            detalle_id = item.get('detalle_id')
+            rechazo = item.get('rechazo', 0)
+
+            if not detalle_id or not str(detalle_id).isdigit():
+                errores.append(f"ID inválido: {detalle_id}")
+                continue
+
+            try:
+                detalle = DetalleVenta.objects.get(id=int(detalle_id), venta_id=venta_id)
+            except DetalleVenta.DoesNotExist:
+                errores.append(f"Detalle {detalle_id} no encontrado")
+                continue
+
+            try:
+                rechazo = float(rechazo)
+            except (TypeError, ValueError):
+                rechazo = 0
+
+            # Validar que no sea negativo ni mayor que la cantidad actual
+            if rechazo < 0:
+                rechazo = 0
+            if rechazo > detalle.cantidad:
+                rechazo = detalle.cantidad
+
+            # Aplicar el rechazo: reducir cantidad y guardar rechazo
+            detalle.cantidad -= rechazo
+            detalle.rechazo = (detalle.rechazo or 0) + rechazo
+            detalle.save(update_fields=['cantidad', 'rechazo'])
+            detalles_actualizados += 1
+
+        return JsonResponse({
+            'ok': True,
+            'detalles_actualizados': detalles_actualizados,
+            'errores': errores
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=500)
 
 ############   MERCADO FORMAL ####################
 

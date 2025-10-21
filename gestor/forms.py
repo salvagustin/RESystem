@@ -44,7 +44,6 @@ DetalleCultivoFormSet = inlineformset_factory(
 
 
 
-
 class PlantacionForm(forms.ModelForm):
     class Meta:
         model = Plantacion
@@ -112,8 +111,7 @@ DetalleVentaFormSet = inlineformset_factory(
     extra=1, can_delete=True
 )
 
-
-
+      
 class EmpleadoForm(forms.ModelForm):
     class Meta:
         model = Empleado
@@ -155,8 +153,6 @@ class EmpleadoForm(forms.ModelForm):
         if telefono and len(telefono.strip()) < 8:
             raise forms.ValidationError("El número de teléfono debe tener al menos 8 caracteres.")
         return telefono
-
-
 
 
 class CompraForm(forms.ModelForm):
